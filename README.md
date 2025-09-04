@@ -8,7 +8,7 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for AI agent task communication and delegation with **diagnostic lifecycle visibility**. Enables Claude Code to delegate tasks to specialized agents and monitor their complete thought process and execution.
 
-**Author:** Jeremy Fowler - [jeremy.f76@gmail.com](mailto:jeremy.f76@gmail.com)
+**Author:** Jeremy Fowler
 
 ## Features
 

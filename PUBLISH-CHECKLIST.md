@@ -3,7 +3,7 @@
 ## Current Status ✅ READY TO PUBLISH
 - [x] GitHub repository created: `https://github.com/jerfowler/agent-comm-mcp-server.git`
 - [x] Package.json configured for scoped npm package `@jerfowler/agent-comm-mcp-server`
-- [x] Author email updated to `jeremy.f76@gmail.com`
+- [x] Author information updated
 - [x] Fresh Git history with single initial commit
 - [x] All tests passing
 - [x] Build system working correctly
