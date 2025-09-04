@@ -61,7 +61,6 @@ MCP-COMPLIANCE-*.md
 *BEST-PRACTICES*.md
 *FIXES*.md
 
-# Package manager
-package-lock.json
+# Package manager - yarn and pnpm only (keep npm lock for CI)
 yarn.lock
 pnpm-lock.yaml
