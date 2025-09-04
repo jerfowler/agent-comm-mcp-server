@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "agent-comm-server": "./dist/index.js"
+    "agent-comm-server": "dist/index.js"
   },
   "scripts": {
     "prebuild": "node scripts/generate-version.cjs",
@@ -16,7 +16,7 @@
     "test:unit": "jest tests/unit --coverage",
     "test:smoke": "jest tests/smoke --testTimeout=30000",
     "test:lifecycle": "jest tests/lifecycle --testTimeout=60000",
-    "test:integration": "jest tests/integration --testTimeout=60000", 
+    "test:integration": "jest tests/integration --testTimeout=60000",
     "test:e2e": "jest tests/e2e --testTimeout=120000",
     "test:all": "npm run test:unit && npm run test:smoke && npm run test:lifecycle && npm run test:integration && npm run test:e2e",
     "test:quick": "npm run test:unit && npm run test:smoke",
