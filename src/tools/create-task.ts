@@ -1,0 +1,375 @@
+/**
+ * Unified create_task tool for the Agent Communication MCP Server
+ * Replaces delegate_task and init_task with a single, robust implementation
+ * that prevents duplicate folder bugs and provides consistent PROTOCOL_CONTEXT
+ */
+
+import { ServerConfig, CreateTaskResponse } from '../types.js';
+import { initializeTask } from '../utils/task-manager.js';
+import { validateRequiredString, validateOptionalString, validateContent } from '../utils/validation.js';
+import { AgentCommError } from '../types.js';
+import * as fs from '../utils/file-system.js';
+import * as path from 'path';
+
+// Enhanced PROTOCOL_CONTEXT with strong directives
+export const PROTOCOL_CONTEXT = `
+
+## MCP Task Management Protocol
+
+### IMPORTANT: Creating Tasks
+**ALWAYS** use \`create_task\` for ANY new task:
+\`\`\`javascript
+create_task({
+  agent: "target-agent",      // Required: target agent name
+  taskName: "task-name",      // Required: clean name (NO timestamps)
+  content: "task details",    // Optional: include for delegation
+  taskType: "delegation",     // Optional: delegation|self|subtask
+  parentTask: "parent-id"     // Optional: for subtasks only
+})
+\`\`\`
+
+### CRITICAL: Task Workflow
+**YOU MUST** follow this exact sequence:
+1. \`check_assigned_tasks()\` - **ALWAYS** start here
+2. \`start_task(taskId)\` - **REQUIRED** before any work
+3. \`submit_plan(content)\` - **MANDATORY** before implementation
+4. \`report_progress(updates)\` - **UPDATE** after each step
+5. \`mark_complete(status, summary, reconciliation_options)\` - **ONLY** when fully done
+
+### MANDATORY: Todo Integration
+**YOU MUST ALWAYS:**
+- **CREATE** TodoWrite items for EVERY task step
+- **UPDATE** todos to 'in_progress' BEFORE starting work
+- **MARK** todos 'completed' IMMEDIATELY after finishing
+- **NEVER** have more than ONE 'in_progress' item
+- **INCLUDE** MCP operations as todo items
+
+### REQUIRED Plan Format
+**ALL PLANS MUST USE CHECKBOX FORMAT:**
+
+Each trackable item MUST follow this structure:
+\`\`\`
+- [ ] **Step Title**: Brief one-line description
+  - Action: Specific command or task
+  - Expected: Success criteria
+  - Error: Handling approach if fails
+  - Notes: Additional context (optional)
+\`\`\`
+
+**Example Plan Format:**
+\`\`\`markdown
+## Testing Plan
+
+- [ ] **Test Discovery**: Identify all test configurations
+  - Run: \`pnpm list --filter "*" --depth 0\`
+  - Scan for: jest.config.*, *.test.ts, *.spec.ts files
+  - Expected: List of all test files and configurations
+  - Error handling: If no tests found, document as critical issue
+  - Dependencies: Node.js and pnpm installed
+
+- [ ] **Test Execution**: Run all test suites
+  - Command: \`pnpm test:all --coverage\`
+  - Success criteria: All tests pass with >80% coverage
+  - Failure action: Document failed tests with error messages
+  - Output location: ./coverage/lcov-report/index.html
+\`\`\`
+
+**VALIDATION RULES:**
+- Minimum ONE checkbox required (use \`- [ ]\` format exactly)
+- Each checkbox must have bold title: \`**Title**:\`
+- Each checkbox must have 2-5 detail bullets
+- NO [PENDING]/[COMPLETE] status markers allowed
+- Use ONLY checkboxes for tracking
+
+### CRITICAL RULES - NEVER VIOLATE
+- **NEVER** create duplicate tasks (auto-prevented)
+- **NEVER** add timestamps to taskName
+- **ALWAYS** update progress after EACH action
+- **ALWAYS** sync todos with actual work
+- **NEVER** skip submit_plan step
+- **ONLY** mark complete when 100% done
+- **ALWAYS** use checkbox format in plans
+- **UNDERSTAND** reconciliation modes for mark_complete
+
+### Task Completion Reconciliation
+**mark_complete** supports intelligent reconciliation when plan checkboxes remain unchecked:
+
+**4 Reconciliation Modes:**
+1. **\`strict\`** (default) - Requires ALL checkboxes checked before DONE status
+   - Use when: Plan adherence is critical
+   - Behavior: Rejects DONE with unchecked items, allows ERROR
+
+2. **\`auto_complete\`** - Automatically marks unchecked items complete
+   - Use when: Work is done but forgot to check boxes
+   - Behavior: Updates PLAN.md with all items checked
+
+3. **\`reconcile\`** - Accept completion with explanations for variances  
+   - Use when: Completed work differently than planned
+   - Requires: reconciliation_explanations object
+   - Behavior: Creates variance report with justifications
+
+4. **\`force\`** - Override completion despite unchecked items
+   - Use when: Emergency completion, plan became obsolete
+   - Behavior: Documents forced override with warnings
+
+**Reconciliation Examples (Essential Examples for Proper Usage):**
+\`\`\`javascript
+// Example 1: Default strict mode (recommended example)
+mark_complete({
+  status: 'DONE',
+  summary: 'All work completed as planned',
+  agent: 'agent-name'
+  // No reconciliation = strict mode
+});
+
+// Example 3: Auto-complete forgotten checkboxes example
+mark_complete({
+  status: 'DONE', 
+  summary: 'Forgot to check boxes during work',
+  agent: 'agent-name',
+  reconciliation_mode: 'auto_complete'
+});
+
+// Example 4: Reconcile with explanations (detailed example)
+mark_complete({
+  status: 'DONE',
+  summary: 'Core work done, some items handled differently', 
+  agent: 'agent-name',
+  reconciliation_mode: 'reconcile',
+  reconciliation_explanations: {
+    'Database Setup': 'Used existing schema, setup not needed',
+    'Performance Testing': 'Deferred to next sprint per stakeholder decision'
+  }
+});
+
+// Force completion in emergency  
+mark_complete({
+  status: 'DONE',
+  summary: 'Emergency deployment, remaining items moved to backlog',
+  agent: 'agent-name', 
+  reconciliation_mode: 'force'
+});
+\`\`\`
+
+**BEST PRACTICES:**
+- **Update checkboxes** as you complete work (prevents reconciliation need)
+- **Use strict mode** by default (ensures plan accountability) 
+- **Provide clear explanations** when using reconcile mode
+- **Reserve force mode** for genuine emergencies only
+- **Document reconciliation decisions** thoroughly in summary
+
+### Diagnostic Tools
+- \`track_task_progress(agent, taskId)\` - Monitor progress
+- \`get_full_lifecycle(agent, taskId)\` - View task history
+
+**REMEMBER:** Update todos, use checkbox format in plans, and report progress CONTINUOUSLY!`;
+
+// Task creation options interface
+export interface CreateTaskOptions {
+  agent: string;
+  taskName: string;
+  content?: string;
+  taskType?: 'delegation' | 'self' | 'subtask';
+  parentTask?: string;
+}
+
+// Use CreateTaskResponse from types.ts
+
+/**
+ * Extract clean task name from potentially timestamped input
+ * Handles the duplicate timestamp bug cases
+ */
+function extractCleanTaskName(taskName: string): string {
+  // Pattern for ISO timestamp: YYYY-MM-DDTHH-mm-ss
+  const timestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-(.+)$/;
+  
+  let cleanName = taskName;
+  
+  // Keep extracting until no more timestamps found (handles double timestamps)
+  while (timestampPattern.test(cleanName)) {
+    const match = cleanName.match(timestampPattern);
+    if (match && match[1]) {
+      cleanName = match[1];
+    } else {
+      break;
+    }
+  }
+  
+  return cleanName;
+}
+
+/**
+ * Check if task already exists to prevent duplicates
+ */
+async function findExistingTask(config: ServerConfig, agent: string, taskName: string): Promise<string | null> {
+  const agentDir = path.join(config.commDir, agent);
+  
+  if (!await fs.pathExists(agentDir)) {
+    return null;
+  }
+  
+  try {
+    const entries = await fs.listDirectory(agentDir);
+    
+    for (const entry of entries) {
+      if (await fs.isDirectory(path.join(agentDir, entry))) {
+        // Check if this directory matches our task name pattern
+        const cleanEntryName = extractCleanTaskName(entry);
+        if (cleanEntryName === taskName) {
+          return entry; // Return the full timestamped directory name
+        }
+      }
+    }
+  } catch (error) {
+    // Log error but don't fail - better to create duplicate than fail entirely
+    // Error checking for existing tasks: could be directory not found or permission issue
+    // Fallback is to allow task creation which is safer than blocking
+  }
+  
+  return null;
+}
+
+/**
+ * Generate enhanced content with protocol context and task-specific information
+ */
+function generateEnhancedContent(options: CreateTaskOptions): string {
+  let content = options.content || '';
+  
+  // Add parent task reference for subtasks
+  if (options.taskType === 'subtask' && options.parentTask) {
+    const parentRef = `\n\n## Parent Task\nParent Task: ${options.parentTask}\n`;
+    content = content + parentRef;
+  }
+  
+  // For self-organization tasks without content, create a template
+  if (options.taskType === 'self' && !content.trim()) {
+    content = `# Task: ${options.taskName}\n\nTask initialized and ready for content.\n\n## Next Steps\n1. Define requirements\n2. Create implementation plan\n3. Begin execution\n`;
+  }
+  
+  // Always append enhanced protocol context
+  return content + PROTOCOL_CONTEXT;
+}
+
+/**
+ * Generate tracking commands for the response
+ */
+function generateTracking(agent: string, taskId: string) {
+  return {
+    progress_command: `mcp__agent-comm__track_task_progress(agent: "${agent}", taskId: "${taskId}")`,
+    lifecycle_command: `mcp__agent-comm__get_full_lifecycle(agent: "${agent}", taskId: "${taskId}")`
+  };
+}
+
+/**
+ * Unified create_task tool - replaces delegate_task and init_task
+ */
+export async function createTask(
+  config: ServerConfig,
+  options: CreateTaskOptions
+): Promise<CreateTaskResponse> {
+  // Validate inputs
+  const agent = validateRequiredString(options.agent, 'agent');
+  const rawTaskName = validateRequiredString(options.taskName, 'taskName');
+  const content = options.content;
+  const taskType = options.taskType || 'delegation';
+  const parentTask = options.parentTask;
+  
+  // Validate content if provided
+  if (content) {
+    validateContent(content);
+  }
+  
+  try {
+    // Extract clean task name to prevent double timestamps
+    const cleanTaskName = extractCleanTaskName(rawTaskName);
+    
+    // Check for existing task to prevent duplicates
+    const existingTaskId = await findExistingTask(config, agent, cleanTaskName);
+    
+    if (existingTaskId) {
+      // Return existing task - idempotent behavior
+      const response: CreateTaskResponse = {
+        success: true,
+        taskCreated: false,
+        taskId: existingTaskId,
+        message: `existing task found: ${existingTaskId}. No duplicate created.`,
+        tracking: generateTracking(agent, existingTaskId)
+      };
+      
+      // Add targetAgent for delegation tasks
+      if (taskType === 'delegation') {
+        response.targetAgent = agent;
+      }
+      
+      return response;
+    }
+    
+    // Generate enhanced content with protocol context
+    const taskOptions: CreateTaskOptions = {
+      agent,
+      taskName: cleanTaskName,
+      taskType
+    };
+    if (content) {
+      taskOptions.content = content;
+    }
+    if (parentTask) {
+      taskOptions.parentTask = parentTask;
+    }
+    
+    const enhancedContent = generateEnhancedContent(taskOptions);
+    
+    // Create task using unified approach - initializeTask for all types
+    const result = await initializeTask(config, agent, cleanTaskName);
+    const taskId = result.taskDir;
+    
+    // Write enhanced content to INIT.md for all task types
+    await fs.writeFile(result.initPath, enhancedContent);
+    
+    const response: CreateTaskResponse = {
+      success: true,
+      taskCreated: true,
+      taskId,
+      message: `Task successfully created for ${agent}: ${taskId}`,
+      tracking: generateTracking(agent, taskId)
+    };
+    
+    // Add targetAgent for delegation tasks
+    if (taskType === 'delegation') {
+      response.targetAgent = agent;
+    }
+    
+    return response;
+    
+  } catch (error) {
+    if (error instanceof AgentCommError) {
+      throw error;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    throw new AgentCommError(`Failed to create task: ${message}`, 'TASK_CREATION_ERROR');
+  }
+}
+
+/**
+ * MCP tool wrapper for create_task
+ */
+export async function createTaskTool(
+  config: ServerConfig,
+  args: Record<string, unknown>
+): Promise<CreateTaskResponse> {
+  const agent = validateRequiredString(args['agent'], 'agent');
+  const taskName = validateRequiredString(args['taskName'], 'taskName');
+  const content = validateOptionalString(args['content'], 'content');
+  const taskType = args['taskType'] as 'delegation' | 'self' | 'subtask' || 'delegation';
+  const parentTask = validateOptionalString(args['parentTask'], 'parentTask');
+  
+  const options: CreateTaskOptions = {
+    agent,
+    taskName,
+    ...(content && { content }),
+    taskType,
+    ...(parentTask && { parentTask })
+  };
+  
+  return await createTask(config, options);
+}

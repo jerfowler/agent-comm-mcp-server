@@ -1,0 +1,376 @@
+/**
+ * Race Condition Helpers
+ * Utilities to handle file system race conditions in tests
+ */
+
+import * as fs from 'fs-extra';
+import * as path from 'path';
+
+/**
+ * File system test helper with retry logic and race condition protection
+ */
+export class FileSystemTestHelper {
+  /**
+   * Retry an operation with exponential backoff
+   */
+  static async waitForFileSystem<T>(
+    operation: () => Promise<T>, 
+    maxRetries: number = 5,
+    baseDelay: number = 100
+  ): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        if (i === maxRetries - 1) {
+          throw new Error(`Operation failed after ${maxRetries} retries. Last error: ${lastError.message}`);
+        }
+        
+        // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
+        const delay = baseDelay * Math.pow(2, i);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Ensure directory exists with retry logic
+   */
+  static async ensureDirectoryExists(dir: string): Promise<void> {
+    await this.waitForFileSystem(async () => {
+      await fs.ensureDir(dir);
+      
+      // Verify directory actually exists
+      const exists = await fs.pathExists(dir);
+      if (!exists) {
+        throw new Error(`Directory ${dir} was not created successfully`);
+      }
+      
+      // Verify we can write to it
+      const testFile = path.join(dir, '.write-test');
+      await fs.writeFile(testFile, 'test');
+      await fs.remove(testFile);
+    });
+  }
+
+  /**
+   * Atomic file write with verification
+   */
+  static async writeFileAtomic(filePath: string, content: string): Promise<void> {
+    await this.waitForFileSystem(async () => {
+      const dir = path.dirname(filePath);
+      await fs.ensureDir(dir);
+      
+      const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36)}`;
+      
+      try {
+        await fs.writeFile(tempPath, content);
+        await fs.move(tempPath, filePath);
+        
+        // Verify file exists and has correct content
+        const written = await fs.readFile(filePath, 'utf-8');
+        if (written !== content) {
+          throw new Error('File content mismatch after atomic write');
+        }
+      } catch (error) {
+        // Cleanup temp file if it exists
+        try {
+          await fs.remove(tempPath);
+        } catch {
+          // Ignore cleanup errors
+        }
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Safe file read with retry
+   */
+  static async readFileSafe(filePath: string): Promise<string> {
+    return await this.waitForFileSystem(async () => {
+      if (!await fs.pathExists(filePath)) {
+        throw new Error(`File ${filePath} does not exist`);
+      }
+      
+      return await fs.readFile(filePath, 'utf-8');
+    });
+  }
+
+  /**
+   * Safe JSON read with retry
+   */
+  static async readJsonSafe<T = any>(filePath: string): Promise<T> {
+    return await this.waitForFileSystem(async () => {
+      if (!await fs.pathExists(filePath)) {
+        throw new Error(`JSON file ${filePath} does not exist`);
+      }
+      
+      const content = await fs.readFile(filePath, 'utf-8');
+      try {
+        return JSON.parse(content);
+      } catch (parseError) {
+        throw new Error(`Failed to parse JSON from ${filePath}: ${parseError}`);
+      }
+    });
+  }
+
+  /**
+   * Safe directory removal with retry
+   */
+  static async removeSafe(dirPath: string): Promise<void> {
+    if (!await fs.pathExists(dirPath)) {
+      return; // Already removed
+    }
+
+    await this.waitForFileSystem(async () => {
+      await fs.remove(dirPath);
+      
+      // Verify removal
+      const exists = await fs.pathExists(dirPath);
+      if (exists) {
+        throw new Error(`Failed to remove ${dirPath}`);
+      }
+    });
+  }
+
+  /**
+   * Create test directory structure with retry
+   */
+  static async createTestStructure(baseDir: string, structure: Record<string, any>): Promise<void> {
+    await this.ensureDirectoryExists(baseDir);
+
+    for (const [name, content] of Object.entries(structure)) {
+      const fullPath = path.join(baseDir, name);
+
+      if (typeof content === 'object' && content !== null) {
+        // It's a directory
+        await this.createTestStructure(fullPath, content);
+      } else {
+        // It's a file
+        await this.writeFileAtomic(fullPath, String(content));
+      }
+    }
+  }
+
+  /**
+   * Wait for condition to be true with timeout
+   */
+  static async waitForCondition(
+    condition: () => Promise<boolean> | boolean,
+    timeout: number = 5000,
+    checkInterval: number = 100
+  ): Promise<void> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const result = await condition();
+        if (result) {
+          return;
+        }
+      } catch {
+        // Continue waiting
+      }
+
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    }
+
+    throw new Error(`Condition not met within ${timeout}ms`);
+  }
+
+  /**
+   * Copy directory with retry logic
+   */
+  static async copyDirectorySafe(src: string, dest: string): Promise<void> {
+    await this.waitForFileSystem(async () => {
+      await fs.copy(src, dest);
+      
+      // Verify copy was successful
+      const srcExists = await fs.pathExists(src);
+      const destExists = await fs.pathExists(dest);
+      
+      if (!srcExists) {
+        throw new Error(`Source directory ${src} does not exist`);
+      }
+      if (!destExists) {
+        throw new Error(`Copy failed: destination ${dest} does not exist`);
+      }
+    });
+  }
+
+  /**
+   * Move file/directory with retry logic
+   */
+  static async moveSafe(src: string, dest: string): Promise<void> {
+    await this.waitForFileSystem(async () => {
+      await fs.move(src, dest);
+      
+      // Verify move was successful
+      const srcExists = await fs.pathExists(src);
+      const destExists = await fs.pathExists(dest);
+      
+      if (srcExists) {
+        throw new Error(`Move failed: source ${src} still exists`);
+      }
+      if (!destExists) {
+        throw new Error(`Move failed: destination ${dest} does not exist`);
+      }
+    });
+  }
+}
+
+/**
+ * Mock transport for MCP protocol testing
+ */
+export class MockMCPTransport {
+  private responses: Map<number, any> = new Map();
+  private requestId = 1;
+
+  /**
+   * Send a mock MCP request and return response
+   */
+  async sendRequest(request: any): Promise<any> {
+    const id = this.requestId++;
+    const requestWithId = { ...request, id };
+
+    // Simulate processing delay  
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    // Return mock response
+    return {
+      jsonrpc: '2.0',
+      id: requestWithId.id,
+      result: this.responses.get(id) || { success: true }
+    };
+  }
+
+  /**
+   * Set mock response for next request
+   */
+  setMockResponse(response: any): void {
+    this.responses.set(this.requestId, response);
+  }
+
+  /**
+   * Clear all mock responses
+   */
+  clearMockResponses(): void {
+    this.responses.clear();
+  }
+}
+
+/**
+ * Test timeout helper
+ */
+export class TestTimeout {
+  /**
+   * Run operation with timeout
+   */
+  static async withTimeout<T>(
+    operation: () => Promise<T>,
+    timeoutMs: number,
+    errorMessage?: string
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(errorMessage || `Operation timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      operation()
+        .then(result => {
+          clearTimeout(timer);
+          resolve(result);
+        })
+        .catch(error => {
+          clearTimeout(timer);
+          reject(error);
+        });
+    });
+  }
+
+  /**
+   * Add timeout to any function
+   */
+  static withTimeoutWrapper<T extends (...args: any[]) => Promise<any>>(
+    fn: T,
+    timeoutMs: number
+  ): T {
+    return ((...args: Parameters<T>) => {
+      return this.withTimeout(() => fn(...args), timeoutMs);
+    }) as T;
+  }
+}
+
+/**
+ * Helper to create isolated test environments
+ */
+export class TestEnvironment {
+  public tempDir: string = '';
+  private originalEnv: Record<string, string | undefined> = {};
+
+  /**
+   * Set up isolated test environment
+   */
+  async setup(prefix: string = 'test-env-'): Promise<void> {
+    // Create temp directory
+    const os = await import('os');
+    const path = await import('path');
+    
+    this.tempDir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+    
+    // Backup environment variables
+    this.originalEnv = { ...process.env };
+    
+    // Set test environment
+    process.env['AGENT_COMM_DIR'] = this.tempDir;
+    process.env['AGENT_COMM_ENABLE_ARCHIVING'] = 'true';
+    process.env['AGENT_COMM_ARCHIVE_DIR'] = path.join(this.tempDir, '.archive');
+  }
+
+  /**
+   * Clean up test environment
+   */
+  async cleanup(): Promise<void> {
+    // Restore environment
+    process.env = this.originalEnv;
+    
+    // Remove temp directory
+    if (this.tempDir) {
+      await FileSystemTestHelper.removeSafe(this.tempDir);
+      this.tempDir = '';
+    }
+  }
+
+  /**
+   * Get path within test environment
+   */
+  getPath(...segments: string[]): string {
+    const path = require('path');
+    return path.join(this.tempDir, ...segments);
+  }
+
+  /**
+   * Create file in test environment
+   */
+  async createFile(relativePath: string, content: string): Promise<string> {
+    const filePath = this.getPath(relativePath);
+    await FileSystemTestHelper.writeFileAtomic(filePath, content);
+    return filePath;
+  }
+
+  /**
+   * Create directory in test environment
+   */
+  async createDirectory(relativePath: string): Promise<string> {
+    const dirPath = this.getPath(relativePath);
+    await FileSystemTestHelper.ensureDirectoryExists(dirPath);
+    return dirPath;
+  }
+}

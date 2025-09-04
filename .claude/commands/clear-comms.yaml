@@ -1,0 +1,120 @@
+# Claude Command: Communication Task Management (MCP-Native)
+# Version: 2.0.0  
+# Author: claude-code-orchestrator
+# Created: 2025-09-04
+#
+# This command manages agent communication tasks using the agent-comm MCP server
+# for zero-permission task archiving and restoration operations.
+
+name: clear-comms
+description: Archive and restore agent communication tasks using MCP server capabilities
+version: 2.0.0
+
+triggers:
+  - "clear comms"
+  - "clear the comms"
+  - "archive completed tasks"
+  - "clean communication folders"
+  - "clear all comms"
+  - "archive all tasks"
+  - "restore comms"
+  - "restore tasks"
+  - "comms status"
+  - "show comms status"
+  - "communication status"
+  - "task status"
+  - "archive comms"
+  - "clean comms"
+
+prerequisites:
+  - agent-comm MCP server must be configured and operational
+  - comm/ directory structure (managed automatically by MCP server)
+  - Agents using MCP task creation/management protocol
+
+workflow:
+  initialization:
+    name: "MCP Server Verification"
+    priority: critical
+    steps:
+      - name: "MCP server health check"
+        action: "Verify agent-comm MCP server is operational"
+        command: "mcp__agent_comm__ping()"
+        expected: "Server status and uptime information"
+        
+      - name: "Task status overview"
+        action: "Get current communication status"
+        command: "mcp__agent_comm__list_agents()"
+        expected: "Agent list with task counts and statistics"
+
+  execution:
+    name: "MCP-Based Operations"
+    priority: critical
+    operations:
+      archive_completed:
+        trigger_patterns: ["clear comms", "archive completed tasks"]
+        command: "mcp__agent_comm__archive_tasks(mode='completed')"
+        description: "Archive tasks with DONE.md or ERROR.md files"
+        no_prompts: true
+        
+      archive_all:
+        trigger_patterns: ["clear all comms", "archive all tasks"]
+        command: "mcp__agent_comm__archive_tasks(mode='all')"
+        description: "Archive all tasks (completed and incomplete)"
+        no_prompts: true
+        
+      restore_latest:
+        trigger_patterns: ["restore comms", "restore tasks"]
+        command: "mcp__agent_comm__restore_tasks(timestamp='latest')"
+        description: "Restore most recent archive"
+        no_prompts: true
+        
+      show_status:
+        trigger_patterns: ["comms status", "task status"]
+        command: "mcp__agent_comm__list_agents()"
+        description: "Display current task statistics"
+        no_prompts: true
+
+  verification:
+    name: "Archive Verification"
+    steps:
+      - name: "Archive location confirmation"
+        action: "Confirm archive timestamp and location"
+        expected: "Archive path with ISO timestamp"
+        
+      - name: "Task count validation"
+        action: "Verify expected tasks were archived"
+        expected: "Summary of archived task counts"
+
+success_indicators:
+  - "Archive operations complete without permission prompts"
+  - "Timestamped archive directories created automatically"
+  - "Task counts match expectations"
+  - "Agent directories preserved in archive structure"
+  - "MCP server maintains operation logs"
+
+key_benefits:
+  - "Zero permission prompts (MCP tools pre-approved)"
+  - "Atomic operations with proper error handling"
+  - "Timestamped archives for easy restoration"
+  - "Works from any directory (path-independent)"
+  - "Preserves complete agent communication history"
+
+usage_examples:
+  - trigger: "clear comms"
+    result: "Archives completed tasks, preserves active work"
+    
+  - trigger: "clear all comms"
+    result: "Archives all tasks for clean slate"
+    
+  - trigger: "restore comms"
+    result: "Restores latest archived tasks"
+    
+  - trigger: "comms status"
+    result: "Shows current task breakdown per agent"
+
+integration_notes:
+  - "Fully compatible with agent-comm MCP server v0.5.0+"
+  - "Uses structured JSON responses for reliable automation"
+  - "Maintains audit trail through archive preservation"
+  - "Safe for automated/scheduled execution"
+  - "Complements MCP task delegation workflow"

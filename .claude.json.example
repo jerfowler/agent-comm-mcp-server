@@ -1,0 +1,43 @@
+{
+  "name": "Agent Communication MCP Server Example Configuration",
+  "description": "Example configuration for integrating the agent-comm MCP server with Claude Code",
+  "installation": {
+    "method": "claude-cli",
+    "command": "claude mcp add agent-comm -- node /path/to/agent-comm-mcp-server/dist/index.js"
+  },
+  "configuration": {
+    "servers": {
+      "agent-comm": {
+        "type": "stdio",
+        "command": "node",
+        "args": [
+          "/absolute/path/to/agent-comm-mcp-server/dist/index.js"
+        ],
+        "env": {
+          "AGENT_COMM_DIR": "./comm",
+          "AGENT_COMM_ARCHIVE_DIR": "./comm/.archive",
+          "AGENT_COMM_LOG_DIR": "./comm/.logs",
+          "AGENT_COMM_DISABLE_ARCHIVE": "false"
+        }
+      }
+    }
+  },
+  "usage": {
+    "verification": "claude mcp list",
+    "tools": [
+      "check_tasks",
+      "read_task", 
+      "write_task",
+      "init_task",
+      "delegate_task",
+      "list_agents",
+      "archive_tasks",
+      "restore_tasks"
+    ]
+  },
+  "notes": [
+    "Replace /absolute/path/to/agent-comm-mcp-server/ with your actual installation path",
+    "Environment variables can be customized for your project structure",
+    "Server will be automatically added to Claude Code's .claude.json configuration"
+  ]
+}

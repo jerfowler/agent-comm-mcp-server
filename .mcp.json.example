@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "agent-comm": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@jerfowler/agent-comm-mcp-server"],
+      "env": {
+        "AGENT_COMM_DIR": "./comm",
+        "AGENT_COMM_ARCHIVE_DIR": "./comm/.archive",
+        "AGENT_COMM_LOG_DIR": "./comm/.logs",
+        "AGENT_COMM_DISABLE_ARCHIVE": "false"
+      }
+    }
+  }
+}
