@@ -41,7 +41,7 @@ describe('Create Task Reconciliation Protocol Context', () => {
         // Read the actual INIT.md file
         const agentDir = path.join(testDir, 'test-agent');
         const taskDirs = await fs.readdir(agentDir);
-        const taskDir = taskDirs.find(dir => dir.includes('complete-protocol-test'));
+        const taskDir = taskDirs.find((dir: string) => dir.includes('complete-protocol-test'));
         const initPath = path.join(agentDir, taskDir!, 'INIT.md');
         const initContent = await fs.readFile(initPath, 'utf8');
         
@@ -205,7 +205,7 @@ describe('Create Task Reconciliation Protocol Context', () => {
         // Read the actual INIT.md file that was created
         const agentDir = path.join(testDir, 'test-agent');
         const taskDirs = await fs.readdir(agentDir);
-        const taskDir = taskDirs.find(dir => dir.includes('test-reconciliation-protocol'));
+        const taskDir = taskDirs.find((dir: string) => dir.includes('test-reconciliation-protocol'));
         expect(taskDir).toBeDefined();
         
         const initPath = path.join(agentDir, taskDir!, 'INIT.md');
@@ -341,7 +341,7 @@ describe('Create Task Reconciliation Protocol Context', () => {
         for (let i = 0; i < agents.length; i++) {
           const agentDir = path.join(testDir, agents[i]);
           const taskDirs = await fs.readdir(agentDir);
-          const taskDir = taskDirs.find(dir => dir.includes(taskNames[i]));
+          const taskDir = taskDirs.find((dir: string) => dir.includes(taskNames[i]));
           expect(taskDir).toBeDefined();
           
           const initPath = path.join(agentDir, taskDir!, 'INIT.md');

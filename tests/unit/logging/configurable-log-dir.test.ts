@@ -32,7 +32,7 @@ describe('Configurable Log Directory', () => {
 
   describe('Default Log Directory', () => {
     it('should use ".logs" as default directory when no environment variable is set', async () => {
-      delete process.env.LOG_DIR;
+      delete process.env['LOG_DIR'];
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);
@@ -46,7 +46,7 @@ describe('Configurable Log Directory', () => {
     });
 
     it('should create .logs directory if it does not exist', async () => {
-      delete process.env.LOG_DIR;
+      delete process.env['LOG_DIR'];
       
       const baseDir = testDir;
       const expectedLogDir = path.join(baseDir, '.logs');
@@ -65,7 +65,7 @@ describe('Configurable Log Directory', () => {
   describe('Environment Variable Configuration', () => {
     it('should use LOG_DIR environment variable when set', async () => {
       const customLogDir = 'custom-logs';
-      process.env.LOG_DIR = customLogDir;
+      process.env['LOG_DIR'] = customLogDir;
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);
@@ -76,7 +76,7 @@ describe('Configurable Log Directory', () => {
 
     it('should handle absolute paths in LOG_DIR environment variable', async () => {
       const absoluteLogDir = path.join(testDir, 'absolute-logs');
-      process.env.LOG_DIR = absoluteLogDir;
+      process.env['LOG_DIR'] = absoluteLogDir;
       
       const baseDir = path.join(testDir, 'base');
       const logger = new EventLogger(baseDir);
@@ -86,7 +86,7 @@ describe('Configurable Log Directory', () => {
 
     it('should create custom log directory when specified via LOG_DIR', async () => {
       const customLogDir = 'my-logs';
-      process.env.LOG_DIR = customLogDir;
+      process.env['LOG_DIR'] = customLogDir;
       
       const baseDir = testDir;
       const expectedLogDir = path.join(baseDir, customLogDir);
@@ -106,7 +106,7 @@ describe('Configurable Log Directory', () => {
     });
 
     it('should handle empty LOG_DIR environment variable by using default', async () => {
-      process.env.LOG_DIR = '';
+      process.env['LOG_DIR'] = '';
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);
@@ -116,7 +116,7 @@ describe('Configurable Log Directory', () => {
     });
 
     it('should handle whitespace-only LOG_DIR environment variable by using default', async () => {
-      process.env.LOG_DIR = '   \t\n  ';
+      process.env['LOG_DIR'] = '   \t\n  ';
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);
@@ -129,7 +129,7 @@ describe('Configurable Log Directory', () => {
   describe('Log File Operations with Custom Directory', () => {
     it('should write log files to custom directory specified by LOG_DIR', async () => {
       const customLogDir = 'test-logs';
-      process.env.LOG_DIR = customLogDir;
+      process.env['LOG_DIR'] = customLogDir;
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);
@@ -155,7 +155,7 @@ describe('Configurable Log Directory', () => {
 
     it('should handle archiving with custom directory', async () => {
       const customLogDir = 'archive-logs';
-      process.env.LOG_DIR = customLogDir;
+      process.env['LOG_DIR'] = customLogDir;
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);
@@ -194,7 +194,7 @@ describe('Configurable Log Directory', () => {
   describe('Backward Compatibility', () => {
     it('should maintain existing log file structure in custom directory', async () => {
       const customLogDir = 'compat-logs';
-      process.env.LOG_DIR = customLogDir;
+      process.env['LOG_DIR'] = customLogDir;
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);
@@ -222,7 +222,7 @@ describe('Configurable Log Directory', () => {
     it('should handle permission errors when creating custom log directory', async () => {
       // This test would be platform-specific and might be skipped in some environments
       const customLogDir = 'restricted-logs';
-      process.env.LOG_DIR = customLogDir;
+      process.env['LOG_DIR'] = customLogDir;
       
       const baseDir = testDir;
       const logger = new EventLogger(baseDir);

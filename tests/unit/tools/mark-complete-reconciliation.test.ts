@@ -6,12 +6,11 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { markComplete } from '../../../src/tools/mark-complete.js';
 import { ServerConfig } from '../../../src/types.js';
-import { testUtils } from '../../utils/testUtils.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { tmpdir } from 'os';
 import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
-import { EventLogger } from '../../../src/logging/EventLogger.js';
+import { EventLogger, MockTimerDependency } from '../../../src/logging/EventLogger.js';
 
 describe('Mark Complete Reconciliation Logic', () => {
   let mockConfig: ServerConfig;
@@ -33,11 +32,7 @@ describe('Mark Complete Reconciliation Logic', () => {
       logDir: path.join(testDir, 'logs'),
       enableArchiving: true,
       connectionManager: new ConnectionManager(),
-      eventLogger: new EventLogger(testDir, {
-        now: () => new Date(),
-        setTimeout: (fn: () => void, ms: number) => global.setTimeout(fn, ms),
-        clearTimeout: (id: NodeJS.Timeout) => global.clearTimeout(id)
-      })
+      eventLogger: new EventLogger(testDir, new MockTimerDependency())
     };
   });
 

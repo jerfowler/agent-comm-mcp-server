@@ -180,7 +180,13 @@ export const readmeTestHelpers = {
       mode: 'completed'
     });
 
-    return result;
+    // Transform ArchiveResult into the expected test format
+    const archiveCount = result.archived?.total || 0;
+    return {
+      success: true,
+      archived: archiveCount,
+      message: `Archived ${archiveCount} tasks${result.archivePath ? ' to ' + result.archivePath : ''}`
+    };
   },
 
   /**

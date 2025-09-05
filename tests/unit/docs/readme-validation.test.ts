@@ -56,7 +56,7 @@ describe('README Documentation Validation', () => {
       ];
 
       // Available tool implementations
-      const availableTools = {
+      const availableTools: Record<string, Function> = {
         create_task: createTask,
         track_task_progress: trackTaskProgress,
         get_full_lifecycle: getFullLifecycle,

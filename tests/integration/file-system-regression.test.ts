@@ -12,25 +12,23 @@ import { tmpdir } from 'os';
 import { listDirectory } from '../../src/utils/file-system.js';
 import { listAgents } from '../../src/tools/list-agents.js';
 import type { ServerConfig } from '../../src/types.js';
+import { testUtils } from '../utils/testUtils.js';
 
 describe('File System Operations Regression Test', () => {
   let testDir: string;
   let commDir: string;
-  let config: Partial<ServerConfig>;
+  let config: ServerConfig;
 
   beforeAll(async () => {
     // Create temporary directory for tests
     testDir = await fs.mkdtemp(path.join(tmpdir(), 'fs-readdir-test-'));
     commDir = path.join(testDir, 'comm');
     
-    config = {
+    config = testUtils.createMockConfig({
       commDir: commDir,
       enableArchiving: false,
-      archiveDir: path.join(commDir, '.archive'),
-      validTaskFiles: ['INIT', 'PLAN', 'DONE', 'ERROR'],
-      maxTaskNameLength: 100,
-      maxContentLength: 1000000
-    };
+      archiveDir: path.join(commDir, '.archive')
+    });
     
     // Test environment setup in: ${testDir}
   });
