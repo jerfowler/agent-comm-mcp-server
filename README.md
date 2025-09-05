@@ -6,60 +6,54 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for AI agent task communication and delegation with **diagnostic lifecycle visibility**. Enables Claude Code to delegate tasks to specialized agents and monitor their complete thought process and execution.
+**Make AI agents work together seamlessly.** This [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server enables Claude Code to coordinate multiple specialized agents, track their progress in real-time, and understand exactly how they approach and solve complex tasks.
 
 **Author:** Jeremy Fowler
 
-## Features
+---
 
-### Diagnostic Lifecycle Visibility
-- **Complete Agent Transparency**: Full visibility into how agents think and execute tasks
-- **Task Journey Tracking**: Monitor INIT → PLAN → PROGRESS → COMPLETION lifecycle
-- **Real-time Progress**: Track agent progress with detailed step completion
-- **Failure Analysis**: Understand exactly why tasks failed with complete context
-- **Learning Opportunities**: Analyze agent approaches for continuous improvement
+## What This Does
 
-### Core Task Management
-- **Zero File System Exposure**: Agents work with task IDs and content only, never file paths
-- **Context-Based Operations**: Complete file system abstraction for simplified development
-- **Auto-Context Injection**: Protocol instructions automatically added to delegated tasks
-- **Session Management**: Connection tracking for multi-agent coordination
-- **JSON Lines Logging**: All operations logged with metadata for monitoring
-- **Type-Safe**: Full TypeScript implementation
-- **Non-Blocking Architecture**: Async-first design preserving Claude Code parallelism
+Think of this as a **mission control** for AI agents. Instead of trying to do everything yourself, you can delegate specific tasks to specialized agents (like a frontend engineer, backend engineer, or QA tester) and monitor their complete thought process from start to finish.
+
+### Why You'd Want This
+
+**🎯 **Delegation Made Simple**: Create tasks for specific agents without worrying about file management or coordination complexity**
+
+**🔍 **Complete Transparency**: See exactly how each agent understood your request, planned their approach, and executed the work**
+
+**📊 **Real-Time Monitoring**: Track progress without interrupting agents or blocking your workflow**
+
+**🛡️ **Zero Complexity**: Agents get clean task context automatically—no file paths, no setup headaches**
+
+**🔄 **Smart Completion**: Flexible task completion that handles real-world variations from the original plan**
+
+**⚡ **Non-Blocking**: All agents can work simultaneously while you stay productive**
+
+---
 
 ## Quick Start
 
 ### Installation
 
-```bash
-npm install
-npm run build
-```
+Choose the method that works best for your setup:
 
-### Installation
-
-#### Global Installation (Recommended for MCP)
 ```bash
+# Option 1: Global installation (recommended for MCP)
 npm install -g @jerfowler/agent-comm-mcp-server
-```
 
-#### Using npx (No Installation Required)
-```bash
+# Option 2: Use directly without installation
 npx @jerfowler/agent-comm-mcp-server
-```
 
-#### From Source
-```bash
+# Option 3: From source
 git clone https://github.com/jerfowler/agent-comm-mcp-server.git
 cd agent-comm-mcp-server
-npm install
-npm run build
+npm install && npm run build
 ```
 
-### Configuration
+### Setup with Claude
 
-Add to your `.mcp.json` or `claude_desktop_config.json`:
+Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_config.json`):
 
 ```json
 {
@@ -68,292 +62,217 @@ Add to your `.mcp.json` or `claude_desktop_config.json`:
       "command": "npx",
       "args": ["@jerfowler/agent-comm-mcp-server"],
       "env": {
-        "AGENT_COMM_DIR": "./comm",
-        "AGENT_COMM_ARCHIVE_DIR": "./comm/.archive",
-        "AGENT_COMM_LOG_DIR": "./comm/.logs",
-        "AGENT_COMM_DISABLE_ARCHIVE": "false"
+        "AGENT_COMM_DIR": "./comm"
       }
     }
   }
 }
 ```
 
-#### Alternative: Local Development
+That's it! Claude now has access to the agent communication tools.
 
-```json
-{
-  "mcpServers": {
-    "agent-comm": {
-      "command": "node",
-      "args": ["/absolute/path/to/agent-comm-mcp-server/dist/index.js"],
-      "env": {
-        "AGENT_COMM_DIR": "./comm",
-        "AGENT_COMM_ARCHIVE_DIR": "./comm/.archive",
-        "AGENT_COMM_LOG_DIR": "./comm/.logs"
-      }
-    }
-  }
-}
+### Try It Out
+
+Here are some conversational prompts you can use with Claude right away:
+
+**Delegate a task:**
+```
+Using the agent-comm tools, create a task for senior-frontend-engineer to implement a responsive dashboard with dark mode support and real-time updates. Include proper TypeScript interfaces.
 ```
 
-### Basic Usage
-
-#### Sample Claude Code Prompts
-
-Here are effective prompts that explicitly reference the MCP server to ensure Claude uses the agent-comm tools:
-
-**Delegate a Task:**
+**Check on progress:**
 ```
-Using the agent-comm MCP server, delegate this task to senior-frontend-engineer: "Implement a responsive dashboard component with real-time data updates and dark mode support. Include proper TypeScript interfaces and comprehensive tests."
+Can you use the agent-comm server to check how the dashboard task is going for the frontend engineer?
 ```
 
-**Monitor Task Progress:**
+**Get the full story:**
 ```
-Using the MCP agent-comm tools, check the progress of the dashboard task assigned to senior-frontend-engineer
-```
-
-**Get Complete Task Analysis:**
-```
-Use the agent-comm MCP server to show me the complete lifecycle analysis for the dashboard task - what the agent understood, how they planned it, and the final results
+Use agent-comm tools to show me the complete lifecycle of that dashboard task - what did the agent understand, how did they plan it, and what was the final result?
 ```
 
-**Create Multiple Parallel Tasks:**
+**Clean up when done:**
 ```
-Using the agent-comm MCP tools, create these tasks in parallel:
-1. senior-backend-engineer: "Design and implement REST API endpoints for user management"  
-2. senior-frontend-engineer: "Build user interface components for the user management system"
-3. qa-test-automation-engineer: "Create comprehensive test suite for user management features"
+Please use the agent-comm server to archive all completed tasks.
 ```
-
-**Archive Completed Work:**
-```
-Use the agent-comm MCP server to archive all completed agent communication tasks
-```
-
-#### Diagnostic Lifecycle Workflow
-
-```python
-# 1. Delegate task to agent
-result = mcp__agent_comm__delegate_task(
-    targetAgent="senior-frontend-engineer",
-    taskName="implement-dashboard",
-    content="# Task: Dashboard Implementation\n## Requirements\n- Responsive design\n- Real-time updates"
-)
-
-# 2. Monitor progress (non-blocking)
-progress = mcp__agent_comm__track_task_progress(
-    agent="senior-frontend-engineer",
-    task_id=result['task_id']
-)
-
-# 3. Get complete diagnostic analysis when done
-if progress['status'] == 'completed':
-    lifecycle = mcp__agent_comm__get_full_lifecycle(
-        agent="senior-frontend-engineer", 
-        task_id=result['task_id']
-    )
-    print("Agent's approach:", lifecycle['lifecycle']['plan']['content'])
-    print("Final outcome:", lifecycle['lifecycle']['outcome']['content'])
-```
-
-#### Smart Task Creation
-
-The `create_task` tool is the **primary tool** for all task creation:
-
-```python
-# Create task with duplicate prevention
-result = mcp__agent_comm__create_task(
-    agent="senior-frontend-engineer",
-    taskName="implement-dashboard-widgets",
-    content="# Implement Interactive Dashboard Widgets\n\n## Requirements\n- Create 3 widget types...",
-    taskType="delegation"  # default
-)
-
-# Tool returns comprehensive tracking information
-print(f"Progress tracking: {result['tracking']['progress_command']}")
-print(f"Lifecycle tracking: {result['tracking']['lifecycle_command']}")
-```
-
-**Key Benefits:**
-- **Duplicate Prevention**: Automatically detects and prevents duplicate task creation
-- **Smart Timestamp Extraction**: Handles malformed inputs with double timestamps
-- **Enhanced Protocol Context**: Automatically injects comprehensive MCP protocol instructions
-- **Multiple Task Types**: Supports delegation, self-organization, and subtasks
-- **Idempotent**: Safe to call multiple times - returns existing task if found
-
-## Available Tools
-
-### Core Task Management
-
-| Tool | Purpose | Key Parameters |
-|------|---------|----------------|
-| `create_task` | **Smart task creation with duplicate prevention** | `agent`, `taskName`, `content?`, `taskType?` |
-| `track_task_progress` | Real-time progress monitoring | `agent`, `task_id` |
-| `get_full_lifecycle` | Complete task journey analysis | `agent`, `task_id` |
-| `check_tasks` | Check for tasks assigned to agent | `agent` |
-| `read_task` | Read task files (INIT, PLAN, DONE, ERROR) | `agent`, `task`, `file` |
-| `write_task` | Write task progress files | `agent`, `task`, `file`, `content` |
-| `archive_tasks` | Archive tasks (completed, all, by-agent, by-date) | `mode`, `agent?`, `olderThan?` |
-
-### Server Management
-
-| Tool | Purpose | Key Parameters |
-|------|---------|----------------|
-| `get_server_info` | Comprehensive server metadata and status | none |
-| `ping` | Health check with status and timestamp | none |
-
-## Task Lifecycle Architecture
-
-The server provides complete transparency into agent task execution:
-
-```
-INIT.md     →  PLAN.md     →  Progress     →  DONE/ERROR.md
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────────┐
-│ What    │    │ How     │    │ Steps   │    │ Outcome     │
-│ agent   │    │ agent   │    │ [✓]     │    │ Final       │
-│ was     │    │ planned │    │ [→]     │    │ results     │
-│ asked   │    │ to do   │    │ [ ]     │    │ or errors   │
-└─────────┘    └─────────┘    └─────────┘    └─────────────┘
-```
-
-## Usage Patterns
-
-### Pattern 1: Fire-and-Monitor
-```python
-# Delegate and monitor non-blocking
-result = delegate_task(...)
-while True:
-    progress = track_task_progress(agent, task_id)
-    if progress['status'] in ['completed', 'error']:
-        break
-    time.sleep(30)  # Non-blocking check every 30s
-lifecycle = get_full_lifecycle(agent, task_id)  # Complete diagnostic report
-```
-
-### Pattern 2: Parallel Agent Coordination
-```python
-# Launch multiple agents simultaneously
-tasks = [
-    delegate_task("senior-backend-engineer", "api-endpoints", content_1),
-    delegate_task("senior-frontend-engineer", "ui-components", content_2),
-    delegate_task("devops-deployment-engineer", "infrastructure", content_3)
-]
-
-# Monitor all tasks non-blocking
-completed_tasks = []
-while len(completed_tasks) < len(tasks):
-    for task in tasks:
-        if task['task_id'] not in completed_tasks:
-            progress = track_task_progress(task['agent'], task['task_id'])
-            if progress['status'] == 'completed':
-                completed_tasks.append(task['task_id'])
-    time.sleep(30)
-```
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AGENT_COMM_DIR` | Communication directory | `./comm` |
-| `AGENT_COMM_ARCHIVE_DIR` | Archive directory | `./comm/.archive` |
-| `AGENT_COMM_LOG_DIR` | Log directory | `./comm/.logs` |
-| `AGENT_COMM_DISABLE_ARCHIVE` | Disable archiving functionality | `false` |
-
-### Logging Configuration
-
-The server automatically logs all operations to JSON Lines format:
-
-- **Log Location**: Configurable via `AGENT_COMM_LOG_DIR` environment variable
-- **Default Location**: `./comm/.logs/agent-comm.log` 
-- **Log Format**: JSON Lines with timestamps, operation types, agents, and metadata
-
-Example log entries:
-```json
-{"timestamp":"2025-09-04T21:35:15.413Z","operation":"delegate_task","agent":"senior-frontend-engineer","taskId":"dashboard-impl","success":true,"duration":150}
-{"timestamp":"2025-09-04T21:35:16.200Z","operation":"submit_plan","agent":"senior-frontend-engineer","taskId":"dashboard-impl","success":true,"duration":75,"metadata":{"planSteps":5}}
-```
-
-### Sample Claude Commands
-
-The server includes sample Claude Code commands in `.claude/commands/`:
-
-- **`clear-comms.yaml`**: MCP-native task archiving and restoration
-  - `clear comms` - Archive completed tasks
-  - `clear all comms` - Archive all tasks  
-  - `restore comms` - Restore archived tasks
-  - `comms status` - Show task statistics
-
-All operations use MCP tools directly, eliminating permission prompts and providing atomic operations with proper error handling.
-
-## Best Practices
-
-### Claude Code Integration
-- **Non-Blocking Operations**: Never use blocking patterns that prevent parallel agent execution
-- **Task ID Tracking**: Always capture `task_id` from delegation responses for monitoring
-- **Progress Monitoring**: Use `track_task_progress` for real-time status without blocking
-- **Diagnostic Analysis**: Use `get_full_lifecycle` for post-completion analysis and debugging
-- **Parallel Coordination**: Launch multiple agents simultaneously for maximum efficiency
-
-### MCP Protocol Compliance
-- **Async-First Design**: All operations follow asynchronous JSON-RPC 2.0 patterns
-- **Type Safety**: Full TypeScript implementation with complete interface definitions
-- **Error Handling**: Comprehensive error propagation with structured error types
-- **Connection Management**: Persistent connections with activity tracking and cleanup
-
-### Performance Optimization
-- **Minimal Context**: Agents work with task IDs and content only, never file paths
-- **JSON Lines Logging**: All operations logged for monitoring without performance impact
-- **Archive Management**: Regular cleanup of completed tasks to maintain performance
-- **Resource Efficiency**: Context-based operations minimize file system overhead
-
-## Development
-
-### Build System
-
-This project uses **build-time version injection** to maintain package.json as the single source of truth:
-
-```bash
-npm run build          # Auto-generates version constants, then compiles TypeScript
-npm run dev            # Auto-generates version constants, then runs TypeScript watch mode  
-npm test               # Run tests
-npm run test:coverage  # Run with coverage
-npm run lint           # Check code style
-npm run clean          # Remove dist/ and generated files
-```
-
-### Version Management
-
-- **Single Source of Truth**: Version info lives only in `package.json`
-- **Build-Time Injection**: `scripts/generate-version.cjs` creates `src/generated/version.ts` before compilation
-- **No Runtime File Access**: Version constants are compiled into the code for reliability
-- **Auto-Hooks**: `prebuild` and `predev` npm scripts ensure version is always current
-
-### Generated Files
-
-```
-src/generated/version.ts    # Auto-generated package info constants (git-ignored)
-dist/generated/version.js   # Compiled constants used by server at runtime
-```
-
-**⚠️ Important**: Never edit files in `src/generated/` - they are auto-generated from `package.json`
-
-## Documentation
-
-- **[Protocol Documentation](./docs/PROTOCOL.md)** - Complete communication protocol with diagnostic patterns
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Support
-
-For issues and questions:
-- Check existing issues first
-- Provide detailed reproduction steps  
-- Include configuration and environment details
 
 ---
 
-**Agent Communication MCP Server** - Non-blocking AI agent coordination with complete diagnostic lifecycle visibility and file system abstraction.
+## How It Works
+
+### The Agent Task Lifecycle
+
+Every task goes through a clear, trackable lifecycle:
+
+```
+1. INIT: What you asked for → 2. PLAN: How they'll do it → 3. PROGRESS: Work updates → 4. DONE/ERROR: Final result
+```
+
+This gives you complete visibility into:
+- **What the agent understood** from your request
+- **How they planned** to approach the work  
+- **What they actually did** step by step
+- **What the final outcome** was (success or failure)
+
+### Two Ways to Work
+
+**Context-Based (Recommended - Simple):**
+Agents get clean task descriptions automatically. You never deal with file paths or technical details. Just create tasks and monitor progress.
+
+**Traditional (Advanced - Full Control):**
+Direct access to all task files and management. Perfect if you need granular control over the process.
+
+---
+
+## What's in the Complete Protocol Guide
+
+The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everything in detail. Here's what you'll find:
+
+### 📚 Core Concepts
+- **Task Lifecycle**: Complete breakdown of how tasks flow from creation to completion
+- **Agent Communication Patterns**: Context-based vs traditional workflows
+- **Task Organization**: How files and data are structured behind the scenes
+
+### 🛠️ Complete Tool Reference (16 Tools Total)
+
+**Traditional Task Management (7 tools):**
+- Create and manage tasks with full control
+- Read and write task files directly
+- List agents and their current workload
+- Archive and restore completed work
+
+**Context-Based Tools (5 tools):**
+- Get clean task context without file paths
+- Submit implementation plans with automatic validation
+- Report progress updates in real-time
+- Complete tasks with intelligent reconciliation
+- Batch cleanup operations
+
+**Diagnostic Tools (2 tools):**
+- Get complete lifecycle visibility for any task
+- Track real-time progress with detailed percentages
+
+**Utility Tools (2 tools):**
+- Server health checks and status
+- Comprehensive server information and capabilities
+
+### 🔄 Workflow Patterns
+- **Context-Based Workflow**: The recommended simple approach
+- **Diagnostic Monitoring**: How to track multiple agents non-blocking
+- **Traditional Workflow**: Full control for advanced users
+
+### 🚀 Advanced Features
+
+**Todo System Integration:**
+Learn how to combine this with Claude's TodoWrite system for even better task tracking and state management across complex workflows.
+
+**Intelligent Reconciliation:**
+Handle real-world scenarios where agents optimize their approach or encounter blockers. Four reconciliation modes help you complete tasks even when the original plan changes.
+
+**Archive and Restore:**
+Keep your workspace clean with smart archiving that lets you restore previous work when needed.
+
+### ⚙️ Configuration Reference
+- **Environment Variables**: Complete list with defaults and examples
+- **MCP Client Setup**: Configuration for Claude Desktop, VSCode, and other clients
+- **Agent Instructions**: Ready-to-use templates for your agent descriptions
+
+### 🔧 Error Handling & Troubleshooting
+- **Common Error Patterns**: What goes wrong and how to fix it
+- **Best Practices**: Proven approaches for reliable agent coordination
+- **Performance Tips**: Keep everything running smoothly
+
+### 📊 API Version & Compatibility
+- Current version information
+- MCP compatibility details
+- Node.js requirements and testing info
+
+---
+
+## Real-World Usage Examples
+
+### Parallel Development Team
+```
+Create these tasks in parallel using agent-comm tools:
+1. senior-backend-engineer: "Design REST API for user authentication"
+2. senior-frontend-engineer: "Build login/signup UI components"  
+3. qa-test-automation-engineer: "Create test suite for auth system"
+4. devops-deployment-engineer: "Set up staging environment"
+```
+
+### Large Feature Implementation
+```
+Use agent-comm to delegate this complex e-commerce cart implementation to senior-frontend-engineer: "Build shopping cart with real-time inventory updates, discount code support, saved cart persistence, and mobile-responsive checkout flow."
+
+Then monitor progress and get diagnostic insights on their approach.
+```
+
+### Code Review and Quality
+```
+After the frontend work is complete, use agent-comm to assign qa-test-automation-engineer: "Review the shopping cart implementation and create comprehensive automated tests covering all user flows and edge cases."
+```
+
+---
+
+## Why This Architecture
+
+**Non-Blocking by Design**: You can launch multiple agents and they'll work simultaneously while you stay productive. No waiting around for sequential completion.
+
+**Complete Transparency**: Instead of wondering "what is that agent doing?", you get full insight into their thinking process, planning, and execution.
+
+**File System Abstraction**: Agents never see file paths or directory structures. They get clean task context and produce clean results. No more path-related bugs or setup complexity.
+
+**Real-World Flexibility**: The reconciliation system handles when agents find better approaches or encounter unexpected issues. Tasks can still complete successfully even when the original plan changes.
+
+**Production Ready**: Full TypeScript implementation with comprehensive testing, error handling, and logging. Built for reliability in real development workflows.
+
+---
+
+## Environment Options
+
+The server is configurable via environment variables:
+
+| Variable | What It Does | Default |
+|----------|--------------|---------|
+| `AGENT_COMM_DIR` | Where to store task communications | `./comm` |
+| `AGENT_COMM_ARCHIVE_DIR` | Where to store completed tasks | `./comm/.archive` |
+| `AGENT_COMM_LOG_DIR` | Where to store operation logs | `./comm/.logs` |
+| `AGENT_COMM_DISABLE_ARCHIVE` | Turn off archiving completely | `false` |
+
+For most users, the defaults work perfectly. The system creates directories automatically as needed.
+
+---
+
+## Development & Building
+
+```bash
+npm run build          # Build everything
+npm run dev            # Development mode with auto-reload
+npm test               # Run all tests
+npm run test:coverage  # Test with coverage report
+npm run lint           # Check code style
+npm run type-check     # TypeScript validation
+```
+
+The project uses **build-time version injection** - version info is automatically pulled from `package.json` and compiled into the server, so there's no runtime file access needed.
+
+---
+
+## Get Started Today
+
+1. **Install**: `npm install -g @jerfowler/agent-comm-mcp-server`
+2. **Configure**: Add the MCP server to your Claude configuration
+3. **Try it**: Ask Claude to "create a task for senior-frontend-engineer using agent-comm tools"
+4. **Explore**: Check out the **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** for everything else
+
+---
+
+## Support
+
+**Questions?** Check the issues tab or create a new issue with:
+- What you were trying to do
+- What happened instead
+- Your configuration and environment details
+
+---
+
+**Agent Communication MCP Server** - Making AI agent coordination simple, transparent, and powerful.
