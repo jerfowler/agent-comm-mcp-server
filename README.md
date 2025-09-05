@@ -71,6 +71,45 @@ Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_confi
 
 That's it! Claude now has access to the agent communication tools.
 
+### Optional: TodoWrite Hook Integration
+
+Want your Claude Code todos to automatically sync with agent task checkboxes? This optional hook makes it seamless.
+
+**What it does:** When you update todos with TodoWrite, the hook reminds you to sync those changes to your active agent task's PLAN.md checkboxes. No more manual checkbox updates!
+
+**Quick Setup (3 steps):**
+
+1. **Copy the hook file** to your Claude Code hooks directory:
+```bash
+# The hook is already in your agent-comm-mcp-server installation
+cp node_modules/@jerfowler/agent-comm-mcp-server/.claude/hooks/sync-todos-to-checkboxes.py ~/.claude/hooks/
+```
+
+2. **Make it executable:**
+```bash
+chmod +x ~/.claude/hooks/sync-todos-to-checkboxes.py
+```
+
+3. **Test it works:**
+```bash
+echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","status":"completed","activeForm":"Testing"}]}}' | python3 ~/.claude/hooks/sync-todos-to-checkboxes.py
+# Should output: "TodoWrite updated 1 todo: 1 completed, 0 in-progress, 0 pending"
+# Remember to sync to your task checkboxes using the agent-comm MCP if you have an active task
+```
+
+**Need help?** Run our verification script to check everything:
+```bash
+# Download and run the verification script
+curl -s https://raw.githubusercontent.com/jerfowler/agent-comm-mcp-server/main/scripts/verify-hook-installation.sh | bash
+
+# Or if you have the project locally
+./scripts/verify-hook-installation.sh
+```
+
+**That's it!** Now when you use TodoWrite, you'll get helpful reminders to sync your todo changes to agent task checkboxes using the `sync_todo_checkboxes` tool.
+
+**Skip this if:** You don't use TodoWrite or prefer manual checkbox management. The agent communication works perfectly without this hook.
+
 ### Try It Out
 
 Here are some conversational prompts you can use with Claude right away:
@@ -132,7 +171,7 @@ The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everythi
 - **Agent Communication Patterns**: Context-based vs traditional workflows
 - **Task Organization**: How files and data are structured behind the scenes
 
-### 🛠️ Complete Tool Reference (16 Tools Total)
+### 🛠️ Complete Tool Reference (17 Tools Total)
 
 **Traditional Task Management (7 tools):**
 - Create and manage tasks with full control
@@ -151,9 +190,10 @@ The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everythi
 - Get complete lifecycle visibility for any task
 - Track real-time progress with detailed percentages
 
-**Utility Tools (2 tools):**
+**Utility Tools (3 tools):**
 - Server health checks and status
 - Comprehensive server information and capabilities
+- TodoWrite integration for checkbox synchronization
 
 ### 🔄 Workflow Patterns
 - **Context-Based Workflow**: The recommended simple approach
@@ -162,8 +202,8 @@ The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everythi
 
 ### 🚀 Advanced Features
 
-**Todo System Integration:**
-Learn how to combine this with Claude's TodoWrite system for even better task tracking and state management across complex workflows.
+**TodoWrite Integration:**
+Seamless synchronization between Claude Code's TodoWrite system and agent PLAN.md checkboxes. The integration includes a PostToolUse hook that automatically detects todo changes and reminds you to sync with the MCP server. See `docs/TODOWRITE-INTEGRATION.md` for complete setup and usage guide.
 
 **Intelligent Reconciliation:**
 Handle real-world scenarios where agents optimize their approach or encounter blockers. Four reconciliation modes help you complete tasks even when the original plan changes.

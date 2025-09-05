@@ -5,7 +5,21 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-09-04
+## [0.6.0] - 2025-01-05
+
+### 🤖 Agent Templates & Documentation
+
+#### NEW: Specialized Agent Templates
+- **Feature**: Added 4 specialized agent templates in `.claude/agents/` directory
+- **Templates**: senior-backend-engineer.md, senior-frontend-engineer.md, qa-test-automation-engineer.md, devops-deployment-engineer.md
+- **Focus**: MCP server development, CLI tools, testing strategies, and deployment automation
+- **Project-Specific**: All agents tailored specifically for agent-comm-mcp-server development
+- **Clean Implementation**: Removed all parent project references for focused, standalone usage
+
+#### Enhanced Documentation
+- **Updated**: CLAUDE.md with comprehensive project guidance and development workflows
+- **Enhanced**: Agent-specific examples and use cases for MCP server development
+- **Improved**: TodoWrite hook integration documentation with better testing examples
 
 ### 🔧 Build System Improvements
 
@@ -22,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Issue**: MCP server returned version "unknown" due to incorrect package.json path resolution
 - **Root Cause**: `__dirname` pointed to compiled `dist/` directory, but package.json is at project root
 - **Solution**: Replaced runtime file reading with build-time constant injection
-- **Impact**: Version now correctly shows "0.5.0" and will automatically stay current
+- **Impact**: Version now correctly shows "0.6.0" and will automatically stay current
 
 ### 🧹 Code Quality
 - **Removed**: All hardcoded version constants from source code

@@ -113,7 +113,7 @@ usage_examples:
     result: "Shows current task breakdown per agent"
 
 integration_notes:
-  - "Fully compatible with agent-comm MCP server v0.5.0+"
+  - "Fully compatible with agent-comm MCP server v0.6.0+"
   - "Uses structured JSON responses for reliable automation"
   - "Maintains audit trail through archive preservation"
   - "Safe for automated/scheduled execution"

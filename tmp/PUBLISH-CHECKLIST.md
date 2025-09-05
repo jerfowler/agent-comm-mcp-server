@@ -32,12 +32,12 @@ Once authenticated:
 npm publish --access public
 ```
 
-Expected output: Package published successfully to `@jerfowler/agent-comm-mcp-server@0.5.0`
+Expected output: Package published successfully to `@jerfowler/agent-comm-mcp-server@0.6.0`
 
 ### 3. Create GitHub Release
 After successful npm publish:
 ```bash
-gh release create v0.5.0 --title "Agent Communication MCP Server v0.5.0" --notes "Initial release of MCP server for AI agent task communication and delegation with diagnostic lifecycle visibility."
+gh release create v0.6.0 --title "Agent Communication MCP Server v0.6.0" --notes "Enhanced release with specialized agent templates and improved documentation for MCP server development."
 ```
 
 ### 4. Verify NPX Installation
@@ -48,7 +48,7 @@ npx @jerfowler/agent-comm-mcp-server
 
 ## Package Details
 - **Name**: `@jerfowler/agent-comm-mcp-server`  
-- **Version**: `0.5.0`
+- **Version**: `0.6.0`
 - **Size**: 70.8 kB (compressed), 337.9 kB (unpacked)
 - **Files**: 111 total files
 - **License**: MIT

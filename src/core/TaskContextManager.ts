@@ -7,6 +7,8 @@ import fs from 'fs-extra';
 import path from 'path';
 import { ConnectionManager, Connection } from './ConnectionManager.js';
 import { EventLogger } from '../logging/EventLogger.js';
+import { ProgressMarkers, AgentCommError } from '../types.js';
+import { LockManager } from '../utils/lock-manager.js';
 
 export interface TaskContext {
   title: string;
@@ -46,6 +48,7 @@ export interface PlanSubmissionResult {
     pending: number;
     blocked: number;
   };
+  progressMarkers?: ProgressMarkers;
 }
 
 export interface ProgressUpdate {
@@ -141,7 +144,40 @@ TodoWrite([...updatedTodos]); // Mark completed items, move next to in_progress
 - ❌ Forgetting to update todos after completing steps
 - ❌ Having multiple items 'in_progress' simultaneously
 - ❌ Creating vague, non-actionable todo items
-- ❌ Skipping MCP operations in todo lists`;
+- ❌ Skipping MCP operations in todo lists
+
+## TodoWrite Integration with MCP Tasks
+
+**CRITICAL: Sync TodoWrite changes to PLAN.md checkboxes**
+When you use TodoWrite to update todos, remember to sync these changes to your active task's PLAN.md checkboxes using the sync_todo_checkboxes tool.
+
+**Automatic Sync Process:**
+1. **Hook Detection**: The TodoWrite PostToolUse hook automatically detects todo changes
+2. **Sync Reminder**: Hook displays a reminder message to sync with agent-comm MCP
+3. **Manual Sync**: Use \`sync_todo_checkboxes()\` to update PLAN.md checkboxes
+
+**Three-State Checkbox Support:**
+- \`[ ]\` (pending) ← maps to TodoWrite "pending" status
+- \`[~]\` (in_progress) ← maps to TodoWrite "in_progress" status  
+- \`[x]\` (completed) ← maps to TodoWrite "completed" status
+
+**Sync Commands:**
+\`\`\`
+// Auto-detect most recent task (default)
+mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", todoUpdates=[
+  { title: "Parse task requirements", status: "completed" },
+  { title: "Submit plan using submit_plan()", status: "in_progress" },
+  { title: "Implement requirements", status: "pending" }
+]);
+
+// Target specific task (when working with multiple tasks)
+mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-task-id", todoUpdates=[...]);
+\`\`\`
+
+**Integration Workflow:**
+1. Update todos with TodoWrite (triggers hook reminder)
+2. Use sync_todo_checkboxes tool to update PLAN.md
+3. Continue with MCP task operations (report_progress, mark_complete)`;
 
   constructor(config: TaskContextManagerConfig) {
     this.config = config;
@@ -329,6 +365,7 @@ TodoWrite([...updatedTodos]); // Mark completed items, move next to in_progress
       const steps = this.extractPlanSteps(content);
       const phases = this.extractPhases(content);
       const initialProgress = this.analyzePlanProgress(content);
+      const progressMarkers = this.extractProgressMarkers(content);
 
       // Find current active task for this agent
       const agentDir = path.join(this.config.commDir, connection.agent);
@@ -360,7 +397,8 @@ TodoWrite([...updatedTodos]); // Mark completed items, move next to in_progress
         message: 'Plan submitted successfully',
         stepsIdentified: steps.length,
         phases: phases.length,
-        initialProgress
+        initialProgress,
+        progressMarkers
       };
 
       await this.config.eventLogger.logOperation({
@@ -409,46 +447,42 @@ TodoWrite([...updatedTodos]); // Mark completed items, move next to in_progress
         }
       }
 
-      const summary = {
-        completed: updates.filter(u => u.status === 'COMPLETE').length,
-        inProgress: updates.filter(u => u.status === 'IN_PROGRESS').length,
-        pending: updates.filter(u => u.status === 'PENDING').length,
-        blocked: updates.filter(u => u.status === 'BLOCKED').length
-      };
-
-      const totalTimeSpent = updates.reduce((sum, u) => sum + (u.timeSpent || 0), 0);
-      const estimatedRemaining = updates.reduce((sum, u) => sum + (u.estimatedTimeRemaining || 0), 0);
-
-      const result: ProgressReportResult = {
-        success: true,
-        updatedSteps: updates.length,
-        summary
-      };
+      // Lock coordination - check for and acquire lock on task directory
+      const agentDir = path.join(this.config.commDir, connection.agent);
+      const activeTaskDir = await this.findActiveTaskDir(agentDir);
       
-      if (totalTimeSpent > 0) {
-        result.timeTracking = {
-          totalTimeSpent,
-          estimatedRemaining
-        };
-      }
-
-      await this.config.eventLogger.logOperation({
-        timestamp: new Date(),
-        operation: 'report_progress',
-        agent: connection.agent,
-        success: true,
-        duration: Date.now() - startTime,
-        metadata: {
-          stepsUpdated: updates.length,
-          completed: summary.completed,
-          inProgress: summary.inProgress,
-          blocked: summary.blocked,
-          totalTimeSpent,
-          estimatedRemaining
+      if (activeTaskDir) {
+        const lockManager = new LockManager();
+        const taskPath = path.join(agentDir, activeTaskDir);
+        
+        // Check if task is locked by another process
+        const lockStatus = await lockManager.checkLock(taskPath);
+        if (lockStatus.isLocked && !lockStatus.isStale) {
+          throw new AgentCommError(
+            `Task is currently locked by ${lockStatus.lockInfo?.tool} (PID: ${lockStatus.lockInfo?.pid}, Lock ID: ${lockStatus.lockInfo?.lockId})`,
+            'TASK_LOCKED'
+          );
         }
-      });
-
-      return result;
+        
+        // Acquire lock for this operation
+        const lockResult = await lockManager.acquireLock(taskPath, 'report-progress');
+        if (!lockResult.acquired) {
+          throw new AgentCommError(
+            `Failed to acquire lock: ${lockResult.reason}`,
+            'LOCK_FAILED'
+          );
+        }
+        
+        try {
+          return await this.performProgressUpdate(updates, connection, agentDir, activeTaskDir, startTime);
+        } finally {
+          // Always release the lock, even if an error occurred
+          await lockManager.releaseLock(taskPath, lockResult.lockId!);
+        }
+      } else {
+        // No active task found, proceed without lock
+        return await this.performProgressUpdate(updates, connection, agentDir, null, startTime);
+      }
     } catch (error) {
       await this.config.eventLogger.logOperation({
         timestamp: new Date(),
@@ -463,6 +497,63 @@ TodoWrite([...updatedTodos]); // Mark completed items, move next to in_progress
       });
       throw error;
     }
+  }
+
+  /**
+   * Perform the actual progress update logic (extracted for lock management)
+   */
+  private async performProgressUpdate(
+    updates: ProgressUpdate[], 
+    connection: Connection, 
+    agentDir: string, 
+    activeTaskDir: string | null,
+    startTime: number
+  ): Promise<ProgressReportResult> {
+    const summary = {
+      completed: updates.filter(u => u.status === 'COMPLETE').length,
+      inProgress: updates.filter(u => u.status === 'IN_PROGRESS').length,
+      pending: updates.filter(u => u.status === 'PENDING').length,
+      blocked: updates.filter(u => u.status === 'BLOCKED').length
+    };
+
+    const totalTimeSpent = updates.reduce((sum, u) => sum + (u.timeSpent || 0), 0);
+    const estimatedRemaining = updates.reduce((sum, u) => sum + (u.estimatedTimeRemaining || 0), 0);
+
+    const result: ProgressReportResult = {
+      success: true,
+      updatedSteps: updates.length,
+      summary
+    };
+    
+    if (totalTimeSpent > 0) {
+      result.timeTracking = {
+        totalTimeSpent,
+        estimatedRemaining
+      };
+    }
+
+    // Update PLAN.md file with checkbox changes
+    if (activeTaskDir) {
+      await this.updatePlanFileWithProgress(agentDir, activeTaskDir, updates);
+    }
+
+    await this.config.eventLogger.logOperation({
+      timestamp: new Date(),
+      operation: 'report_progress',
+      agent: connection.agent,
+      success: true,
+      duration: Date.now() - startTime,
+      metadata: {
+        stepsUpdated: updates.length,
+        completed: summary.completed,
+        inProgress: summary.inProgress,
+        blocked: summary.blocked,
+        totalTimeSpent,
+        estimatedRemaining
+      }
+    });
+
+    return result;
   }
 
   /**
@@ -662,8 +753,14 @@ TodoWrite([...updatedTodos]); // Mark completed items, move next to in_progress
   }
 
   private extractPlanSteps(content: string): string[] {
-    const stepMatches = content.match(/\[(?:PENDING|✓ COMPLETE|→ IN PROGRESS|BLOCKED)\]/g);
-    return stepMatches || [];
+    // Look for checkbox format: - [ ] and - [x]
+    const checkboxMatches = content.match(/^- \[[x ]\] /gm);
+    
+    // Legacy support for old status format
+    const statusMatches = content.match(/\[(?:PENDING|✓ COMPLETE|→ IN PROGRESS|BLOCKED)\]/g);
+    
+    // Return checkbox matches if found, otherwise legacy status matches
+    return checkboxMatches || statusMatches || [];
   }
 
   private extractPhases(content: string): string[] {
@@ -676,12 +773,100 @@ TodoWrite([...updatedTodos]); // Mark completed items, move next to in_progress
   }
 
   private analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number } {
-    const completed = (content.match(/\[✓ COMPLETE\]/g) || []).length;
-    const inProgress = (content.match(/\[→ IN PROGRESS\]/g) || []).length;
-    const pending = (content.match(/\[PENDING\]/g) || []).length;
-    const blocked = (content.match(/\[BLOCKED\]/g) || []).length;
+    // Parse standard checkbox format: - [x] **Title** and - [ ] **Title**
+    const checkedBoxes = (content.match(/^- \[x\] /gm) || []).length;
+    const uncheckedBoxes = (content.match(/^- \[ \] /gm) || []).length;
+    
+    return { 
+      completed: checkedBoxes, 
+      inProgress: 0, // Track via progress updates, not static parsing
+      pending: uncheckedBoxes, 
+      blocked: 0 // Track via progress updates, not static parsing
+    };
+  }
 
-    return { completed, inProgress, pending, blocked };
+  private extractProgressMarkers(content: string): ProgressMarkers {
+    const completed: string[] = [];
+    const pending: string[] = [];
+    
+    // Match checkbox lines and extract titles
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const checkedMatch = line.match(/^- \[x\] \*\*(.*?)\*\*/);
+      const uncheckedMatch = line.match(/^- \[ \] \*\*(.*?)\*\*/);
+      
+      if (checkedMatch) {
+        completed.push(checkedMatch[1].trim());
+      } else if (uncheckedMatch) {
+        pending.push(uncheckedMatch[1].trim());
+      }
+    }
+    
+    return { completed, pending };
+  }
+
+  private async findActiveTaskDir(agentDir: string): Promise<string | null> {
+    if (!(await fs.pathExists(agentDir))) return null;
+    
+    const taskDirs = await fs.readdir(agentDir);
+    let latestTime = 0;
+    let activeTaskDir = '';
+    
+    for (const taskDir of taskDirs) {
+      const taskPath = path.join(agentDir, taskDir);
+      try {
+        const stat = await fs.stat(taskPath);
+        
+        // Check if it's a directory using either method or stat mode
+        const isDirectory = typeof stat.isDirectory === 'function' 
+          ? stat.isDirectory() 
+          : stat.mode ? (stat.mode & 0o170000) === 0o040000 : false;
+          
+        // Check if mtime exists and is valid
+        const mtime = stat.mtime || (stat.mtimeMs ? new Date(stat.mtimeMs) : new Date(0));
+        const mtimeValue = typeof mtime.getTime === 'function' ? mtime.getTime() : 0;
+        
+        if (isDirectory && mtimeValue > latestTime) {
+          latestTime = mtimeValue;
+          activeTaskDir = taskDir;
+        }
+      } catch (error) {
+        // Skip if we can't stat the path
+        continue;
+      }
+    }
+    
+    return activeTaskDir || null;
+  }
+
+  private async updatePlanFileWithProgress(agentDir: string, taskId: string, updates: ProgressUpdate[]): Promise<void> {
+    const planPath = path.join(agentDir, taskId, 'PLAN.md');
+    if (!(await fs.pathExists(planPath))) return;
+    
+    let planContent = await fs.readFile(planPath, 'utf8');
+    
+    for (const update of updates) {
+      if (update.status === 'COMPLETE') {
+        // Convert unchecked to checked for completed steps
+        // Find checkbox lines and update based on step number or title matching
+        const lines = planContent.split('\n');
+        let stepCount = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].match(/^- \[[ x]\] \*\*.*?\*\*/)) {
+            stepCount++;
+            if (stepCount === update.step) {
+              lines[i] = lines[i].replace(/^- \[ \]/, '- [x]');
+              break;
+            }
+          }
+        }
+        
+        planContent = lines.join('\n');
+      }
+    }
+    
+    await fs.writeFile(planPath, planContent);
   }
 
   private extractRecommendations(content: string): string[] {

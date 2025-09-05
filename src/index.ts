@@ -41,6 +41,9 @@ import { archiveCompletedTasks } from './tools/archive-completed-tasks.js';
 import { getServerInfo as getServerInfoTool, initializeServerStartTime } from './tools/get-server-info.js';
 import { ping } from './tools/ping.js';
 
+// Import integration tools
+import { syncTodoCheckboxes } from './tools/sync-todo-checkboxes.js';
+
 /**
  * Create MCP server instance (exported for testing)
  */
@@ -287,6 +290,18 @@ function setupServerHandlers(server: Server, config: any): void {
 
           case 'ping': {
             const result = await ping(config, args || {});
+            return { 
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2)
+                }
+              ]
+            };
+          }
+
+          case 'sync_todo_checkboxes': {
+            const result = await syncTodoCheckboxes(config, args || {});
             return { 
               content: [
                 {
@@ -665,6 +680,43 @@ function setupServerHandlers(server: Server, config: any): void {
               type: 'object',
               properties: {},
               additionalProperties: false
+            }
+          },
+          {
+            name: 'sync_todo_checkboxes',
+            description: 'Sync TodoWrite updates to PLAN.md checkboxes - TodoWrite integration for automatic checkbox updates',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                agent: {
+                  type: 'string',
+                  description: 'Agent name for which to sync todo updates'
+                },
+                todoUpdates: {
+                  type: 'array',
+                  description: 'Array of todo update objects with title and status',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: {
+                        type: 'string',
+                        description: 'Todo title to match against PLAN.md checkboxes'
+                      },
+                      status: {
+                        type: 'string',
+                        enum: ['pending', 'in_progress', 'completed'],
+                        description: 'New status for the todo item'
+                      }
+                    },
+                    required: ['title', 'status']
+                  }
+                },
+                taskId: {
+                  type: 'string',
+                  description: 'Optional specific task ID to target. If not provided, uses the most recent task for the agent.'
+                }
+              },
+              required: ['agent', 'todoUpdates']
             }
           }
         ]

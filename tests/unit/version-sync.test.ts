@@ -18,7 +18,7 @@ describe('Version Synchronization', () => {
     
     // Ensure they match
     expect(serverInfo.version).toBe(packageJson.version);
-    expect(serverInfo.version).toBe('0.5.0'); // Also verify current expected version
+    expect(serverInfo.version).toBe('0.6.0'); // Also verify current expected version
   });
   
   test('server info contains required fields', () => {

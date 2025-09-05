@@ -256,11 +256,11 @@ Train and deploy machine learning model for user behavior prediction
         path.join(taskDir, 'PLAN.md'),
         `# Implementation Plan
 ## Steps
-1. [✓ COMPLETE] Data preprocessing and feature engineering
-2. [→ IN PROGRESS] Model architecture design and hyperparameter tuning
-3. [PENDING] Model training with validation
-4. [PENDING] Model deployment and API integration
-5. [PENDING] Performance monitoring setup`
+- [x] **Data Preprocessing**: Data preprocessing and feature engineering
+- [ ] **Model Architecture**: Model architecture design and hyperparameter tuning  
+- [ ] **Model Training**: Model training with validation
+- [ ] **Model Deployment**: Model deployment and API integration
+- [ ] **Performance Monitoring**: Performance monitoring setup`
       );
       
       const result = await checkTasks(config, { 
@@ -275,8 +275,8 @@ Train and deploy machine learning model for user behavior prediction
       expect(task.status).toBe('in_progress');
       expect(task.progress).toBeDefined();
       expect(task.progress!.completed).toBe(1);
-      expect(task.progress!.inProgress).toBe(1);
-      expect(task.progress!.pending).toBe(3);
+      expect(task.progress!.inProgress).toBe(0);
+      expect(task.progress!.pending).toBe(4);
     });
   });
 

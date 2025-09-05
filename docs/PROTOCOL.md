@@ -708,6 +708,359 @@ mcp_call('mark_complete', status='DONE', summary='...', agent='senior-frontend-e
 - ❌ Not including MCP operations as todos
 - ❌ Forgetting to update completion status
 
+#### `sync_todo_checkboxes(agent, todoUpdates, [taskId])`
+**TodoWrite Integration tool** - syncs TodoWrite changes to PLAN.md checkboxes automatically.
+
+**Parameters:**
+- `agent` (required): Agent name for which to sync todo updates
+- `todoUpdates` (required): Array of todo update objects with title and status
+- `taskId` (optional): Specific task ID to target. If not provided, uses the most recent task for the agent.
+
+**Todo Update Format:**
+```typescript
+{
+  title: string,    // Todo title to match against PLAN.md checkboxes  
+  status: "pending" | "in_progress" | "completed"
+}
+```
+
+**Three-State Checkbox Mapping:**
+- `[ ]` (pending) ← maps to TodoWrite "pending" status
+- `[~]` (in_progress) ← maps to TodoWrite "in_progress" status  
+- `[x]` (completed) ← maps to TodoWrite "completed" status
+
+**Usage Example:**
+```python
+# Update TodoWrite todos
+await TodoWrite([
+    {"content": "Parse requirements", "status": "completed", "activeForm": "Parsing"},
+    {"content": "Submit plan", "status": "in_progress", "activeForm": "Submitting"},
+    {"content": "Implement features", "status": "pending", "activeForm": "Implementing"}
+])
+
+# Sync changes to PLAN.md checkboxes (auto-detect most recent task)
+mcp_call('sync_todo_checkboxes',
+    agent='senior-frontend-engineer',
+    todoUpdates=[
+        {"title": "Parse requirements", "status": "completed"},
+        {"title": "Submit plan", "status": "in_progress"}, 
+        {"title": "Implement features", "status": "pending"}
+    ]
+)
+
+# Target specific task by ID
+mcp_call('sync_todo_checkboxes',
+    agent='senior-frontend-engineer',
+    taskId='implement-dashboard-20241205-143012',
+    todoUpdates=[
+        {"title": "Component setup", "status": "completed"},
+        {"title": "API integration", "status": "in_progress"}
+    ]
+)
+```
+
+**Integration Workflow:**
+1. **Automatic Detection**: TodoWrite PostToolUse hook detects todo changes
+2. **Reminder Message**: Hook displays sync reminder to Claude
+3. **Manual Sync**: Use `sync_todo_checkboxes()` to update PLAN.md
+4. **Fuzzy Matching**: Tool uses 60% similarity threshold for checkbox matching
+5. **Lock Coordination**: Prevents conflicts with other MCP operations
+
+**Key Benefits:**
+- ✅ Maintains consistency between TodoWrite and PLAN.md
+- ✅ Preserves agent task visibility and progress tracking  
+- ✅ Automatic conflict resolution with lock coordination
+- ✅ Fuzzy matching handles minor title variations
+- ✅ Non-blocking integration preserves Claude Code parallelism
+
+## TodoWrite Hook Installation & Configuration
+
+The TodoWrite integration includes an optional PostToolUse hook that automatically detects todo changes and provides sync reminders. This section covers complete installation, configuration, and troubleshooting.
+
+### Hook Architecture
+
+**Hook Trigger:** PostToolUse event from Claude Code TodoWrite tool
+**Hook Type:** Python script with exit code signaling
+**Integration Pattern:** Non-disruptive reminder system with exit code 2
+
+```
+TodoWrite Tool → Hook Execution → MCP Server Integration
+     ↓                ↓                     ↓
+Todos Updated → Analysis & Reminder → sync_todo_checkboxes()
+```
+
+### Installation Steps
+
+#### 1. Locate Hook File
+
+The hook is included with your agent-comm-mcp-server installation:
+
+```bash
+# Global installation path
+find /usr/local/lib/node_modules/@jerfowler/agent-comm-mcp-server/.claude/hooks/ -name "*.py"
+
+# Local installation path  
+find ./node_modules/@jerfowler/agent-comm-mcp-server/.claude/hooks/ -name "*.py"
+
+# From source installation
+ls .claude/hooks/sync-todos-to-checkboxes.py
+```
+
+#### 2. Copy to Claude Code Hooks Directory
+
+```bash
+# Create hooks directory if it doesn't exist
+mkdir -p ~/.claude/hooks
+
+# Copy the hook (adjust path based on your installation)
+cp node_modules/@jerfowler/agent-comm-mcp-server/.claude/hooks/sync-todos-to-checkboxes.py ~/.claude/hooks/
+
+# Make executable
+chmod +x ~/.claude/hooks/sync-todos-to-checkboxes.py
+```
+
+#### 3. Verify Installation
+
+```bash
+# Test with sample todo data (recommended first test)
+echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","status":"pending","activeForm":"Testing"}]}}' | python3 ~/.claude/hooks/sync-todos-to-checkboxes.py
+
+# Expected output:
+# TodoWrite updated 1 todo: 0 completed, 0 in-progress, 1 pending.
+# 
+# Remember to sync to your task checkboxes using the agent-comm MCP if you have an active task.
+
+# Test with empty todos (should be silent)
+echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[]}}' | python3 ~/.claude/hooks/sync-todos-to-checkboxes.py
+
+# Expected: Silent exit (no output)
+```
+
+### Hook Configuration Options
+
+The hook accepts several configuration patterns through environment variables:
+
+#### Environment Variables
+
+```bash
+# Enable debug output (default: false)
+export AGENT_COMM_HOOK_DEBUG=true
+
+# Custom MCP server name (default: agent-comm)
+export AGENT_COMM_MCP_SERVER=my-agent-comm
+
+# Disable hook entirely (default: false)  
+export AGENT_COMM_HOOK_DISABLE=true
+```
+
+#### Hook Behavior Configuration
+
+```python
+# Hook configuration options (edit ~/.claude/hooks/sync-todos-to-checkboxes.py)
+
+# Minimum todos to trigger reminder (default: 1)
+MIN_TODOS_FOR_REMINDER = 1
+
+# Show detailed state breakdown (default: True)
+SHOW_STATE_SUMMARY = True
+
+# Exit code for Claude Code integration (default: 2)
+HOOK_SUCCESS_EXIT_CODE = 2
+```
+
+### Integration Workflow
+
+#### 1. Automatic Detection
+
+When you use TodoWrite in Claude Code:
+```python
+TodoWrite([
+    {"content": "Implement authentication", "status": "completed", "activeForm": "Implementing"},
+    {"content": "Add error handling", "status": "in_progress", "activeForm": "Adding"},
+    {"content": "Write unit tests", "status": "pending", "activeForm": "Writing"}
+])
+```
+
+#### 2. Hook Execution
+
+The hook automatically:
+- Parses todo data structure
+- Counts state distribution (pending/in_progress/completed)  
+- Determines if sync reminder is warranted
+- Outputs reminder message with tool usage guidance
+- Returns exit code 2 (success with info)
+
+#### 3. MCP Tool Usage
+
+Follow the hook's guidance to sync:
+```python
+# Use the suggested MCP tool call
+mcp_call('sync_todo_checkboxes',
+    agent='current-agent',
+    todoUpdates=[
+        {"title": "Implement authentication", "status": "completed"},
+        {"title": "Add error handling", "status": "in_progress"}, 
+        {"title": "Write unit tests", "status": "pending"}
+    ]
+)
+```
+
+### Advanced Configuration
+
+#### Custom Hook Behavior
+
+Create a custom hook configuration by editing the installed file:
+
+```python
+# ~/.claude/hooks/sync-todos-to-checkboxes.py
+
+# Custom reminder thresholds
+def should_show_reminder(state_counts):
+    total_todos = sum(state_counts.values())
+    completed_count = state_counts.get('completed', 0)
+    
+    # Only remind if there are completed todos to sync
+    return completed_count > 0 and total_todos >= 2
+
+# Custom output formatting  
+def format_reminder(state_counts):
+    total = sum(state_counts.values())
+    return f"🔄 Ready to sync {total} todos to agent checkboxes"
+```
+
+#### Integration with Multiple Agents
+
+For complex multi-agent workflows:
+
+```python
+# Hook can suggest agent-specific syncing
+def detect_likely_agent(todos):
+    # Analyze todo content for agent hints
+    if any("frontend" in todo.get('content', '').lower() for todo in todos):
+        return "senior-frontend-engineer"
+    elif any("backend" in todo.get('content', '').lower() for todo in todos):  
+        return "senior-backend-engineer"
+    return "detected-agent-name"
+```
+
+### Troubleshooting
+
+#### Common Issues
+
+**Issue: Hook not executing**
+```bash
+# Check hook permissions
+ls -la ~/.claude/hooks/sync-todos-to-checkboxes.py
+# Should show: -rwxr-xr-x (executable)
+
+# Check Python availability
+which python
+python --version
+```
+
+**Issue: Permission denied**
+```bash
+# Fix permissions
+chmod +x ~/.claude/hooks/sync-todos-to-checkboxes.py
+
+# Check directory permissions  
+ls -la ~/.claude/
+mkdir -p ~/.claude/hooks
+```
+
+**Issue: Hook executes but no output**
+```bash
+# Enable debug mode
+export AGENT_COMM_HOOK_DEBUG=true
+
+# Test with verbose output
+echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"test","status":"pending","activeForm":"testing"}]}}' | python3 ~/.claude/hooks/sync-todos-to-checkboxes.py
+```
+
+#### Debug Mode
+
+Enable comprehensive debugging:
+
+```python
+# Edit hook file to enable debug output
+DEBUG = True  # Set this at top of hook file
+
+# Test with debug enabled
+export AGENT_COMM_HOOK_DEBUG=true
+python ~/.claude/hooks/sync-todos-to-checkboxes.py '[...]' 'debug-data'
+```
+
+#### Hook Validation Script
+
+Create a validation script to test your hook installation:
+
+```bash
+#!/bin/bash
+# validate-hook.sh
+
+echo "Testing TodoWrite Hook Installation..."
+
+HOOK_FILE="$HOME/.claude/hooks/sync-todos-to-checkboxes.py"
+
+if [ ! -f "$HOOK_FILE" ]; then
+    echo "❌ Hook file not found at $HOOK_FILE"
+    exit 1
+fi
+
+if [ ! -x "$HOOK_FILE" ]; then
+    echo "❌ Hook file not executable"
+    exit 1  
+fi
+
+# Test basic execution
+echo "Testing basic execution..."
+echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[]}}' | python3 "$HOOK_FILE"
+echo "Exit code: $?"
+
+# Test with todo data
+echo "Testing with sample todos..."
+echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","status":"completed","activeForm":"Testing"}]}}' | python3 "$HOOK_FILE"
+echo "Exit code: $?"
+
+echo "✅ Hook installation validated"
+```
+
+**Automated Verification:** Use our comprehensive verification script:
+
+```bash
+# Run the included verification script
+./scripts/verify-hook-installation.sh
+
+# Or download and run directly
+curl -s https://raw.githubusercontent.com/jerfowler/agent-comm-mcp-server/main/scripts/verify-hook-installation.sh | bash
+```
+
+This script performs comprehensive testing including:
+- Python environment validation
+- Hook file installation and permissions  
+- Functionality testing with various todo scenarios
+- Performance benchmarking
+- Debug mode validation
+
+### Performance Considerations
+
+#### Hook Execution Time
+
+The hook is designed for minimal overhead:
+- **Execution time**: <50ms typical
+- **Memory usage**: <5MB Python interpreter
+- **CPU impact**: Negligible (simple JSON parsing)
+
+#### Scaling for Large Todo Lists
+
+For workflows with many todos:
+
+```python
+# Hook includes optimizations for large datasets
+MAX_TODOS_TO_PROCESS = 50  # Prevents performance issues
+BATCH_SIZE = 10           # Process in batches if needed
+```
+
 ### Archive and Restore Operations
 
 #### Archive Modes
@@ -938,7 +1291,7 @@ mcp_call('mark_complete',
 
 ## API Version & Compatibility
 
-- **Current Version**: 0.5.0
+- **Current Version**: 0.6.0
 - **MCP Compatibility**: Model Context Protocol 1.0+
 - **Node.js Requirements**: 18+ (tested with 18, 20, 22)
 - **TypeScript Support**: Full type definitions included

@@ -49,6 +49,7 @@ test-results/
 # Temporary files
 .tmp/
 temp/
+tmp/
 
 # Temporary documentation files (prevent clutter)
 *TEST*.md
@@ -60,6 +61,8 @@ MCP-COMPLIANCE-*.md
 *DEPENDENCIES*.md
 *BEST-PRACTICES*.md
 *FIXES*.md
+*ENHANCEMENT*.md
+*SUMMARY*.md
 
 # Package manager - yarn and pnpm only (keep npm lock for CI)
 yarn.lock
