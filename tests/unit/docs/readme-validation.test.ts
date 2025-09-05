@@ -204,7 +204,7 @@ describe('README Documentation Validation', () => {
           const trimmed = line.trim();
           if (trimmed && !trimmed.startsWith('#')) {
             // Should start with valid command patterns
-            expect(trimmed).toMatch(/^(npm|node|claude|mkdir|cd|ls|cat|echo|git)/);
+            expect(trimmed).toMatch(/^(npm|npx|node|claude|mkdir|cd|ls|cat|echo|git)/);
           }
         });
       });

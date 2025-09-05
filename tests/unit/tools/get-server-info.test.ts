@@ -107,12 +107,12 @@ describe('get-server-info tool', () => {
     const result = await getServerInfo(mockConfig, {});
 
     // Should return real package info, not fallback values
-    expect(result.name).toBe('@mcp/agent-comm-server');
-    expect(result.author).toBe('Agent Communication MCP Server');
+    expect(result.name).toBe('@jerfowler/agent-comm-mcp-server');
+    expect(result.author).toBe('Jeremy Fowler');
     expect(result.description).toContain('MCP server for AI agent task communication');
     expect(result.repository).toEqual({
       type: 'git',
-      url: '.'
+      url: 'git+https://github.com/jerfowler/agent-comm-mcp-server.git'
     });
   });
 
@@ -179,7 +179,7 @@ describe('get-server-info tool', () => {
     expect(result.version).not.toBe('unknown');
 
     // 2. Package info is always accurate and available
-    expect(result.name).toBe('@mcp/agent-comm-server');
+    expect(result.name).toBe('@jerfowler/agent-comm-mcp-server');
     expect(result.author).not.toBe('unknown');
 
     // 3. No file system dependencies at runtime
