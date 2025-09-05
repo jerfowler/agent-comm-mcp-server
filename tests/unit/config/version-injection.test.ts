@@ -10,7 +10,7 @@ describe('build-time version injection', () => {
   describe('generated version constants', () => {
     it('should have all required package info constants', () => {
       expect(PACKAGE_INFO).toBeDefined();
-      expect(PACKAGE_INFO.name).toBe('@mcp/agent-comm-server');
+      expect(PACKAGE_INFO.name).toBe('@jerfowler/agent-comm-mcp-server');
       expect(PACKAGE_INFO.version).toBeDefined(); // Should match package.json
       expect(PACKAGE_INFO.version).not.toBe('unknown');
       expect(PACKAGE_INFO.description).toContain('agent task communication');
@@ -131,7 +131,7 @@ describe('build-time version injection', () => {
 
     it('should have package.json as single source of truth reflected in constants', () => {
       // The constants should reflect the current package.json values
-      expect(PACKAGE_INFO.name).toBe('@mcp/agent-comm-server');
+      expect(PACKAGE_INFO.name).toBe('@jerfowler/agent-comm-mcp-server');
       expect(PACKAGE_INFO.version).toBeDefined();
       expect(PACKAGE_INFO.version).not.toBe('unknown');
       expect(PACKAGE_INFO.description).toContain('MCP server for AI agent task communication');
