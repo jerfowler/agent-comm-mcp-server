@@ -5,13 +5,14 @@
 // Removing unused import: jest
 import { ConnectionManager } from '../../src/core/ConnectionManager.js';
 import { EventLogger, MockTimerDependency } from '../../src/logging/EventLogger.js';
+import { ServerConfig } from '../../src/types.js';
 
 export const testUtils = {
   // Create mock ServerConfig
-  createMockConfig: (overrides: any = {}) => {
+  createMockConfig: (overrides: Partial<ServerConfig> = {}): ServerConfig => {
     const baseLogDir = overrides.logDir || './test/logs';
     
-    const defaults = {
+    const defaults: ServerConfig = {
       commDir: './test/comm',
       archiveDir: './test/archive', 
       logDir: baseLogDir,
@@ -22,7 +23,7 @@ export const testUtils = {
     };
     
     // Apply overrides, but ensure eventLogger uses correct logDir
-    const config = { ...defaults, ...overrides };
+    const config: ServerConfig = { ...defaults, ...overrides };
     
     return config;
   },

@@ -10,6 +10,7 @@ import { createTask } from '../../src/tools/create-task.js';
 import { trackTaskProgress } from '../../src/tools/track-task-progress.js';
 import { getFullLifecycle } from '../../src/tools/get-full-lifecycle.js';
 import { archiveTasksTool } from '../../src/tools/archive-tasks.js';
+import type { ServerConfig } from '../../src/types.js';
 
 export interface PromptScenario {
   name: string;
@@ -20,7 +21,7 @@ export interface PromptScenario {
 }
 
 export interface TaskScenarioContext {
-  config: ReturnType<typeof testUtils.createMockConfig>;
+  config: ServerConfig;
   tempDir: string;
   commDir: string;
   agents: string[];

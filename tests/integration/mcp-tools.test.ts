@@ -29,10 +29,7 @@ describe('MCP Server Tools Integration', () => {
     config = testUtils.createMockConfig({
       commDir: commDir,
       enableArchiving: true,
-      archiveDir: path.join(commDir, '.archive'),
-      validTaskFiles: ['INIT', 'PLAN', 'DONE', 'ERROR'],
-      maxTaskNameLength: 100,
-      maxContentLength: 1000000
+      archiveDir: path.join(commDir, '.archive')
     });
     
     // Test environment setup completed
