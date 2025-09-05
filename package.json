@@ -56,8 +56,8 @@
     "url": "https://github.com/jerfowler/agent-comm-mcp-server/issues"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "npm": ">=10.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "files": [
     "dist/",

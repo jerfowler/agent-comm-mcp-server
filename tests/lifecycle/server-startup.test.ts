@@ -191,8 +191,8 @@ describe('Server Startup Lifecycle', () => {
     it('should initialize EventLogger with correct path', async () => {
       const server = createMCPServer();
       
-      // Event logger should be initialized with logs directory
-      const logsPath = path.join(tempDir, 'logs');
+      // Event logger should be initialized with .logs directory (default)
+      const logsPath = path.join(tempDir, '.logs');
       expect(await fs.pathExists(logsPath)).toBe(true);
       
       void server.close();

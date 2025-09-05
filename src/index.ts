@@ -8,8 +8,9 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { getConfig, validateConfig, getServerInfo } from './config.js';
+import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
 import { AgentCommError, ServerConfig } from './types.js';
+import * as fs from 'fs-extra';
 
 // Import core components
 import { ConnectionManager } from './core/ConnectionManager.js';
@@ -44,8 +45,18 @@ import { ping } from './tools/ping.js';
  * Create MCP server instance (exported for testing)
  */
 export function createMCPServer(): Server {
+  // Validate environment first
+  validateEnvironment();
+  
   const baseConfig = getConfig();
   const serverInfo = getServerInfo();
+  
+  // Ensure required directories exist
+  fs.ensureDirSync(baseConfig.commDir);
+  if (baseConfig.enableArchiving) {
+    fs.ensureDirSync(baseConfig.archiveDir);
+  }
+  fs.ensureDirSync(baseConfig.logDir);
   
   // Initialize core components - extend BaseServerConfig to ServerConfig
   const config: ServerConfig = {

@@ -109,8 +109,8 @@ export function validateEnvironment(): void {
   const commDir = process.env['AGENT_COMM_DIR'];
   
   // AGENT_COMM_DIR is now optional - will use default if not provided
-  if (commDir && commDir.trim() === '') {
-    throw new Error('AGENT_COMM_DIR environment variable cannot be empty when provided');
+  if (commDir !== undefined && commDir.trim() === '') {
+    throw new Error('Configuration error: AGENT_COMM_DIR environment variable cannot be empty when provided');
   }
 }
 
