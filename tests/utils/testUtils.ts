@@ -8,22 +8,30 @@ import { EventLogger, MockTimerDependency } from '../../src/logging/EventLogger.
 
 export const testUtils = {
   // Create mock ServerConfig
-  createMockConfig: (overrides = {}) => ({
-    commDir: '/test/comm',
-    archiveDir: '/test/archive',
-    logDir: '/test/logs',
-    enableArchiving: true,
-    // Core components - properly typed for testing
-    connectionManager: new ConnectionManager(),
-    eventLogger: new EventLogger('/test/logs', new MockTimerDependency()),
-    ...overrides
-  }),
+  createMockConfig: (overrides = {}) => {
+    const defaults = {
+      commDir: './test/comm',
+      archiveDir: './test/archive', 
+      logDir: './test/logs',
+      enableArchiving: true,
+      // Core components - properly typed for testing
+      connectionManager: new ConnectionManager(),
+    };
+    
+    // Apply overrides first
+    const config = { ...defaults, ...overrides };
+    
+    // Create eventLogger with the correct logDir (after overrides applied)
+    config.eventLogger = new EventLogger(config.logDir, new MockTimerDependency());
+    
+    return config;
+  },
 
   // Create mock Task
   createMockTask: (overrides = {}) => ({
     name: 'test-task',
     agent: 'test-agent',
-    path: '/test/comm/test-agent/test-task',
+    path: './test/comm/test-agent/test-task',
     hasInit: false,
     hasPlan: false,
     hasDone: false,

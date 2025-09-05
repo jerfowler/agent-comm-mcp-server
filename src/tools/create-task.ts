@@ -171,6 +171,7 @@ export interface CreateTaskOptions {
   content?: string;
   taskType?: 'delegation' | 'self' | 'subtask';
   parentTask?: string;
+  sourceAgent?: string;  // For delegation tasks to track source agent
 }
 
 // Use CreateTaskResponse from types.ts
@@ -232,8 +233,21 @@ async function findExistingTask(config: ServerConfig, agent: string, taskName: s
 /**
  * Generate enhanced content with protocol context and task-specific information
  */
-function generateEnhancedContent(options: CreateTaskOptions): string {
+function generateEnhancedContent(options: CreateTaskOptions, sourceAgent?: string): string {
   let content = options.content || '';
+  
+  // Add delegation metadata for delegation tasks
+  if (options.taskType === 'delegation') {
+    const timestamp = new Date().toISOString();
+    const metadataSection = `\n\n## Metadata\n- Agent: ${options.agent}\n- Created: ${timestamp}`;
+    
+    // Add source agent if provided (for delegation tracking)
+    if (sourceAgent) {
+      content = content + metadataSection + `\n- Source: ${sourceAgent}\n`;
+    } else {
+      content = content + metadataSection + '\n';
+    }
+  }
   
   // Add parent task reference for subtasks
   if (options.taskType === 'subtask' && options.parentTask) {
@@ -317,7 +331,7 @@ export async function createTask(
       taskOptions.parentTask = parentTask;
     }
     
-    const enhancedContent = generateEnhancedContent(taskOptions);
+    const enhancedContent = generateEnhancedContent(taskOptions, options.sourceAgent);
     
     // Create task using unified approach - initializeTask for all types
     const result = await initializeTask(config, agent, cleanTaskName);
@@ -362,13 +376,15 @@ export async function createTaskTool(
   const content = validateOptionalString(args['content'], 'content');
   const taskType = args['taskType'] as 'delegation' | 'self' | 'subtask' || 'delegation';
   const parentTask = validateOptionalString(args['parentTask'], 'parentTask');
+  const sourceAgent = validateOptionalString(args['sourceAgent'], 'sourceAgent');
   
   const options: CreateTaskOptions = {
     agent,
     taskName,
     ...(content && { content }),
     taskType,
-    ...(parentTask && { parentTask })
+    ...(parentTask && { parentTask }),
+    ...(sourceAgent && { sourceAgent })
   };
   
   return await createTask(config, options);

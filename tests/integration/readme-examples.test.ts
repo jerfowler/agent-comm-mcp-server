@@ -177,7 +177,7 @@ describe('README Example Scenarios', () => {
       );
 
       // Should work for tasks in various states
-      expect(['pending', 'in_progress', 'completed', 'error']).toContain(result.summary.final_status);
+      expect(['new', 'in_progress', 'completed', 'error']).toContain(result.summary.final_status);
     });
   });
 
@@ -302,7 +302,7 @@ describe('README Example Scenarios', () => {
 
       scenarios.forEach(scenario => {
         // Each prompt should start with "Using" or "Use" for consistency
-        expect(scenario.prompt).toMatch(/^(Using|Use) (the )?agent-comm/);
+        expect(scenario.prompt).toMatch(/^(Using|Use) (the )?(MCP )?agent-comm/);
       });
     });
   });

@@ -111,6 +111,52 @@ describe('submit-plan tool', () => {
       .rejects.toThrow(AgentCommError);
   });
 
+  it('should throw error for plan with no checkboxes', async () => {
+    const args = {
+      content: `# Test Plan
+
+This plan has no checkboxes at all.
+Just some regular text without any trackable items.`,
+      agent: 'test-agent'
+    };
+
+    await expect(submitPlan(mockConfig, args))
+      .rejects.toThrow(/Plan must include at least ONE trackable item/);
+  });
+
+  it('should throw error for plan with forbidden status markers', async () => {
+    const args = {
+      content: `# Test Plan
+
+- [ ] **Valid Task**: This is valid
+  - Action: Do something
+  - Expected: Success
+
+[PENDING] This should not be here
+[COMPLETE] Neither should this`,
+      agent: 'test-agent'
+    };
+
+    await expect(submitPlan(mockConfig, args))
+      .rejects.toThrow(/Use checkbox format only.*Remove these status markers/);
+  });
+
+  it('should throw error for checkbox without detail points', async () => {
+    const args = {
+      content: `# Test Plan
+
+- [ ] **Missing Details**: This checkbox has no detail points
+
+Some regular text here that is not a detail point.
+
+Another paragraph that doesn't count as details.`,
+      agent: 'test-agent'
+    };
+
+    await expect(submitPlan(mockConfig, args))
+      .rejects.toThrow(/Checkbox "Missing Details" missing required detail points/);
+  });
+
   it('should handle missing configuration components', async () => {
     const badConfig = {
       commDir: '/test/comm',

@@ -36,6 +36,8 @@ const EXPECTED_TOOLS = [
   'check_tasks',
   'read_task', 
   'write_task',
+  'create_task',
+  'submit_plan',
   'list_agents',
   'archive_tasks',
   'restore_tasks'
@@ -46,6 +48,8 @@ const EXPECTED_TOOL_SCHEMAS = {
   'check_tasks': { required: ['agent'], optional: [] },
   'read_task': { required: ['agent', 'task', 'file'], optional: [] },
   'write_task': { required: ['agent', 'task', 'file', 'content'], optional: [] },
+  'create_task': { required: ['agent', 'taskName'], optional: ['content', 'taskType', 'parentTask', 'sourceAgent'] },
+  'submit_plan': { required: ['agent', 'content'], optional: [] },
   'list_agents': { required: [], optional: [] },
   'archive_tasks': { required: [], optional: ['mode', 'agent', 'olderThan', 'dryRun'] },
   'restore_tasks': { required: ['timestamp'], optional: ['agent', 'taskName'] }

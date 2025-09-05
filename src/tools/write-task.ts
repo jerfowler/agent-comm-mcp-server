@@ -8,7 +8,7 @@ import { writeFile, ensureDirectory } from '../utils/file-system.js';
 import { validateRequiredString, validateEnum, validateContent } from '../utils/validation.js';
 
 /**
- * Write a task file (PLAN.md, DONE.md, ERROR.md)
+ * Write a task file by type (plan, done, error)
  */
 export async function writeTask(
   config: ServerConfig,

@@ -8,7 +8,7 @@ import { readFile, getStats, parseTaskMetadata } from '../utils/file-system.js';
 import { validateRequiredString, validateTaskFileType } from '../utils/validation.js';
 
 /**
- * Read a task file (INIT.md, PLAN.md, DONE.md, ERROR.md)
+ * Read a task file by type (init, plan, done, error)
  */
 export async function readTask(
   config: ServerConfig,

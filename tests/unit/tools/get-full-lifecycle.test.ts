@@ -128,7 +128,7 @@ describe('get_full_lifecycle Tool (TDD)', () => {
       expect(result.lifecycle.outcome.type).toBe('error');
       expect(result.lifecycle.outcome.content).toContain('Failed during step 2');
       expect(result.summary.progress_percentage).toBeLessThan(100);
-      expect(result.summary.final_status).toBe('failed');
+      expect(result.summary.final_status).toBe('error');
     });
 
     it('should return lifecycle for pending task without completion', async () => {
@@ -178,7 +178,7 @@ describe('get_full_lifecycle Tool (TDD)', () => {
       expect(result.lifecycle.plan.exists).toBe(false);
       expect(result.lifecycle.outcome.type).toBe('pending');
       expect(result.summary.progress_percentage).toBe(0);
-      expect(result.summary.final_status).toBe('not_started');
+      expect(result.summary.final_status).toBe('new');
     });
 
     it('should exclude progress when include_progress is false', async () => {
@@ -235,7 +235,7 @@ describe('get_full_lifecycle Tool (TDD)', () => {
       expect(result.lifecycle.init.exists).toBe(false);
       expect(result.lifecycle.plan.exists).toBe(false);
       expect(result.lifecycle.outcome.type).toBe('pending');
-      expect(result.summary.final_status).toBe('not_found');
+      expect(result.summary.final_status).toBe('error');
     });
 
     it('should validate required parameters', async () => {

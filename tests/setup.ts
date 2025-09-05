@@ -13,9 +13,9 @@ jest.setTimeout(10000);
 (global as any).testUtils = {
   // Create mock ServerConfig
   createMockConfig: (overrides = {}) => ({
-    commDir: '/test/comm',
-    archiveDir: '/test/archive',
-    logDir: '/test/logs',
+    commDir: './test/comm',
+    archiveDir: './test/archive',
+    logDir: './test/logs',
     enableArchiving: true,
     // Core components - mocked for testing
     connectionManager: new ConnectionManager(),
@@ -32,7 +32,7 @@ jest.setTimeout(10000);
   createMockTask: (overrides = {}) => ({
     name: 'test-task',
     agent: 'test-agent',
-    path: '/test/comm/test-agent/test-task',
+    path: './test/comm/test-agent/test-task',
     hasInit: false,
     hasPlan: false,
     hasDone: false,

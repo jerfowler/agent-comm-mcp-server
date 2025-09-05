@@ -121,10 +121,10 @@ describe('MCP Server Integration Tests', () => {
 
       // Delegate task
       const delegateResult = await createTaskTool(config, {
-        targetAgent,
+        agent: targetAgent,
         taskName: 'create-api-endpoint',
         content: '# Task: Create User API\\n\\n## Requirements\\n- POST /api/users',
-        sourceAgent
+        sourceAgent: sourceAgent
       });
 
       expect(delegateResult.success).toBe(true);

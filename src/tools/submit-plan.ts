@@ -41,7 +41,7 @@ function validatePlanFormat(content: string): PlanValidationResult {
   if (checkboxes.length > 0) {
     const lines = content.split('\n');
     checkboxes.forEach((checkbox) => {
-      const checkboxLineIndex = lines.findIndex(l => l.includes(checkbox.replace(/\*/g, '\\*')));
+      const checkboxLineIndex = lines.findIndex(l => l.includes(checkbox));
       if (checkboxLineIndex >= 0) {
         const nextLines = lines.slice(checkboxLineIndex + 1, checkboxLineIndex + 6);
         const hasDetails = nextLines.some(l => l.trim().startsWith('-') && !l.trim().startsWith('- [ ]'));

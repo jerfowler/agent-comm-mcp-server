@@ -617,6 +617,94 @@ describe('ConnectionManager', () => {
     });
   });
 
+  describe('getConnectionCount', () => {
+    it('should return 0 for empty connections', () => {
+      expect(connectionManager.getConnectionCount()).toBe(0);
+    });
+
+    it('should return correct count for single connection', () => {
+      connectionManager.register(mockConnection);
+      expect(connectionManager.getConnectionCount()).toBe(1);
+    });
+
+    it('should return correct count for multiple connections', () => {
+      const connections: Connection[] = [
+        {
+          id: 'conn-1',
+          agent: 'agent-1',
+          startTime: new Date(),
+          metadata: {}
+        },
+        {
+          id: 'conn-2',
+          agent: 'agent-2',
+          startTime: new Date(),
+          metadata: {}
+        },
+        {
+          id: 'conn-3',
+          agent: 'agent-3',
+          startTime: new Date(),
+          metadata: {}
+        }
+      ];
+
+      connections.forEach(conn => connectionManager.register(conn));
+      expect(connectionManager.getConnectionCount()).toBe(3);
+    });
+
+    it('should update count when connections are removed', () => {
+      connectionManager.register(mockConnection);
+      expect(connectionManager.getConnectionCount()).toBe(1);
+      
+      connectionManager.unregister('test-connection-1');
+      expect(connectionManager.getConnectionCount()).toBe(0);
+    });
+  });
+
+  describe('hasConnection', () => {
+    it('should return false for empty connections', () => {
+      expect(connectionManager.hasConnection('any-id')).toBe(false);
+    });
+
+    it('should return false for non-existent connection', () => {
+      connectionManager.register(mockConnection);
+      expect(connectionManager.hasConnection('non-existent')).toBe(false);
+    });
+
+    it('should return true for existing connection', () => {
+      connectionManager.register(mockConnection);
+      expect(connectionManager.hasConnection('test-connection-1')).toBe(true);
+    });
+
+    it('should return false after connection is removed', () => {
+      connectionManager.register(mockConnection);
+      expect(connectionManager.hasConnection('test-connection-1')).toBe(true);
+      
+      connectionManager.unregister('test-connection-1');
+      expect(connectionManager.hasConnection('test-connection-1')).toBe(false);
+    });
+
+    it('should handle empty string connection ID', () => {
+      expect(connectionManager.hasConnection('')).toBe(false);
+      
+      const emptyIdConnection: Connection = {
+        id: '',
+        agent: 'test-agent',
+        startTime: new Date(),
+        metadata: {}
+      };
+      
+      connectionManager.register(emptyIdConnection);
+      expect(connectionManager.hasConnection('')).toBe(true);
+    });
+
+    it('should handle null and undefined connection IDs', () => {
+      expect(connectionManager.hasConnection(null as any)).toBe(false);
+      expect(connectionManager.hasConnection(undefined as any)).toBe(false);
+    });
+  });
+
   describe('Integration scenarios', () => {
     it('should handle complete connection lifecycle', () => {
       // Register connection

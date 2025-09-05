@@ -370,5 +370,28 @@ describe('TaskContextManager', () => {
       await expect(contextManager.startTask('non-existent-task', mockConnection))
         .rejects.toThrow('Task not found or not accessible');
     });
+
+    it('should handle task without PROGRESS.md file', async () => {
+      // Test coverage for progress being undefined when no PROGRESS.md exists
+      const taskId = 'simple-task';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      // Create only INIT.md, no PROGRESS.md
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Simple Task\n\nThis task has no progress file.'
+      );
+
+      const result = await contextManager.checkAssignedTasks(mockConnection);
+      const task = result.find(t => t.taskId === taskId);
+      
+      expect(task).toBeDefined();
+      expect(task!.title).toBe('Simple Task');
+      expect(task!.status).toBe('new');
+      // Progress should be undefined when no PROGRESS.md exists
+      expect(task!.progress).toBeUndefined();
+    });
   });
 });

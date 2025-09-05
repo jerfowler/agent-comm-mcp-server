@@ -33,7 +33,7 @@ export async function getFullLifecycle(
       outcome: { type: 'pending' }
     },
     summary: {
-      final_status: 'not_found'
+      final_status: 'error'
     }
   };
 
@@ -53,7 +53,7 @@ export async function getFullLifecycle(
     const stats = await fs.stat(initPath);
     result.lifecycle.init.created_at = stats.mtime.toISOString();
     initTime = stats.mtime;
-    result.summary.final_status = 'not_started';
+    result.summary.final_status = 'new';
   }
 
   // Check PLAN.md file
@@ -73,7 +73,7 @@ export async function getFullLifecycle(
     }
   }
 
-  // Check for completion files (DONE.md or ERROR.md)
+  // Check for completion files (done or error)
   const donePath = path.join(taskPath, 'DONE.md');
   const errorPath = path.join(taskPath, 'ERROR.md');
 
@@ -90,7 +90,7 @@ export async function getFullLifecycle(
     const stats = await fs.stat(errorPath);
     result.lifecycle.outcome.completed_at = stats.mtime.toISOString();
     completionTime = stats.mtime;
-    result.summary.final_status = 'failed';
+    result.summary.final_status = 'error';
   }
 
   // Calculate summary metrics

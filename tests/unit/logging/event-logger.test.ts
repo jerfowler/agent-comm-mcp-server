@@ -861,4 +861,93 @@ describe('EventLogger', () => {
       await expect(timeoutPromise).rejects.toThrow('Timeout waiting for 10 operations');
     });
   });
+
+  describe('MockTimerDependency Coverage Tests', () => {
+    it('should test MockTimerDependency setTimeout and clearTimeout methods', () => {
+      const mockTimer = new MockTimerDependency();
+      
+      // Test setTimeout functionality
+      let callbackExecuted = false;
+      const callback = () => { callbackExecuted = true; };
+      
+      const timeoutId = mockTimer.setTimeout(callback, 1000);
+      expect(typeof timeoutId).toBe('number');
+      expect(mockTimer.getPendingCount()).toBe(1);
+      
+      // Test clearTimeout functionality
+      mockTimer.clearTimeout(timeoutId);
+      expect(mockTimer.getPendingCount()).toBe(0);
+      
+      // Callback should not have been executed since we cleared it
+      expect(callbackExecuted).toBe(false);
+    });
+
+    it('should test MockTimerDependency flushNext method', () => {
+      const mockTimer = new MockTimerDependency();
+      const callbacks: string[] = [];
+      
+      // Add multiple timers
+      mockTimer.setTimeout(() => callbacks.push('first'), 100);
+      mockTimer.setTimeout(() => callbacks.push('second'), 200);
+      mockTimer.setTimeout(() => callbacks.push('third'), 300);
+      
+      expect(mockTimer.getPendingCount()).toBe(3);
+      
+      // Test flushNext - should execute only the first timer
+      mockTimer.flushNext();
+      expect(callbacks).toEqual(['first']);
+      expect(mockTimer.getPendingCount()).toBe(2);
+      
+      // Test flushNext again - should execute the second timer
+      mockTimer.flushNext();
+      expect(callbacks).toEqual(['first', 'second']);
+      expect(mockTimer.getPendingCount()).toBe(1);
+    });
+
+    it('should test clearTimeout with non-existent id', () => {
+      const mockTimer = new MockTimerDependency();
+      
+      // Add a timer
+      mockTimer.setTimeout(() => {}, 100);
+      expect(mockTimer.getPendingCount()).toBe(1);
+      
+      // Try to clear a non-existent timer ID
+      mockTimer.clearTimeout(9999);
+      
+      // Should still have the original timer
+      expect(mockTimer.getPendingCount()).toBe(1);
+    });
+  });
+
+  describe('EventLogger waitForWriteQueueEmpty timeout coverage', () => {
+    it('should timeout when waiting for write queue that never empties', async () => {
+      const mockTimer = new MockTimerDependency();
+      const testLogger = new EventLogger(testDir, mockTimer);
+      
+      // For this test, we need to manually trigger the queue state that won't empty
+      // Use reflection to access private properties for testing
+      const testLoggerAny = testLogger as any;
+      
+      // Manually set the write queue to have items to simulate busy state
+      testLoggerAny.writeQueue = ['fake-entry'];
+      testLoggerAny.isWriting = false; // Not actively writing but queue not empty
+      
+      // Start the waitForWriteQueueEmpty with a short timeout
+      const waitPromise = testLogger.waitForWriteQueueEmpty(50);
+      
+      // The mockTimer should now have the timeout timer
+      // Flush it to trigger the timeout
+      mockTimer.flushNext();
+      
+      await expect(waitPromise).rejects.toThrow('Timeout waiting for write queue to empty after 50ms');
+    });
+
+    it('should test flushNext with empty timer queue', () => {
+      const mockTimer = new MockTimerDependency();
+      
+      // Should handle empty queue gracefully
+      expect(() => mockTimer.flushNext()).not.toThrow();
+      expect(mockTimer.getPendingCount()).toBe(0);
+    });
+  });
 });

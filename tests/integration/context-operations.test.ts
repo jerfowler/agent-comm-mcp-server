@@ -110,7 +110,7 @@ describe('MCP Server Context-Based Operations', () => {
       
       // Always uses context format with auto-injection
       const result = await createTaskTool(config, {
-        targetAgent,
+        agent: targetAgent,
         taskName,
         content: originalContent
       });
@@ -135,9 +135,10 @@ describe('MCP Server Context-Based Operations', () => {
       // Content should contain the original text plus protocol instructions
       expect(taskContent).toContain('Dashboard Task');
       expect(taskContent).toContain('Implement user dashboard');
-      expect(taskContent).toContain('MCP Protocol Instructions');
+      expect(taskContent).toContain('MCP Task Management Protocol');
       expect(taskContent).toContain('check_assigned_tasks()');
-      expect(taskContent).toContain('Never reference file paths');
+      // Protocol context is injected - verify key workflow instructions are present
+      expect(taskContent).toContain('CRITICAL: Task Workflow');
     });
 
     it('should provide helpful context information in delegated tasks', async () => {
@@ -146,13 +147,13 @@ describe('MCP Server Context-Based Operations', () => {
       const originalContent = '# API Task\n\nImplement REST API endpoints';
       
       const result = await createTaskTool(config, {
-        targetAgent,
+        agent: targetAgent,
         taskName,
         content: originalContent
       });
       
       expect(result.success).toBe(true);
-      expect(result.message).toBe(`Task successfully delegated to ${targetAgent}`);
+      expect(result.message).toContain(`Task successfully created for ${targetAgent}`);
       
       // Verify protocol instructions were added
       const agentDir = path.join(commDir, targetAgent);
@@ -168,8 +169,8 @@ describe('MCP Server Context-Based Operations', () => {
       // Content should contain the original text plus protocol instructions (always injected)
       expect(taskContent).toContain('API Task'); 
       expect(taskContent).toContain('Implement REST API endpoints');
-      expect(taskContent).toContain('MCP Protocol Instructions');
-      expect(taskContent).toContain('Todo System for Task Tracking');
+      expect(taskContent).toContain('MCP Task Management Protocol');
+      expect(taskContent).toContain('MANDATORY: Todo Integration');
     });
   });
 
@@ -393,7 +394,7 @@ Train and deploy machine learning model for user behavior prediction
       });
       
       expect(delegateResult).not.toHaveProperty('path'); // Context format doesn't expose paths
-      expect(delegateResult).toHaveProperty('filename'); // Only exposes filename
+      expect(delegateResult).toHaveProperty('taskId'); // Only exposes task identifier
       expect(delegateResult).toHaveProperty('message');
       expect(delegateResult).toHaveProperty('taskCreated');
       expect(delegateResult.success).toBe(true);

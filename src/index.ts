@@ -322,7 +322,7 @@ function setupServerHandlers(server: Server, config: any): void {
           },
           {
             name: 'read_task',
-            description: 'Read a task file (INIT.md, PLAN.md, DONE.md, ERROR.md)',
+            description: 'Read a task file by type (init, plan, done, error)',
             inputSchema: {
               type: 'object',
               properties: {
@@ -337,7 +337,7 @@ function setupServerHandlers(server: Server, config: any): void {
                 file: { 
                   type: 'string',
                   enum: ['INIT', 'PLAN', 'DONE', 'ERROR'],
-                  description: 'File type to read (without .md extension)'
+                  description: 'File type to read (init, plan, done, error)'
                 }
               },
               required: ['agent', 'task', 'file']
@@ -360,7 +360,7 @@ function setupServerHandlers(server: Server, config: any): void {
                 file: { 
                   type: 'string',
                   enum: ['PLAN', 'DONE', 'ERROR'],
-                  description: 'File type to write (without .md extension)'
+                  description: 'File type to write (plan, done, error)'
                 },
                 content: { 
                   type: 'string',
