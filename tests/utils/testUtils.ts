@@ -8,21 +8,21 @@ import { EventLogger, MockTimerDependency } from '../../src/logging/EventLogger.
 
 export const testUtils = {
   // Create mock ServerConfig
-  createMockConfig: (overrides = {}) => {
+  createMockConfig: (overrides: any = {}) => {
+    const baseLogDir = overrides.logDir || './test/logs';
+    
     const defaults = {
       commDir: './test/comm',
       archiveDir: './test/archive', 
-      logDir: './test/logs',
+      logDir: baseLogDir,
       enableArchiving: true,
       // Core components - properly typed for testing
       connectionManager: new ConnectionManager(),
+      eventLogger: new EventLogger(baseLogDir, new MockTimerDependency()),
     };
     
-    // Apply overrides first
+    // Apply overrides, but ensure eventLogger uses correct logDir
     const config = { ...defaults, ...overrides };
-    
-    // Create eventLogger with the correct logDir (after overrides applied)
-    config.eventLogger = new EventLogger(config.logDir, new MockTimerDependency());
     
     return config;
   },
