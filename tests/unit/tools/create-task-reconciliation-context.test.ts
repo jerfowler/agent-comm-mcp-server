@@ -3,7 +3,7 @@
  * Ensures agents receive proper guidance about mark_complete reconciliation options
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { createTask } from '../../../src/tools/create-task.js';
 import { ServerConfig } from '../../../src/types.js';
 import { testUtils } from '../../utils/testUtils.js';

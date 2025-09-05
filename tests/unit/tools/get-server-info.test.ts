@@ -25,6 +25,7 @@ describe('get-server-info tool', () => {
     mockConfig = {
       commDir: './comm',
       archiveDir: './comm/.archive',
+      logDir: './logs',
       enableArchiving: true,
       connectionManager: {
         register: jest.fn(),

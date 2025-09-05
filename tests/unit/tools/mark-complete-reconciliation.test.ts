@@ -3,7 +3,7 @@
  * Tests for intelligent handling of unchecked plan items
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { markComplete } from '../../../src/tools/mark-complete.js';
 import { ServerConfig } from '../../../src/types.js';
 import { testUtils } from '../../utils/testUtils.js';
@@ -30,6 +30,7 @@ describe('Mark Complete Reconciliation Logic', () => {
     mockConfig = {
       commDir: testDir,
       archiveDir: path.join(testDir, 'archive'),
+      logDir: path.join(testDir, 'logs'),
       enableArchiving: true,
       connectionManager: new ConnectionManager(),
       eventLogger: new EventLogger(testDir, {

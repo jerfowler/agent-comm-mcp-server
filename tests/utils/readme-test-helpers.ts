@@ -6,10 +6,10 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { testUtils } from './testUtils.js';
-import { createTaskTool } from '../../src/tools/create-task.js';
+import { createTask } from '../../src/tools/create-task.js';
 import { trackTaskProgress } from '../../src/tools/track-task-progress.js';
 import { getFullLifecycle } from '../../src/tools/get-full-lifecycle.js';
-import { archiveTasks } from '../../src/tools/archive-tasks.js';
+import { archiveTasksTool } from '../../src/tools/archive-tasks.js';
 
 export interface PromptScenario {
   name: string;
@@ -66,7 +66,7 @@ export const readmeTestHelpers = {
     taskContent: string = 'Implement a responsive dashboard component with real-time data updates and dark mode support'
   ) {
     // Simulate what Claude would do: use create_task or delegate_task
-    const result = await createTaskTool(context.config, {
+    const result = await createTask(context.config, {
       agent,
       taskName: 'implement-dashboard-component',
       content: `# Task: Dashboard Implementation\n\n## Requirements\n${taskContent}\n\n## Additional Notes\nInclude proper TypeScript interfaces and comprehensive tests.`,
@@ -99,7 +99,7 @@ export const readmeTestHelpers = {
     // Simulate what Claude would do: use track_task_progress
     const result = await trackTaskProgress(context.config, {
       agent,
-      task_id: taskId
+      taskId: taskId
     });
 
     return result;
@@ -128,7 +128,7 @@ export const readmeTestHelpers = {
     // Simulate what Claude would do: use get_full_lifecycle
     const result = await getFullLifecycle(context.config, {
       agent,
-      task_id: taskId
+      taskId: taskId
     });
 
     return result;
@@ -159,7 +159,7 @@ export const readmeTestHelpers = {
     // Simulate what Claude would do: create multiple tasks in parallel
     const results = await Promise.all(
       tasks.map(task => 
-        createTaskTool(context.config, {
+        createTask(context.config, {
           agent: task.agent,
           taskName: task.taskName,
           content: task.content,
@@ -176,7 +176,7 @@ export const readmeTestHelpers = {
    */
   async simulateArchiveTasksPrompt(context: TaskScenarioContext) {
     // Simulate what Claude would do: use archive_tasks
-    const result = await archiveTasks(context.config, {
+    const result = await archiveTasksTool(context.config, {
       mode: 'completed'
     });
 

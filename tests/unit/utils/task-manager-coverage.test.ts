@@ -28,6 +28,7 @@ describe('Task Manager Coverage Tests', () => {
     config = {
       commDir: commDir,
       archiveDir: archiveDir,
+      logDir: path.join(testDir, 'logs'),
       enableArchiving: true,
       connectionManager: {
         register: jest.fn(),

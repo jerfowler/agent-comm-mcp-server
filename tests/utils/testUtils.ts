@@ -11,6 +11,7 @@ export const testUtils = {
   createMockConfig: (overrides = {}) => ({
     commDir: '/test/comm',
     archiveDir: '/test/archive',
+    logDir: '/test/logs',
     enableArchiving: true,
     // Core components - properly typed for testing
     connectionManager: new ConnectionManager(),

@@ -36,6 +36,7 @@ const mockFs = fs as jest.Mocked<typeof fs>;
 const testConfig: ServerConfig = {
   commDir: '/test/comm',
   archiveDir: '/test/archive',
+  logDir: '/test/logs',
   enableArchiving: true,
   connectionManager: {
     register: jest.fn(),

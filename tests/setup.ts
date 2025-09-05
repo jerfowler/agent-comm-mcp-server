@@ -15,6 +15,7 @@ jest.setTimeout(10000);
   createMockConfig: (overrides = {}) => ({
     commDir: '/test/comm',
     archiveDir: '/test/archive',
+    logDir: '/test/logs',
     enableArchiving: true,
     // Core components - mocked for testing
     connectionManager: new ConnectionManager(),

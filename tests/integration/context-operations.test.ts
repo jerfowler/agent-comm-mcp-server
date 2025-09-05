@@ -312,6 +312,7 @@ Train and deploy machine learning model for user behavior prediction
       const invalidConfig = {
         commDir: '/nonexistent/directory',
         archiveDir: '/nonexistent/archive',
+        logDir: '/nonexistent/logs',
         enableArchiving: false,
         connectionManager: config.connectionManager,
         eventLogger: config.eventLogger

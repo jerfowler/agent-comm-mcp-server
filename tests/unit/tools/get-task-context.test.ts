@@ -15,6 +15,7 @@ describe('get-task-context tool', () => {
   const mockConfig = {
     commDir: '/test/comm',
     archiveDir: '/test/archive',
+    logDir: '/test/logs',
     enableArchiving: false,
     connectionManager: {
       register: jest.fn(),
@@ -97,7 +98,10 @@ describe('get-task-context tool', () => {
 
   it('should handle missing configuration components', async () => {
     const badConfig = {
-      commDir: '/test/comm'
+      commDir: '/test/comm',
+      archiveDir: '/test/archive',
+      logDir: '/test/logs',
+      enableArchiving: false
       // Missing connectionManager and eventLogger
     };
 

@@ -24,6 +24,7 @@ function createMockServerConfig(): ServerConfig {
   return {
     commDir: '/test/comm',
     archiveDir: '/test/archive',
+    logDir: '/test/logs',
     enableArchiving: false,
     connectionManager: {
       register: jest.fn(),

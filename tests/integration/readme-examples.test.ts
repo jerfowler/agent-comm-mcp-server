@@ -3,7 +3,7 @@
  * Tests that each README prompt example works as intended
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { readmeTestHelpers, TaskScenarioContext } from '../utils/readme-test-helpers.js';
 
 describe('README Example Scenarios', () => {

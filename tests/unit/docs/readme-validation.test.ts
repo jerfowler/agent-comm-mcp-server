@@ -3,7 +3,7 @@
  * Validates that code examples and tool references are accurate
  */
 
-import { jest, describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 
