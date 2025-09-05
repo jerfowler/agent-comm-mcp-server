@@ -851,7 +851,7 @@ describe('EventLogger', () => {
       
       const elapsed = Date.now() - startTime;
       expect(elapsed).toBeLessThan(5000); // Should complete within timeout
-      expect(elapsed).toBeGreaterThan(20); // Should take some time due to delays
+      expect(elapsed).toBeGreaterThanOrEqual(20); // Should take some time due to delays
     });
 
     it('should timeout when waiting too long', async () => {

@@ -139,6 +139,135 @@ describe('Task Manager Coverage Tests', () => {
     });
   });
 
+  describe('Archive modes - Lines 163-170', () => {
+    it('should archive all tasks with mode "all"', async () => {
+      // Create test tasks for multiple agents
+      const agent1Dir = path.join(commDir, 'agent1');
+      const agent2Dir = path.join(commDir, 'agent2');
+      await fs.ensureDir(path.join(agent1Dir, 'task1'));
+      await fs.ensureDir(path.join(agent1Dir, 'task2'));
+      await fs.ensureDir(path.join(agent2Dir, 'task3'));
+      
+      await fs.writeFile(path.join(agent1Dir, 'task1', 'INIT.md'), '# Task 1');
+      await fs.writeFile(path.join(agent1Dir, 'task2', 'INIT.md'), '# Task 2');
+      await fs.writeFile(path.join(agent1Dir, 'task2', 'DONE.md'), '# Completed');
+      await fs.writeFile(path.join(agent2Dir, 'task3', 'INIT.md'), '# Task 3');
+
+      const options: ArchiveOptions = {
+        mode: 'all',
+        dryRun: false
+      };
+
+      const result = await archiveTasks(config, options);
+      
+      expect(result.archived).not.toBeNull();
+      expect(result.archived!.total).toBe(3);
+      
+      // Verify all tasks were archived regardless of completion status
+      expect(await fs.pathExists(path.join(agent1Dir, 'task1'))).toBe(false);
+      expect(await fs.pathExists(path.join(agent1Dir, 'task2'))).toBe(false);
+      expect(await fs.pathExists(path.join(agent2Dir, 'task3'))).toBe(false);
+    });
+
+    it('should archive tasks by specific agent with mode "by-agent"', async () => {
+      // Create test tasks for multiple agents
+      const agent1Dir = path.join(commDir, 'target-agent');
+      const agent2Dir = path.join(commDir, 'other-agent');
+      await fs.ensureDir(path.join(agent1Dir, 'task1'));
+      await fs.ensureDir(path.join(agent2Dir, 'task2'));
+      
+      await fs.writeFile(path.join(agent1Dir, 'task1', 'INIT.md'), '# Target Task');
+      await fs.writeFile(path.join(agent2Dir, 'task2', 'INIT.md'), '# Other Task');
+
+      const options: ArchiveOptions = {
+        mode: 'by-agent',
+        agent: 'target-agent',
+        dryRun: false
+      };
+
+      const result = await archiveTasks(config, options);
+      
+      expect(result.archived).not.toBeNull();
+      expect(result.archived!.total).toBe(1);
+      
+      // Verify only target agent's task was archived
+      expect(await fs.pathExists(path.join(agent1Dir, 'task1'))).toBe(false);
+      expect(await fs.pathExists(path.join(agent2Dir, 'task2'))).toBe(true);
+    });
+  });
+
+  describe('Archive task filtering - Line 151', () => {
+    it('should skip new task files during archiving', async () => {
+      // Create agent directory and a loose .md file (which gets isNew: true)
+      const agentDir = path.join(commDir, 'test-agent');
+      await fs.ensureDir(agentDir);
+      
+      // Create a new task file directly in agent directory (not in a task folder)
+      await fs.writeFile(path.join(agentDir, 'new-task.md'), '# New task file');
+      
+      // Also create a proper task directory to verify it would be processed
+      const taskDir = path.join(agentDir, 'proper-task');
+      await fs.ensureDir(taskDir);
+      await fs.writeFile(path.join(taskDir, 'INIT.md'), '# Proper task');
+      await fs.writeFile(path.join(taskDir, 'DONE.md'), '# Completed');
+
+      const options: ArchiveOptions = {
+        mode: 'completed',
+        dryRun: false
+      };
+
+      const result = await archiveTasks(config, options);
+      
+      // Should archive only the completed proper task, skip the new file
+      expect(result.archived).not.toBeNull();
+      expect(result.archived!.total).toBe(1);
+      expect(await fs.pathExists(path.join(agentDir, 'new-task.md'))).toBe(true); // New file stays
+      expect(await fs.pathExists(taskDir)).toBe(false); // Proper task archived
+    });
+  });
+
+  describe('Restore tasks filtering - Lines 237-248', () => {
+    it('should handle missing archive type directories', async () => {
+      // Create archive with only completed directory, missing pending
+      const timestamp = '2024-01-01T12-00-00';
+      const archiveBasePath = path.join(archiveDir, timestamp);
+      await fs.ensureDir(path.join(archiveBasePath, 'completed'));
+      
+      const result = await restoreTasks(config, timestamp);
+      
+      expect(result.restored.total).toBe(0);
+    });
+
+    it('should filter tasks by name during restore', async () => {
+      // Create archive with multiple tasks
+      const timestamp = '2024-01-02T12-00-00';
+      const archiveBasePath = path.join(archiveDir, timestamp);
+      const completedPath = path.join(archiveBasePath, 'completed', 'test-agent');
+      await fs.ensureDir(completedPath);
+      
+      // Create tasks with different names
+      await fs.ensureDir(path.join(completedPath, 'target-task-123'));
+      await fs.ensureDir(path.join(completedPath, 'other-task-456'));
+      await fs.writeFile(path.join(completedPath, 'target-task-123', 'INIT.md'), '# Target');
+      await fs.writeFile(path.join(completedPath, 'other-task-456', 'INIT.md'), '# Other');
+
+      const result = await restoreTasks(config, timestamp, 'test-agent', 'target-task');
+      
+      expect(result.restored.total).toBe(1);
+      expect(await fs.pathExists(path.join(commDir, 'test-agent', 'target-task-123'))).toBe(true);
+      expect(await fs.pathExists(path.join(commDir, 'test-agent', 'other-task-456'))).toBe(false);
+    });
+  });
+
+  describe('Restore tasks error handling - Line 227', () => {
+    it('should throw error when archive timestamp does not exist', async () => {
+      const nonExistentTimestamp = '2024-01-01T00-00-00';
+      
+      await expect(restoreTasks(config, nonExistentTimestamp))
+        .rejects.toThrow(`Archive not found: ${nonExistentTimestamp}`);
+    });
+  });
+
   describe('cleanupArchives function - Lines 330-359', () => {
     it('should return 0 when archiving is disabled - Line 330-332', async () => {
       const result = await cleanupArchives(configDisabled, 30);
