@@ -16,10 +16,12 @@ import { writeTask } from '../../src/tools/write-task.js';
 import { archiveTasksTool } from '../../src/tools/archive-tasks.js';
 import { ConnectionManager } from '../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../src/logging/EventLogger.js';
+import { testUtils } from '../utils/testUtils.js';
+import { ServerConfig } from '../../src/types.js';
 
 describe('State Transition Regression Test', () => {
   let testDir: string;
-  let config: any;
+  let config: ServerConfig;
   let connectionManager: ConnectionManager;
   let eventLogger: EventLogger;
 
@@ -32,13 +34,13 @@ describe('State Transition Regression Test', () => {
     connectionManager = new ConnectionManager();
     eventLogger = new EventLogger(testDir);
     
-    config = {
+    config = testUtils.createMockConfig({
       commDir,
       archiveDir,
       enableArchiving: true,
       connectionManager,
       eventLogger
-    };
+    });
 
     await fs.ensureDir(commDir);
     await fs.ensureDir(archiveDir);

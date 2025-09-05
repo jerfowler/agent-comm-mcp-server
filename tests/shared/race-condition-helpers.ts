@@ -106,7 +106,7 @@ export class FileSystemTestHelper {
   /**
    * Safe JSON read with retry
    */
-  static async readJsonSafe<T = any>(filePath: string): Promise<T> {
+  static async readJsonSafe<T = unknown>(filePath: string): Promise<T> {
     return await this.waitForFileSystem(async () => {
       if (!await fs.pathExists(filePath)) {
         throw new Error(`JSON file ${filePath} does not exist`);
@@ -114,9 +114,10 @@ export class FileSystemTestHelper {
       
       const content = await fs.readFile(filePath, 'utf-8');
       try {
-        return JSON.parse(content);
+        return JSON.parse(content) as T;
       } catch (parseError) {
-        throw new Error(`Failed to parse JSON from ${filePath}: ${parseError}`);
+        const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+        throw new Error(`Failed to parse JSON from ${filePath}: ${errorMessage}`);
       }
     });
   }
@@ -143,7 +144,7 @@ export class FileSystemTestHelper {
   /**
    * Create test directory structure with retry
    */
-  static async createTestStructure(baseDir: string, structure: Record<string, any>): Promise<void> {
+  static async createTestStructure(baseDir: string, structure: Record<string, unknown>): Promise<void> {
     await this.ensureDirectoryExists(baseDir);
 
     for (const [name, content] of Object.entries(structure)) {
@@ -151,7 +152,7 @@ export class FileSystemTestHelper {
 
       if (typeof content === 'object' && content !== null) {
         // It's a directory
-        await this.createTestStructure(fullPath, content);
+        await this.createTestStructure(fullPath, content as Record<string, unknown>);
       } else {
         // It's a file
         await this.writeFileAtomic(fullPath, String(content));
@@ -352,7 +353,6 @@ export class TestEnvironment {
    * Get path within test environment
    */
   getPath(...segments: string[]): string {
-    const path = require('path');
     return path.join(this.tempDir, ...segments);
   }
 

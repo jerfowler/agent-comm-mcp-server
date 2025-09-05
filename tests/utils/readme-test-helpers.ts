@@ -20,7 +20,7 @@ export interface PromptScenario {
 }
 
 export interface TaskScenarioContext {
-  config: any;
+  config: ReturnType<typeof testUtils.createMockConfig>;
   tempDir: string;
   commDir: string;
   agents: string[];

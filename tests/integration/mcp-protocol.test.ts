@@ -21,23 +21,23 @@ describe('MCP Protocol Integration', () => {
   }, 30000);
 
   describe('Server Initialization', () => {
-    it('should create MCP server with proper structure', () => {
+    it('should create MCP server with proper structure', async () => {
       const server = createMCPServer();
       
       expect(server).toBeDefined();
       expect(typeof server.setRequestHandler).toBe('function');
       expect(typeof server.close).toBe('function');
       
-      server.close();
+      await server.close();
     });
 
-    it('should configure request handlers during setup', () => {
+    it('should configure request handlers during setup', async () => {
       const server = createMCPServer();
       
       // Server should be properly configured with handlers
       expect(server).toBeDefined();
       
-      server.close();
+      await server.close();
     });
   });
 
@@ -58,14 +58,14 @@ describe('MCP Protocol Integration', () => {
   });
 
   describe('Configuration Integration', () => {
-    it('should respect environment configuration in MCP context', () => {
+    it('should respect environment configuration in MCP context', async () => {
       // Set test environment
       process.env['AGENT_COMM_DIR'] = testEnv.tempDir;
       
       const server = createMCPServer();
       expect(server).toBeDefined();
       
-      server.close();
+      await server.close();
       
       // Clean up
       delete process.env['AGENT_COMM_DIR'];
@@ -73,7 +73,7 @@ describe('MCP Protocol Integration', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle invalid configuration gracefully', () => {
+    it('should handle invalid configuration gracefully', async () => {
       const originalDir = process.env['AGENT_COMM_DIR'];
       
       try {
@@ -85,7 +85,7 @@ describe('MCP Protocol Integration', () => {
         try {
           const server = result();
           expect(server).toBeDefined();
-          server.close();
+          await server.close();
         } catch (error) {
           expect(error).toBeInstanceOf(Error);
         }

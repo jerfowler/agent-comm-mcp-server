@@ -60,7 +60,7 @@ describe('Server Startup Lifecycle', () => {
   });
 
   describe('Configuration Validation', () => {
-    it('should validate comm directory exists', async () => {
+    it('should validate comm directory exists', () => {
       // Test with non-existent directory
       process.env['AGENT_COMM_DIR'] = '/non/existent/path';
       
@@ -92,7 +92,7 @@ describe('Server Startup Lifecycle', () => {
   });
 
   describe('Dependency Validation', () => {
-    it('should have all required tools available', async () => {
+    it('should have all required tools available', () => {
       const server = createMCPServer();
       
       // Server should be created with tools registered
@@ -105,10 +105,22 @@ describe('Server Startup Lifecycle', () => {
 
     it('should import all core components successfully', () => {
       // These imports should work without errors
-      expect(() => require('../../src/core/ConnectionManager.js')).not.toThrow();
-      expect(() => require('../../src/logging/EventLogger.js')).not.toThrow();
-      expect(() => require('../../src/utils/file-system.js')).not.toThrow();
-      expect(() => require('../../src/utils/validation.js')).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('../../src/core/ConnectionManager.js');
+      }).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('../../src/logging/EventLogger.js');
+      }).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('../../src/utils/file-system.js');
+      }).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('../../src/utils/validation.js');
+      }).not.toThrow();
     });
 
     it('should validate fs-extra usage patterns', async () => {
@@ -173,7 +185,7 @@ describe('Server Startup Lifecycle', () => {
       // Note: This tests the actual initialization path
       expect(server).toBeDefined();
       
-      server.close();
+      void server.close();
     });
 
     it('should initialize EventLogger with correct path', async () => {
@@ -183,10 +195,10 @@ describe('Server Startup Lifecycle', () => {
       const logsPath = path.join(tempDir, 'logs');
       expect(await fs.pathExists(logsPath)).toBe(true);
       
-      server.close();
+      void server.close();
     });
 
-    it('should set up all request handlers', async () => {
+    it('should set up all request handlers', () => {
       const server = createMCPServer();
       
       // Server should have completed initialization
@@ -216,7 +228,7 @@ describe('Server Shutdown Lifecycle', () => {
     await fs.remove(tempDir);
   });
 
-  it('should handle graceful shutdown', async () => {
+  it('should handle graceful shutdown', () => {
     // Test that server can be properly closed
     expect(() => server.close()).not.toThrow();
   });
@@ -227,7 +239,7 @@ describe('Server Shutdown Lifecycle', () => {
     await fs.writeFile(testFile, 'test');
     
     // Close server
-    server.close();
+    void server.close();
     
     // Test file should still exist (we don't auto-cleanup user data)
     expect(await fs.pathExists(testFile)).toBe(true);

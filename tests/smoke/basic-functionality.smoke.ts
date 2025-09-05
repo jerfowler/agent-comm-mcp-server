@@ -37,8 +37,10 @@ describe('Smoke Tests - Basic Functionality', () => {
 
       for (const tool of tools) {
         const toolPath = `../../src/tools/${tool}.js`;
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        expect(() => require(toolPath)).not.toThrow();
+        expect(() => {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          require(toolPath);
+        }).not.toThrow();
       }
     });
 
@@ -52,14 +54,18 @@ describe('Smoke Tests - Basic Functionality', () => {
       ];
 
       for (const component of components) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        expect(() => require(component)).not.toThrow();
+        expect(() => {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          require(component);
+        }).not.toThrow();
       }
     });
 
     it('should import main server without errors', () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      expect(() => require('../../src/index.js')).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('../../src/index.js');
+      }).not.toThrow();
     });
   });
 
@@ -105,13 +111,23 @@ describe('Smoke Tests - Basic Functionality', () => {
 
   describe('MCP SDK Dependencies', () => {
     it('should import MCP server components', () => {
-      expect(() => require('@modelcontextprotocol/sdk/server/index.js')).not.toThrow();
-      expect(() => require('@modelcontextprotocol/sdk/server/stdio.js')).not.toThrow();
-      expect(() => require('@modelcontextprotocol/sdk/types.js')).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('@modelcontextprotocol/sdk/server/index.js');
+      }).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('@modelcontextprotocol/sdk/server/stdio.js');
+      }).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('@modelcontextprotocol/sdk/types.js');
+      }).not.toThrow();
     });
 
     it('should create basic MCP structures', () => {
-      const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { Server } = require('@modelcontextprotocol/sdk/server/index.js') as { Server: new (info: { name: string; version: string }, options: { capabilities: unknown }) => unknown };
       
       expect(() => new Server({ name: 'test', version: '1.0.0' }, { capabilities: {} })).not.toThrow();
     });
@@ -130,14 +146,18 @@ describe('Smoke Tests - Basic Functionality', () => {
 
   describe('Package Dependencies', () => {
     it('should have all required dependencies available', () => {
-      const packageJson = require('../../package.json');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const packageJson = require('../../package.json') as { dependencies: Record<string, string> };
       
       // Check that key dependencies are defined in package.json
       expect(packageJson.dependencies['@modelcontextprotocol/sdk']).toBeDefined();
       expect(packageJson.dependencies['fs-extra']).toBeDefined();
       
       // Verify fs-extra can be imported (MCP SDK might have module resolution issues in Jest)
-      expect(() => require('fs-extra')).not.toThrow();
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        require('fs-extra');
+      }).not.toThrow();
     });
   });
 
@@ -156,11 +176,12 @@ describe('Smoke Tests - Basic Functionality', () => {
     it('should handle missing environment variables gracefully', () => {
       delete process.env['AGENT_COMM_DIR'];
       
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { getConfig } = require('../../src/config.js');
       
       // Should either use defaults or throw meaningful error
       try {
-        const config = getConfig();
+        const config = (getConfig as () => unknown)();
         expect(config).toBeDefined();
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
@@ -174,7 +195,8 @@ describe('Smoke Tests - Basic Functionality', () => {
         process.env['AGENT_COMM_DIR'] = tempDir;
         process.env['AGENT_COMM_ENABLE_ARCHIVING'] = 'true';
         
-        const { getConfig, validateConfig } = require('../../src/config.js');
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { getConfig, validateConfig } = require('../../src/config.js') as { getConfig: () => unknown; validateConfig: (config: unknown) => void };
         const config = getConfig();
         
         expect(() => validateConfig(config)).not.toThrow();
@@ -186,14 +208,16 @@ describe('Smoke Tests - Basic Functionality', () => {
 
   describe('Error Handling Patterns', () => {
     it('should have proper error classes available', () => {
-      const { AgentCommError } = require('../../src/types.js');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { AgentCommError } = require('../../src/types.js') as { AgentCommError: new (msg: string, code: string) => Error };
       
       expect(AgentCommError).toBeDefined();
       expect(() => new AgentCommError('test', 'TEST_ERROR')).not.toThrow();
     });
 
     it('should handle common error scenarios', () => {
-      const { AgentCommError } = require('../../src/types.js');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { AgentCommError } = require('../../src/types.js') as { AgentCommError: new (msg: string, code: string) => Error & { code: string } };
       
       const error = new AgentCommError('Test error', 'TEST_ERROR');
       expect(error.message).toBe('Test error');

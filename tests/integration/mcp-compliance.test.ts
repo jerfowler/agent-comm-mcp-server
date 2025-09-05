@@ -17,6 +17,7 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals';
 import { getServerInfo } from '../../src/config.js';
 import { AgentCommError, ServerConfig } from '../../src/types.js';
+import { testUtils } from '../utils/testUtils.js';
 import fs from 'fs-extra';
 import path from 'path';
 import * as os from 'os';
@@ -59,7 +60,7 @@ describe('MCP Protocol Compliance Tests', () => {
     // Create temporary directory for tests
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mcp-compliance-test-'));
     
-    config = (global as any).testUtils.createMockConfig({
+    config = testUtils.createMockConfig({
       commDir: path.join(tempDir, 'comm'),
       archiveDir: path.join(tempDir, 'comm', '.archive'),
       enableArchiving: true
@@ -340,7 +341,7 @@ describe('MCP Protocol Compliance Tests', () => {
       expect(serverInfo.name).toBe('agent-comm');
     });
 
-    test('should validate resource listing format', async () => {
+    test('should validate resource listing format', () => {
       // Test all tools are available by calling them
       for (const toolName of EXPECTED_TOOLS) {
         expect(EXPECTED_TOOL_SCHEMAS).toHaveProperty(toolName);

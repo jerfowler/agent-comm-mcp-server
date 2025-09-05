@@ -13,11 +13,13 @@ import { checkTasks } from '../../src/tools/check-tasks.js';
 import { createTaskTool } from '../../src/tools/create-task.js';
 import { writeTask } from '../../src/tools/write-task.js';
 import { readTask } from '../../src/tools/read-task.js';
+import { testUtils } from '../utils/testUtils.js';
+import { ServerConfig } from '../../src/types.js';
 
 describe('MCP Server Tools Integration', () => {
   let testDir: string;
   let commDir: string;
-  let config: any;
+  let config: ServerConfig;
 
   beforeAll(async () => {
     // Create temporary directory for tests
@@ -33,7 +35,7 @@ describe('MCP Server Tools Integration', () => {
       maxContentLength: 1000000
     });
     
-    console.log(`Test environment setup in: ${testDir}`);
+    // Test environment setup completed
   });
 
   afterAll(async () => {

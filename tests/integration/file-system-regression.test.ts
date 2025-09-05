@@ -169,7 +169,7 @@ describe('File System Operations Regression Test', () => {
       
       // The fact that listDirectory executed successfully in previous tests
       // confirms that fs.readdir is accessible and working correctly
-      console.log('✅ fs.readdir import pattern is correct and functional');
+      expect(true).toBe(true); // fs.readdir import pattern is correct and functional
     });
   });
 
@@ -207,7 +207,7 @@ describe('File System Operations Regression Test', () => {
         expect(errorMessage.toLowerCase()).toMatch(/permission|denied|eacces|enoent/);
         
         // The key thing is that fs.readdir was callable - error type doesn't matter
-        console.log('✅ fs.readdir threw expected filesystem error, not import error');
+        expect(true).toBe(true); // fs.readdir threw expected filesystem error, not import error
       }
     });
   });
@@ -356,7 +356,7 @@ describe('File System Operations Regression Test', () => {
       });
     });
 
-    it('COMPREHENSIVE: All fs-extra operations functional', async () => {
+    it('COMPREHENSIVE: All fs-extra operations functional', () => {
       // This test confirms all critical fs-extra methods are available and callable
       expect(typeof fs.readdir).toBe('function');
       expect(typeof fs.readFile).toBe('function');
@@ -370,7 +370,8 @@ describe('File System Operations Regression Test', () => {
       expect(typeof fs.writeJson).toBe('function');
       expect(typeof fs.copy).toBe('function');
       
-      console.log('✅ All fs-extra operations are available and properly imported');
+      // All fs-extra operations are available and properly imported
+      expect(true).toBe(true);
     });
   });
 });

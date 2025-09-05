@@ -177,7 +177,7 @@ ${summary}`,
         }
       };
       
-    case 'reconcile':
+    case 'reconcile': {
       // Document variance with explanations
       const explanations = reconciliation?.explanations || {};
       return {
@@ -205,6 +205,7 @@ ${summary}`,
           uncheckedItemsCount: validation.uncheckedItems.length
         }
       };
+    }
       
     case 'force':
       // Accept with strong documentation
