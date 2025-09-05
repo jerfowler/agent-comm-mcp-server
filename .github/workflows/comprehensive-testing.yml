@@ -140,6 +140,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
+      - name: Generate version files
+        run: npm run prebuild
+        
       - name: E2E tests
         run: npm run test:e2e
         env:
@@ -173,6 +176,9 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
+        
+      - name: Generate version files
+        run: npm run prebuild
         
       - name: Performance benchmarks
         run: npm run test:e2e -- --testNamePattern="Performance"
@@ -231,6 +237,9 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
+        
+      - name: Generate version files
+        run: npm run prebuild
         
       - name: Generate comprehensive coverage report
         run: npm run test:all
