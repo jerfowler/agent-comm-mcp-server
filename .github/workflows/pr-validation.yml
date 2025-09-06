@@ -32,13 +32,15 @@ jobs:
           PR_TITLE="${{ github.event.pull_request.title }}"
           echo "Validating PR title: $PR_TITLE"
           
-          # Check if title follows conventional commit format
-          if echo "$PR_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([^)]+\))?(!)?: .+'; then
+          # Strip optional emoji prefix and check conventional commit format
+          CLEANED_TITLE=$(echo "$PR_TITLE" | sed -E 's/^[🚀✨🐛🔧📝♻️⚡🎨🏗️🔨🎯🎉🔥🌟💥🚨🔒📋🎭🌍🎪🏆📊⭐🔔🎁🎈🎂🎊🎄🎃🎅🦋🌈🔮💎🎭🎪🔔🎁🎈🎂🎊🎄🎃🎅🦋🌈🔮💎]+\s*//']
+          
+          if echo "$CLEANED_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([^)]+\))?(!)?: .+'; then
             echo "✅ PR title follows conventional commit format"
             echo "valid_title=true" >> $GITHUB_OUTPUT
             
-            # Extract type for labeling
-            TYPE=$(echo "$PR_TITLE" | sed -E 's/^([a-z]+)(\([^)]+\))?(!)?: .*/\1/')
+            # Extract type for labeling from cleaned title
+            TYPE=$(echo "$CLEANED_TITLE" | sed -E 's/^([a-z]+)(\([^)]+\))?(!)?: .*/\1/')
             echo "pr_type=$TYPE" >> $GITHUB_OUTPUT
             
             # Check for breaking change indicator

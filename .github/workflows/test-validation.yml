@@ -199,7 +199,7 @@ jobs:
     name: Performance Validation
     runs-on: ubuntu-latest
     needs: build-validation
-    timeout-minutes: 15
+    timeout-minutes: 10
     
     steps:
       - name: Checkout code
@@ -224,9 +224,9 @@ jobs:
           echo "Testing memory usage..."
           
           # Start server in background and measure memory
-          timeout 30s node dist/index.js > /dev/null 2>&1 &
+          timeout 10s node dist/index.js > /dev/null 2>&1 &
           SERVER_PID=$!
-          sleep 5
+          sleep 2
           
           # Check if process is running and get memory usage
           if kill -0 $SERVER_PID 2>/dev/null; then
@@ -303,22 +303,22 @@ jobs:
             
             echo "Coverage: Lines: ${LINES}%, Branches: ${BRANCHES}%, Functions: ${FUNCTIONS}%"
             
-            # Check thresholds (from jest.config.mjs)
-            if (( $(echo "$LINES >= 95" | bc -l) )); then
+            # Check thresholds using awk instead of bc for portability
+            if awk "BEGIN {exit !($LINES >= 95)}"; then
               echo "✅ Lines coverage: ${LINES}% (≥95%)"
             else
               echo "❌ Lines coverage: ${LINES}% (<95%)"
               exit 1
             fi
             
-            if (( $(echo "$BRANCHES >= 85" | bc -l) )); then
+            if awk "BEGIN {exit !($BRANCHES >= 85)}"; then
               echo "✅ Branches coverage: ${BRANCHES}% (≥85%)"
             else
               echo "❌ Branches coverage: ${BRANCHES}% (<85%)"
               exit 1
             fi
             
-            if (( $(echo "$FUNCTIONS >= 96" | bc -l) )); then
+            if awk "BEGIN {exit !($FUNCTIONS >= 96)}"; then
               echo "✅ Functions coverage: ${FUNCTIONS}% (≥96%)"
             else
               echo "❌ Functions coverage: ${FUNCTIONS}% (<96%)"
