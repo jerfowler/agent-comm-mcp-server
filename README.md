@@ -306,6 +306,43 @@ The project uses **build-time version injection** - version info is automaticall
 
 ---
 
+## Contributing & Git Workflow
+
+This project uses a **Git Feature Branch Workflow** with branch protection on `main`:
+
+### Quick Contribution Guide
+```bash
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes and test
+npm run ci  # Run all quality checks
+
+# Push and create PR
+git push -u origin feature/your-feature-name
+gh pr-create  # Uses our custom alias
+
+# Check status
+gh pr-checks
+```
+
+### Branch Protection
+- ✅ **No direct commits** to `main` - all changes via PRs
+- ✅ **Required reviews** - at least 1 approval needed  
+- ✅ **All tests must pass** - comprehensive CI pipeline
+- ✅ **Up-to-date branches** - must be current with main
+
+See **[CONTRIBUTING.md](./CONTRIBUTING.md)** and **[BRANCHING.md](./BRANCHING.md)** for complete workflow details.
+
+### GitHub CLI Aliases
+Pre-configured aliases for streamlined workflow:
+- `gh pr-create` - Create PR with auto-fill and self-assignment
+- `gh pr-checks` - Check PR status and CI results
+- `gh pr-merge` - Squash merge with branch cleanup
+- `gh feature` - Create branch from GitHub issue
+
+---
+
 ## Support
 
 **Questions?** Check the issues tab or create a new issue with:

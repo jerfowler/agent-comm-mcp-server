@@ -148,8 +148,8 @@ describe('README Documentation Validation', () => {
           lines.forEach(line => {
             const trimmed = line.trim();
             if (trimmed && !trimmed.startsWith('#')) {
-              // Should start with valid command patterns
-              expect(trimmed).toMatch(/^(npm|npx|node|claude|mkdir|cd|ls|cat|echo|git|cp|chmod|curl|python3?|\.\/scripts)/);
+              // Should start with valid command patterns (including GitHub CLI)
+              expect(trimmed).toMatch(/^(npm|npx|node|claude|mkdir|cd|ls|cat|echo|git|gh|cp|chmod|curl|python3?|\.\/scripts)/);
             }
           });
         }
@@ -209,8 +209,8 @@ describe('README Documentation Validation', () => {
         bash.split('\n').forEach(line => {
           const trimmed = line.trim();
           if (trimmed && !trimmed.startsWith('#')) {
-            // Should start with valid command patterns
-            expect(trimmed).toMatch(/^(npm|npx|node|claude|mkdir|cd|ls|cat|echo|git|cp|chmod|curl|python3?|\.\/scripts)/);
+            // Should start with valid command patterns (including GitHub CLI)
+            expect(trimmed).toMatch(/^(npm|npx|node|claude|mkdir|cd|ls|cat|echo|git|gh|cp|chmod|curl|python3?|\.\/scripts)/);
           }
         });
       });
@@ -312,6 +312,7 @@ describe('README Documentation Validation', () => {
       expect(readmeContent).toMatch(/### Setup with Claude/);
       expect(readmeContent).toMatch(/## How It Works/);
       expect(readmeContent).toMatch(/## Real-World Usage Examples/);
+      expect(readmeContent).toMatch(/## Contributing & Git Workflow/);
     });
 
     it('should have consistent formatting', () => {
