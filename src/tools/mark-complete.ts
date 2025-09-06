@@ -6,6 +6,7 @@
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, CompletionResult } from '../core/TaskContextManager.js';
 import { validateRequiredString } from '../utils/validation.js';
+import { verifyAgentWork, DEFAULT_CONFIDENCE_THRESHOLD } from '../core/agent-work-verifier.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
 
@@ -287,6 +288,83 @@ export async function markComplete(
   // Ensure required components exist
   if (!config.connectionManager || !config.eventLogger) {
     throw new Error('Configuration missing required components: connectionManager and eventLogger');
+  }
+
+  // **MANDATORY VERIFICATION GATE** - Prevents false success reporting
+  // This addresses Issue #11: Agent False Success Reporting
+  if (status === 'DONE') {
+    try {
+      const verificationResult = await verifyAgentWork(config, agent);
+      
+      // Validate confidence score
+      if (typeof verificationResult.confidence !== 'number' || 
+          isNaN(verificationResult.confidence)) {
+        throw new Error('Invalid verification confidence score returned');
+      }
+      
+      // Block DONE completion if verification confidence is too low
+      if (verificationResult.confidence < DEFAULT_CONFIDENCE_THRESHOLD) {
+        const errorDetails = [
+          `VERIFICATION FAILED: ${verificationResult.confidence}% confidence (minimum ${DEFAULT_CONFIDENCE_THRESHOLD}% required)`,
+          '',
+          '⚠️ CRITICAL: Cannot mark task as DONE without sufficient work evidence',
+          '',
+          'Verification Warnings:',
+          ...verificationResult.warnings.map(warning => `  • ${warning}`),
+          '',
+          'Evidence Summary:',
+          `  • Files modified: ${verificationResult.evidence.filesModified}`,
+          `  • Tests run: ${verificationResult.evidence.testsRun ? 'Yes' : 'No'}`,
+          `  • MCP progress tracking: ${verificationResult.evidence.mcpProgress ? 'Yes' : 'No'}`,
+          `  • Time spent: ${Math.round(verificationResult.evidence.timeSpent / 60)} minutes`,
+          '',
+          'Recommendation:',
+          `  ${verificationResult.recommendation}`,
+          '',
+          'Next Steps:',
+          '  1. Use ERROR status if the task genuinely failed',
+          '  2. Provide actual work evidence (file changes, progress updates)',
+          '  3. Use mcp__agent_comm__report_progress to document real work',
+          '  4. Ensure PLAN.md exists with checked items for progress tracking'
+        ].join('\n');
+        
+        throw new Error(errorDetails);
+      }
+      
+      // Log successful verification for audit trail
+      await config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'verification_gate_passed',
+        agent,
+        success: true,
+        duration: 0, // Verification time is negligible for logging purposes
+        metadata: {
+          confidence: verificationResult.confidence,
+          evidenceFilesModified: verificationResult.evidence.filesModified,
+          evidenceTestsRun: verificationResult.evidence.testsRun,
+          evidenceMcpProgress: verificationResult.evidence.mcpProgress,
+          evidenceTimeSpent: verificationResult.evidence.timeSpent,
+          warningCount: verificationResult.warnings.length
+        }
+      });
+      
+    } catch (verificationError) {
+      // Log verification failure for security audit
+      await config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'verification_gate_failed',
+        agent,
+        success: false,
+        duration: 0, // Error occurred quickly
+        error: {
+          message: verificationError instanceof Error ? verificationError.message : String(verificationError),
+          name: verificationError instanceof Error ? verificationError.name : 'VerificationError'
+        }
+      });
+      
+      // Re-throw to prevent task completion
+      throw verificationError;
+    }
   }
   
   // Validate completion against plan checkboxes

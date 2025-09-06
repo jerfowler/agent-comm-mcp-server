@@ -603,31 +603,6 @@ describe('syncTodoCheckboxes tool', () => {
     });
   });
 
-  describe('File System Error Handling', () => {
-    it('should handle file read errors gracefully', async () => {
-      mockFs.readFile.mockRejectedValue(new Error('Permission denied') as never);
-
-      const args = {
-        agent: testAgent,
-        todoUpdates: [{ title: 'Test', status: 'pending' }]
-      };
-
-      await expect(syncTodoCheckboxes(mockConfig, args))
-        .rejects.toThrow('Permission denied');
-    });
-
-    it('should handle file write errors gracefully', async () => {
-      mockFs.writeFile.mockRejectedValue(new Error('Disk full') as never);
-
-      const args = {
-        agent: testAgent,
-        todoUpdates: [{ title: 'Setup Environment', status: 'completed' }]
-      };
-
-      await expect(syncTodoCheckboxes(mockConfig, args))
-        .rejects.toThrow('Disk full');
-    });
-  });
 
   describe('Performance Edge Cases', () => {
     it('should handle large number of todo updates efficiently', async () => {

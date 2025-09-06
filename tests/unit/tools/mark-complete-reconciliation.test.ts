@@ -27,16 +27,16 @@ describe('Mark Complete Reconciliation Logic', () => {
   beforeEach(async () => {
     // Setup agent work verifier mock - return high confidence for tests
     mockAgentVerifier.verifyAgentWork.mockResolvedValue({
+      success: true,
       confidence: 100,
       evidence: {
         filesModified: 5,
         testsRun: true,
-        mcpProgressTracking: true,
-        timeSpentMinutes: 30
+        mcpProgress: true,
+        timeSpent: 30
       },
       warnings: [],
-      recommendation: 'Work verified successfully',
-      nextSteps: []
+      recommendation: 'Work verified successfully'
     });
     // Create temporary test directory
     testDir = await fs.mkdtemp(path.join(tmpdir(), 'mark-complete-test-'));
