@@ -1,0 +1,274 @@
+# PR Validation Workflow
+# Validates PR titles, commits, and automatically adds labels
+
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [ main, develop ]
+
+permissions:
+  pull-requests: write
+  contents: read
+  issues: read
+
+jobs:
+  validate-pr:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          
+      - name: Validate PR Title
+        id: validate_title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "Validating PR title: $PR_TITLE"
+          
+          # Check if title follows conventional commit format
+          if echo "$PR_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([^)]+\))?(!)?: .+'; then
+            echo "✅ PR title follows conventional commit format"
+            echo "valid_title=true" >> $GITHUB_OUTPUT
+            
+            # Extract type for labeling
+            TYPE=$(echo "$PR_TITLE" | sed -E 's/^([a-z]+)(\([^)]+\))?(!)?: .*/\1/')
+            echo "pr_type=$TYPE" >> $GITHUB_OUTPUT
+            
+            # Check for breaking change indicator
+            if echo "$PR_TITLE" | grep -q '!:'; then
+              echo "breaking_change=true" >> $GITHUB_OUTPUT
+            else
+              echo "breaking_change=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ PR title does not follow conventional commit format"
+            echo "Expected format: type(scope): description"
+            echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build"
+            echo "valid_title=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Validate Commit Messages
+        id: validate_commits
+        run: |
+          echo "Validating commit messages..."
+          
+          # Get list of commits in this PR
+          git log --pretty=format:"%s" origin/${{ github.event.pull_request.base.ref }}..${{ github.event.pull_request.head.sha }} > commits.txt
+          
+          INVALID_COMMITS=""
+          VALID_COUNT=0
+          TOTAL_COUNT=0
+          
+          while IFS= read -r commit_msg; do
+            TOTAL_COUNT=$((TOTAL_COUNT + 1))
+            echo "Checking: $commit_msg"
+            
+            if echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([^)]+\))?(!)?: .+'; then
+              VALID_COUNT=$((VALID_COUNT + 1))
+              echo "  ✅ Valid"
+            else
+              INVALID_COMMITS="$INVALID_COMMITS\n- $commit_msg"
+              echo "  ❌ Invalid"
+            fi
+          done < commits.txt
+          
+          echo "valid_commits=$VALID_COUNT" >> $GITHUB_OUTPUT
+          echo "total_commits=$TOTAL_COUNT" >> $GITHUB_OUTPUT
+          
+          if [ "$VALID_COUNT" -eq "$TOTAL_COUNT" ]; then
+            echo "all_commits_valid=true" >> $GITHUB_OUTPUT
+            echo "✅ All commit messages follow conventional format"
+          else
+            echo "all_commits_valid=false" >> $GITHUB_OUTPUT
+            echo "invalid_commits<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$INVALID_COMMITS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "⚠️ Some commit messages don't follow conventional format"
+          fi
+          
+      - name: Check for Breaking Changes
+        id: check_breaking
+        run: |
+          echo "Checking for breaking changes..."
+          
+          # Check commits for BREAKING CHANGE in body
+          BREAKING_FOUND=false
+          
+          git log --pretty=format:"%B" origin/${{ github.event.pull_request.base.ref }}..${{ github.event.pull_request.head.sha }} | \
+            grep -i "breaking change" && BREAKING_FOUND=true
+          
+          # Also check PR title for breaking change indicator
+          if [ "${{ steps.validate_title.outputs.breaking_change }}" = "true" ]; then
+            BREAKING_FOUND=true
+          fi
+          
+          echo "has_breaking_changes=$BREAKING_FOUND" >> $GITHUB_OUTPUT
+          
+          if [ "$BREAKING_FOUND" = "true" ]; then
+            echo "⚠️ Breaking changes detected"
+          else
+            echo "✅ No breaking changes detected"
+          fi
+          
+      - name: Auto-label PR
+        if: always()
+        run: |
+          echo "Adding labels to PR..."
+          
+          # Remove existing type labels first
+          gh pr edit ${{ github.event.pull_request.number }} \
+            --remove-label "enhancement" \
+            --remove-label "bug" \
+            --remove-label "documentation" \
+            --remove-label "maintenance" \
+            --remove-label "performance" \
+            --remove-label "testing" \
+            --remove-label "breaking-change" || true
+          
+          LABELS=""
+          
+          # Add type-based labels
+          case "${{ steps.validate_title.outputs.pr_type }}" in
+            "feat")
+              LABELS="$LABELS,enhancement"
+              ;;
+            "fix")
+              LABELS="$LABELS,bug"
+              ;;
+            "docs")
+              LABELS="$LABELS,documentation"
+              ;;
+            "chore"|"ci"|"build")
+              LABELS="$LABELS,maintenance"
+              ;;
+            "perf")
+              LABELS="$LABELS,performance"
+              ;;
+            "test")
+              LABELS="$LABELS,testing"
+              ;;
+          esac
+          
+          # Add breaking change label
+          if [ "${{ steps.check_breaking.outputs.has_breaking_changes }}" = "true" ]; then
+            LABELS="$LABELS,breaking-change"
+          fi
+          
+          # Add validation status labels
+          if [ "${{ steps.validate_title.outputs.valid_title }}" = "false" ] || \
+             [ "${{ steps.validate_commits.outputs.all_commits_valid }}" = "false" ]; then
+            LABELS="$LABELS,needs-work"
+          else
+            LABELS="$LABELS,ready-for-review"
+          fi
+          
+          # Remove leading comma and apply labels
+          LABELS=$(echo "$LABELS" | sed 's/^,//')
+          if [ -n "$LABELS" ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "$LABELS"
+          fi
+          
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Comment on PR
+        if: steps.validate_title.outputs.valid_title == 'false' || steps.validate_commits.outputs.all_commits_valid == 'false'
+        run: |
+          cat > comment.md << 'EOF'
+          ## 🤖 PR Validation Report
+          
+          ### Issues Found
+          
+          EOF
+          
+          if [ "${{ steps.validate_title.outputs.valid_title }}" = "false" ]; then
+            cat >> comment.md << 'EOF'
+          ❌ **PR Title Format**
+          
+          Your PR title doesn't follow the conventional commit format.
+          
+          **Expected format:** `type(scope): description`
+          
+          **Valid types:** feat, fix, docs, style, refactor, perf, test, chore, ci, build
+          
+          **Examples:**
+          - `feat: add new MCP tool for task delegation`
+          - `fix(validation): resolve null pointer in task creation`
+          - `docs: update API reference for v0.7.0`
+          
+          EOF
+          fi
+          
+          if [ "${{ steps.validate_commits.outputs.all_commits_valid }}" = "false" ]; then
+            cat >> comment.md << 'EOF'
+          ❌ **Commit Message Format**
+          
+          Some commits don't follow conventional format:
+          
+          ${{ steps.validate_commits.outputs.invalid_commits }}
+          
+          **To fix:** Use interactive rebase to update commit messages:
+          ```bash
+          git rebase -i HEAD~n  # where n is number of commits
+          ```
+          
+          EOF
+          fi
+          
+          cat >> comment.md << 'EOF'
+          ### Guidelines
+          
+          📖 See [CONTRIBUTING.md](./CONTRIBUTING.md) for complete commit message guidelines.
+          
+          💡 **Tip:** Use `feat:` for new features, `fix:` for bug fixes, `docs:` for documentation changes.
+          
+          🔄 This comment will be updated automatically when you fix the issues.
+          EOF
+          
+          # Post comment
+          gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md
+          
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set validation status
+        run: |
+          if [ "${{ steps.validate_title.outputs.valid_title }}" = "true" ] && \
+             [ "${{ steps.validate_commits.outputs.all_commits_valid }}" = "true" ]; then
+            echo "✅ PR validation passed"
+            exit 0
+          else
+            echo "❌ PR validation failed"
+            echo "Please fix the issues mentioned above"
+            exit 1
+          fi
+          
+  # Summary job for status checks
+  validation-summary:
+    name: PR Validation Summary
+    runs-on: ubuntu-latest
+    needs: validate-pr
+    if: always()
+    
+    steps:
+      - name: Validation Success
+        if: needs.validate-pr.result == 'success'
+        run: |
+          echo "🎉 All PR validations passed!"
+          echo "✅ Title format correct"
+          echo "✅ Commit messages follow convention"
+          
+      - name: Validation Failure
+        if: needs.validate-pr.result == 'failure'
+        run: |
+          echo "❌ PR validation failed"
+          echo "Please check the validation job above for details"
+          echo "Fix the issues and push new commits to retry"
+          exit 1

@@ -1,0 +1,234 @@
+# Automated Release Workflow
+# Triggers on pushes to main branch to create versioned releases
+
+name: Automated Release
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.github/workflows/issue-management.yml'
+      - '.github/workflows/stale-issues.yml'
+      - '.github/workflows/pr-issue-linking.yml'
+
+  # Allow manual triggering for emergency releases
+  workflow_dispatch:
+    inputs:
+      force_type:
+        description: 'Force version bump type (major, minor, patch)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - major
+          - minor
+          - patch
+      dry_run:
+        description: 'Dry run (no actual release)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write  # for creating tags and releases
+  id-token: write  # for npm publish with provenance
+  issues: read     # for linking issues in release notes
+  pull-requests: read  # for linking PRs in release notes
+
+env:
+  NODE_ENV: production
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    # Skip release if commit message contains [skip release]
+    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for commit analysis
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: Install dependencies
+        run: npm ci --production=false
+        
+      - name: Generate version files
+        run: npm run prebuild
+        
+      - name: Run comprehensive CI
+        run: npm run ci:full
+        env:
+          NODE_ENV: test
+          
+      - name: Configure git
+        run: |
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "action@github.com"
+          
+      - name: Analyze and bump version
+        id: version
+        run: |
+          echo "Analyzing commits for version bump..."
+          
+          # Prepare force type argument
+          FORCE_ARG=""
+          if [ -n "${{ github.event.inputs.force_type }}" ]; then
+            FORCE_ARG="--force-type=${{ github.event.inputs.force_type }}"
+          fi
+          
+          # Prepare dry run argument
+          DRY_RUN_ARG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_ARG="--dry-run"
+            echo "dry_run=true" >> $GITHUB_OUTPUT
+          fi
+          
+          # Get current version before bump
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          
+          # Run version bump script
+          if ! node scripts/bump-version.js $FORCE_ARG $DRY_RUN_ARG; then
+            echo "No version bump needed"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Get new version after bump
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            NEW_VERSION=$(node -p "require('./package.json').version")
+            echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "tag_name=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Build for release
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          npm run clean
+          npm run build
+          
+      - name: Run final tests
+        if: steps.version.outputs.should_release == 'true'
+        run: npm run test:all
+        env:
+          NODE_ENV: test
+          
+      - name: Push version changes and tags
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          git push origin main
+          git push origin --tags
+          
+      - name: Generate release notes
+        if: steps.version.outputs.should_release == 'true'
+        id: release_notes
+        run: |
+          echo "Generating release notes..."
+          
+          # Extract changelog section for current version
+          VERSION="${{ steps.version.outputs.new_version }}"
+          
+          # Create release notes from CHANGELOG.md
+          cat > release_notes.md << 'EOF'
+          ## What's Changed
+          
+          ### 📋 Full Changelog
+          
+          See [CHANGELOG.md](https://github.com/jerfowler/agent-comm-mcp-server/blob/main/CHANGELOG.md) for complete details.
+          
+          ### 🔗 Links
+          
+          - **NPM Package**: [@jerfowler/agent-comm-mcp-server](https://www.npmjs.com/package/@jerfowler/agent-comm-mcp-server)
+          - **Documentation**: [README.md](https://github.com/jerfowler/agent-comm-mcp-server/blob/main/README.md)
+          - **Protocol Docs**: [PROTOCOL.md](https://github.com/jerfowler/agent-comm-mcp-server/blob/main/docs/PROTOCOL.md)
+          
+          ### 📦 Installation
+          
+          ```bash
+          npm install @jerfowler/agent-comm-mcp-server
+          ```
+          
+          **Full Changelog**: https://github.com/jerfowler/agent-comm-mcp-server/compare/v${{ steps.version.outputs.current_version }}...v${{ steps.version.outputs.new_version }}
+          EOF
+          
+          echo "release_notes_file=release_notes.md" >> $GITHUB_OUTPUT
+          
+      - name: Create GitHub Release
+        if: steps.version.outputs.should_release == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          release_name: Release ${{ steps.version.outputs.tag_name }}
+          body_path: ${{ steps.release_notes.outputs.release_notes_file }}
+          draft: false
+          prerelease: false
+          
+      - name: Publish to NPM
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          echo "Publishing to NPM..."
+          npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          
+      - name: Verify NPM publication
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          echo "Waiting for NPM propagation..."
+          sleep 30
+          
+          # Verify the package is available
+          npm view @jerfowler/agent-comm-mcp-server@${{ steps.version.outputs.new_version }} version
+          
+      - name: Post-release cleanup
+        if: always() && steps.version.outputs.should_release == 'true'
+        run: |
+          echo "Release completed successfully!"
+          echo "✅ Version: ${{ steps.version.outputs.new_version }}"
+          echo "✅ Tag: ${{ steps.version.outputs.tag_name }}"
+          echo "✅ GitHub Release: Created"
+          echo "✅ NPM Package: Published"
+          
+      - name: Dry run summary
+        if: steps.version.outputs.dry_run == 'true'
+        run: |
+          echo "🧪 DRY RUN COMPLETED"
+          echo "No changes were made to repository or packages"
+          echo "Version would have been bumped from ${{ steps.version.outputs.current_version }}"
+          
+  # Notify of release status  
+  notify:
+    name: Notify Release Status
+    runs-on: ubuntu-latest
+    needs: release
+    if: always()
+    
+    steps:
+      - name: Release Success
+        if: needs.release.result == 'success'
+        run: |
+          echo "🎉 Release workflow completed successfully"
+          
+      - name: Release Failure
+        if: needs.release.result == 'failure'
+        run: |
+          echo "❌ Release workflow failed"
+          echo "Check the logs above for details"
+          exit 1
