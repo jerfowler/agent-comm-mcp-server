@@ -76,13 +76,13 @@ npm run type-check     # TypeScript validation with strict mode
 npm run ci             # Complete CI pipeline (type + lint + test)
 ```
 
-## Git Feature Branch Workflow
+## Git Feature Branch Workflow & Issue Management
 
-This repository uses **Git Feature Branch Workflow** with **branch protection** on `main`. Direct commits to main are **prohibited**.
+This repository uses **Git Feature Branch Workflow** with **branch protection** on `main` and **comprehensive GitHub issue automation**. Direct commits to main are **prohibited**.
 
 ### Branch Protection Rules
 - ✅ **No direct commits** to `main` - all changes via pull requests
-- ✅ **Required code reviews** - at least 1 approval needed
+- ✅ **Required code reviews** - at least 1 approval needed (admin can self-approve)
 - ✅ **Required status checks** - comprehensive CI must pass:
   - `Comprehensive Testing / Quick Validation (Unit + Smoke)`
   - `Comprehensive Testing / Server Lifecycle Testing`
@@ -91,6 +91,38 @@ This repository uses **Git Feature Branch Workflow** with **branch protection** 
   - `Comprehensive Testing / End-to-End Testing` (PR only)
 - ✅ **Up-to-date branches** - must sync with main before merge
 - ✅ **Admin enforcement** - even admins must follow workflow
+
+### GitHub Issue Automation (Complete Implementation)
+
+#### Automated Issue Processing
+- ✅ **Auto-assignment** - All new issues assigned to repository owner (@jerfowler)
+- ✅ **Smart labeling** - Content analysis adds priority and category labels:
+  - `priority:high` for "critical", "urgent", "security" keywords
+  - `priority:medium` for "important", "breaking" keywords  
+  - `category:performance` for performance-related issues
+  - `category:security` for security mentions
+  - `category:testing` for test-related content
+- ✅ **Welcome messages** - First-time contributors receive helpful onboarding
+- ✅ **Issue commands** - Repository owner can use:
+  - `/priority <level>` - Set priority (high, medium, low)
+  - `/branch` - Get development branch suggestions
+  - `/close [reason]` - Close issue with optional reason
+
+#### PR-Issue Integration
+- ✅ **Automatic linking** - PRs auto-link to issues via patterns:
+  - `closes #123`, `fixes #456`, `resolves #789`
+  - Branch names like `issue-123-feature-name`
+  - Issue references like `#123` in PR body/title
+- ✅ **Status updates** - Issues receive PR status notifications:
+  - PR created, converted to draft, ready for review
+  - Automatic closure when linked PR merges
+- ✅ **Resolution tracking** - Merged PRs post completion messages to issues
+
+#### Stale Issue Management  
+- ✅ **30-day lifecycle** - Issues marked stale after 30 days inactivity
+- ✅ **7-day warning** - Auto-closure 7 days after stale marking
+- ✅ **Smart exemptions** - High priority and in-progress issues exempt
+- ✅ **Automated reporting** - Stale items report when 5+ items detected
 
 ### Development Workflow
 
@@ -152,14 +184,47 @@ gh pr-merge                  # Uses: gh pr merge --squash --delete-branch
 
 ### Pre-configured GitHub CLI Aliases
 
-The repository includes these workflow aliases:
+The repository includes comprehensive workflow aliases for both development and issue management:
 
+#### Development Workflow Aliases
 ```bash
 gh pr-create                 # Create PR with auto-fill and self-assignment
 gh pr-checks                 # Check PR CI status and results
 gh pr-merge                  # Squash merge with automatic branch cleanup
 gh feature                   # Create feature branch from GitHub issue
 gh workflow-status           # Check recent workflow runs
+```
+
+#### Issue Management Aliases (11 Total)
+```bash
+# Issue Creation
+gh bug-report                # Create bug report using template
+gh feature-request           # Create feature request using template
+gh doc-issue                 # Create documentation issue using template
+
+# Issue Discovery & Triage
+gh triage                    # View issues needing triage (needs-triage label)
+gh high-priority             # View high-priority issues (priority:high)
+gh my-issues                 # View your assigned issues
+gh stale-issues              # View stale issues awaiting action
+
+# Issue Workflow
+gh start-work 123            # Create development branch from issue #123
+gh issue-list                # List recent open issues (last 20)
+gh issue-search "keyword"    # Search issues by keyword
+gh completed-issues          # View recently completed issues
+```
+
+#### Issue-to-Branch-to-PR Workflow
+```bash
+# Complete workflow example
+gh bug-report                # Create new bug report
+gh triage                    # Review and prioritize
+gh start-work 123            # Create branch: issue-123-bug-description
+# Make fixes...
+gh pr-create                 # Create PR (auto-links to issue #123)
+gh pr-checks                 # Monitor CI status  
+gh pr-merge                  # Merge (auto-closes issue #123)
 ```
 
 ### Branch Naming Conventions
@@ -233,10 +298,41 @@ git push --force-with-lease origin your-branch
 
 ### Documentation References
 
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Complete contribution guide
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Complete contribution guide with issue workflow
 - **[BRANCHING.md](./BRANCHING.md)** - Detailed branching strategy  
 - **[.github/pull_request_template.md](./.github/pull_request_template.md)** - PR template
-- **[.github/ISSUE_TEMPLATE/](./.github/ISSUE_TEMPLATE/)** - Issue templates
+- **[.github/ISSUE_TEMPLATE/](./.github/ISSUE_TEMPLATE/)** - Issue templates (bug_report, feature_request, documentation)
+
+### GitHub Actions Workflows (3 Active)
+
+- **[.github/workflows/issue-management.yml](./.github/workflows/issue-management.yml)** - Issue automation, labeling, assignment
+- **[.github/workflows/pr-issue-linking.yml](./.github/workflows/pr-issue-linking.yml)** - PR-issue linking and auto-closure  
+- **[.github/workflows/stale-issues.yml](./.github/workflows/stale-issues.yml)** - Stale issue lifecycle management
+
+### Implementation Lessons Learned
+
+#### YAML Syntax in GitHub Actions
+- **Problem**: Template literals with newlines cause YAML parsing errors
+- **Solution**: Use array `.join('\n')` approach for multiline strings
+- **Pattern**: Always validate YAML syntax before deploying workflows
+```bash
+python3 -c "import yaml; yaml.safe_load(open('.github/workflows/file.yml'))"
+```
+
+#### GitHub Actions Permissions
+- **Problem**: Workflows failed without explicit permissions
+- **Solution**: Add `permissions:` block to all workflow files
+- **Required**: `issues: write`, `pull-requests: write`, `contents: read`
+
+#### Single-Developer Workflow Adaptation
+- **Challenge**: GitHub doesn't allow self-approval by default
+- **Solution**: Admin can use `--admin` flag to merge: `gh pr merge --squash --delete-branch --admin`
+- **Branch Protection**: Configured to allow admin bypass for single-developer repository
+
+#### Issue Automation Validation
+- **Testing**: Issue #8 validates complete automation pipeline
+- **Results**: Auto-assignment ✅, priority labeling ✅, category detection ✅
+- **Keywords**: "critical" → `priority:high`, "testing" → `category:testing`
 
 ## Tool Categories (17 Total)
 
