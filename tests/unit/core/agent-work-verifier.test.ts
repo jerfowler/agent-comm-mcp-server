@@ -484,7 +484,7 @@ describe('Agent Work Verifier', () => {
       mockFs.listDirectory
         .mockResolvedValueOnce(['active-task']); // List agent tasks but task path won't exist
 
-      mockFs.getStats.mockImplementation((path: string) => {
+      mockFs.getStats.mockImplementation((_path: string) => {
         // Return directory stats but since pathExists returns false for task path,
         // findActiveTaskPath will return null before reaching this
         return Promise.resolve(testUtils.createMockStats({
