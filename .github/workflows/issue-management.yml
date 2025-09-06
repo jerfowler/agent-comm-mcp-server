@@ -1,0 +1,307 @@
+# Issue Management Workflow
+# Comprehensive automation for GitHub issues lifecycle
+
+name: Issue Management
+
+on:
+  issues:
+    types: [opened, labeled, assigned, closed, reopened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  # Process new issues with automation
+  process-new-issue:
+    name: Process New Issue
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Auto-assign to repository owner
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            
+            // Auto-assign to repository owner for single-developer repo
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              assignees: [owner]
+            });
+            
+            console.log(`Auto-assigned issue #${issue.number} to ${owner}`);
+            
+      - name: Add priority labels based on content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = issue.body ? issue.body.toLowerCase() : '';
+            const content = title + ' ' + body;
+            
+            const labelsToAdd = [];
+            
+            // Priority detection
+            if (content.includes('critical') || content.includes('urgent') || content.includes('security')) {
+              labelsToAdd.push('priority:high');
+            } else if (content.includes('important') || content.includes('breaking')) {
+              labelsToAdd.push('priority:medium');
+            }
+            
+            // Category detection beyond template labels
+            if (content.includes('performance') || content.includes('slow') || content.includes('timeout')) {
+              labelsToAdd.push('category:performance');
+            }
+            if (content.includes('security') || content.includes('vulnerability')) {
+              labelsToAdd.push('category:security');
+            }
+            if (content.includes('test') || content.includes('testing') || content.includes('coverage')) {
+              labelsToAdd.push('category:testing');
+            }
+            
+            // Add labels if any were detected
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+              
+              console.log(`Added labels: ${labelsToAdd.join(', ')} to issue #${issue.number}`);
+            }
+            
+      - name: Welcome first-time contributors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const issueAuthor = issue.user.login;
+            
+            // Check if this is the author's first issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: issueAuthor,
+              state: 'all'
+            });
+            
+            // If this is their first issue (and not the repo owner)
+            if (issues.data.length === 1 && issueAuthor !== context.repo.owner) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `👋 Welcome to the Agent Communication MCP Server project, @${issueAuthor}!
+
+Thank you for taking the time to create this ${issue.labels.find(l => l.name === 'bug') ? 'bug report' : issue.labels.find(l => l.name === 'enhancement') ? 'feature request' : 'issue'}. 
+
+🔍 **What happens next:**
+- Your issue has been automatically assigned and labeled
+- I'll review it and provide feedback within 24-48 hours
+- If it's a bug, I'll prioritize it based on severity
+- If it's a feature request, I'll evaluate it against the project roadmap
+
+📚 **Helpful resources:**
+- [Contributing Guide](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/CONTRIBUTING.md)
+- [Protocol Documentation](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/docs/PROTOCOL.md)
+
+Thanks for contributing to making AI agent coordination better! 🚀`
+              });
+              
+              console.log(`Welcomed first-time contributor: ${issueAuthor}`);
+            }
+
+  # Handle issue status updates
+  update-issue-status:
+    name: Update Issue Status
+    runs-on: ubuntu-latest
+    if: github.event.action == 'labeled' || github.event.action == 'closed' || github.event.action == 'reopened'
+    
+    steps:
+      - name: Update status based on labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            
+            if (github.event.action === 'labeled') {
+              const label = context.payload.label;
+              
+              // Remove needs-triage when other priority labels are added
+              if (label.name.startsWith('priority:')) {
+                const labels = issue.labels.map(l => l.name);
+                if (labels.includes('needs-triage')) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    name: 'needs-triage'
+                  });
+                  
+                  console.log(`Removed needs-triage label from issue #${issue.number}`);
+                }
+              }
+              
+              // Add in-progress label if assigned to someone
+              if (label.name === 'in-progress' || issue.assignees.length > 0) {
+                const labels = issue.labels.map(l => l.name);
+                if (!labels.includes('in-progress') && !labels.includes('completed')) {
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    labels: ['in-progress']
+                  });
+                }
+              }
+            }
+            
+            // Handle issue closure
+            if (github.event.action === 'closed') {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['completed']
+              });
+              
+              // Remove in-progress label
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: 'in-progress'
+                });
+              } catch (error) {
+                // Label might not exist, ignore error
+                console.log(`Could not remove in-progress label: ${error.message}`);
+              }
+            }
+            
+            // Handle issue reopening
+            if (github.event.action === 'reopened') {
+              // Remove completed label and add back in-progress
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: 'completed'
+                });
+              } catch (error) {
+                console.log(`Could not remove completed label: ${error.message}`);
+              }
+              
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['in-progress']
+              });
+            }
+
+  # Handle issue comments for commands
+  process-issue-commands:
+    name: Process Issue Commands
+    runs-on: ubuntu-latest
+    if: github.event.action == 'created' && github.event.issue != null
+    
+    steps:
+      - name: Process commands in comments
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment;
+            const issue = context.payload.issue;
+            const commenter = comment.user.login;
+            
+            // Only repo owner can execute commands
+            if (commenter !== context.repo.owner) {
+              return;
+            }
+            
+            const body = comment.body.trim();
+            
+            // /priority <level> command
+            if (body.match(/^\/priority (high|medium|low)$/)) {
+              const level = body.match(/^\/priority (high|medium|low)$/)[1];
+              
+              // Remove existing priority labels
+              const priorityLabels = ['priority:high', 'priority:medium', 'priority:low'];
+              const currentLabels = issue.labels.map(l => l.name);
+              
+              for (const label of priorityLabels) {
+                if (currentLabels.includes(label)) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    name: label
+                  });
+                }
+              }
+              
+              // Add new priority label
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: [`priority:${level}`]
+              });
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `✅ Priority set to **${level}**`
+              });
+            }
+            
+            // /branch command - create development branch
+            if (body === '/branch') {
+              const branchName = `issue-${issue.number}-${issue.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').substring(0, 50)}`;
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `🌿 **Development branch suggestion:**
+
+\`\`\`bash
+gh issue develop ${issue.number} --name ${branchName}
+# or manually:
+git checkout -b ${branchName}
+\`\`\`
+
+This will create a feature branch linked to this issue. When you create a PR from this branch, it will automatically reference this issue.`
+              });
+            }
+            
+            // /close [reason] command  
+            if (body.match(/^\/close/)) {
+              const reason = body.replace(/^\/close\s*/, '') || 'Resolved by maintainer';
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `🔒 **Closing issue:** ${reason}`
+              });
+              
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              });
+            }

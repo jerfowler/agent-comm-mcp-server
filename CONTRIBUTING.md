@@ -208,6 +208,138 @@ gh pr checks
 gh pr merge --squash --delete-branch
 ```
 
+## 🎯 Issue Management Workflow
+
+We use a comprehensive automated issue workflow that integrates with our Git Feature Branch Workflow.
+
+### Issue Types and Templates
+
+Create issues using our specialized templates:
+
+```bash
+# Create a bug report
+gh bug-report
+
+# Create a feature request  
+gh feature-request
+
+# Create a documentation issue
+gh doc-issue
+```
+
+Each template automatically:
+- ✅ **Applies appropriate labels** (`bug`, `enhancement`, `documentation` + `needs-triage`)
+- ✅ **Assigns to repository owner** for immediate visibility
+- ✅ **Generates conventional commit titles** (`bug:`, `feat:`, `docs:`)
+- ✅ **Welcomes first-time contributors** with helpful information
+
+### Automated Issue Processing
+
+When you create an issue, our automation:
+
+1. **Auto-labeling**: Adds priority and category labels based on content
+   - Keywords like "critical", "urgent", "security" → `priority:high`
+   - Performance-related content → `category:performance`
+   - Security mentions → `category:security`
+
+2. **Status tracking**: Issues progress through states:
+   - `needs-triage` → `in-progress` → `has-pr` → `completed`
+
+3. **Smart notifications**: Repository owner gets immediate notification
+
+### Issue-to-Branch-to-PR Workflow
+
+Our recommended workflow for addressing issues:
+
+```bash
+# 1. Find issues to work on
+gh triage                    # View issues needing triage
+gh my-issues                 # View your assigned issues
+gh high-priority             # View high-priority issues
+
+# 2. Start work on an issue
+gh start-work 123            # Creates branch from issue #123
+# or manually:
+gh issue develop 123 --name feature/fix-performance-issue
+
+# 3. Work on the fix
+npm run test:watch           # Keep tests running
+npm run ci                   # Validate before commit
+
+# 4. Create PR (automatically links to issue)
+gh pr-create                 # Auto-links if branch created from issue
+
+# 5. Monitor progress
+gh pr-checks                 # Check CI status
+
+# 6. Merge (automatically closes linked issues)
+gh pr-merge                  # Squash merge with cleanup
+```
+
+### Issue Commands
+
+Repository maintainers can use commands in issue comments:
+
+- **`/priority high`** - Set priority level (`high`, `medium`, `low`)
+- **`/branch`** - Get branch creation suggestions
+- **`/close [reason]`** - Close issue with optional reason
+
+### Issue Search and Management
+
+Efficient issue management with CLI aliases:
+
+```bash
+# Finding issues
+gh issue-list               # List open issues (last 20)
+gh issue-search "keyword"   # Search issues by keyword
+gh triage                   # Issues needing triage
+gh high-priority            # High-priority issues
+gh stale-issues             # Issues marked as stale
+
+# Status tracking
+gh my-issues                # Your assigned issues
+gh completed-issues         # Recently completed issues
+```
+
+### Automated Issue Lifecycle
+
+Issues automatically progress through our workflow:
+
+1. **Created** → Auto-assigned, labeled, welcomed
+2. **In Progress** → Linked to PR, status tracked
+3. **Has PR** → PR status updates posted to issue
+4. **Completed** → Auto-closed when PR merges
+5. **Stale** → Auto-marked after 30 days inactivity
+6. **Closed** → Auto-closed after 7 days stale (unless exempt)
+
+### Priority and Labels
+
+**Priority Levels** (auto-detected from content):
+- `priority:high` - Critical bugs, security issues, urgent features
+- `priority:medium` - Important improvements, breaking changes
+- `priority:low` - Nice-to-have features, minor improvements
+
+**Status Labels** (auto-managed):
+- `needs-triage` - New issue awaiting review
+- `in-progress` - Actively being worked on
+- `has-pr` - Pull request created
+- `completed` - Issue resolved
+- `stale` - Inactive for 30+ days
+
+**Category Labels** (auto-applied):
+- `category:performance` - Performance-related issues
+- `category:security` - Security vulnerabilities or improvements
+- `category:testing` - Test-related improvements
+
+### Issue Exemptions
+
+Issues are exempt from stale marking if they have:
+- `priority:high` or `priority:critical` labels
+- `pinned` label for important ongoing discussions
+- `enhancement:approved` for approved feature requests
+- `bug:confirmed` for verified bugs
+- `in-progress` or `has-pr` for active work
+
 ## 🐛 Reporting Issues
 
 ### Bug Reports
