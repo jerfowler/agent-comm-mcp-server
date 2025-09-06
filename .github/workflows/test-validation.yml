@@ -5,9 +5,9 @@ name: Test Branch Validation
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ test ]
   pull_request:
-    branches: [ develop ]
+    branches: [ test ]
     
   # Manual trigger for validation
   workflow_dispatch:

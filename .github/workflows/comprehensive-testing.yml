@@ -5,9 +5,9 @@ name: Comprehensive Testing
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, test ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, test ]
 
 jobs:
   # Layer 1: Quick validation - fails fast on basic issues

@@ -212,15 +212,15 @@ All PRs automatically run:
 
 ### Branch Strategy
 
-We use a **develop→main** branch strategy with automated versioning:
+We use a **test→main** branch strategy with automated versioning:
 
-- **`develop` branch** - Integration branch for new features
+- **`test` branch** - Integration branch for new features
 - **`main` branch** - Stable release branch with automated versioning
-- **Feature branches** - Created from `develop` for individual features
+- **Feature branches** - Created from `test` for individual features
 
 #### Workflow Overview
 ```
-feature/* → develop (via PR) → main (automated promotion) → npm release
+feature/* → test (via PR) → main (automated promotion) → npm release
 ```
 
 ### Local Development
@@ -240,10 +240,10 @@ npm run ci
 
 ### Feature Development Process
 
-1. **Create feature branch from develop**:
+1. **Create feature branch from test**:
    ```bash
-   git checkout develop
-   git pull origin develop
+   git checkout test
+   git pull origin test
    git checkout -b feature/your-feature-name
    ```
 
@@ -253,14 +253,14 @@ npm run ci
    git add .
    git commit -m "feat: add new functionality"
    
-   # Push and create PR to develop
+   # Push and create PR to test
    git push -u origin feature/your-feature-name
-   gh pr create --base develop --fill
+   gh pr create --base test --fill
    ```
 
-3. **Integration testing**: Once merged to `develop`, comprehensive validation runs
+3. **Integration testing**: Once merged to `test`, comprehensive validation runs
 
-4. **Promotion to main**: Weekly automated promotion from `develop` to `main`
+4. **Promotion to main**: Weekly automated promotion from `test` to `main`
 
 5. **Automated release**: Merging to `main` triggers:
    - Semantic version bump (based on commit types)
@@ -275,10 +275,10 @@ Repository maintainers can trigger manual promotion:
 
 ```bash
 # Trigger promotion workflow
-gh workflow run promote.yml --ref develop
+gh workflow run promote.yml --ref test
 
 # Or force promotion even without changes  
-gh workflow run promote.yml --ref develop -f force_promote=true
+gh workflow run promote.yml --ref test -f force_promote=true
 ```
 
 ### GitHub CLI Workflow

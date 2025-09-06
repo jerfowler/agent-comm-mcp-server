@@ -6,7 +6,7 @@ name: PR Validation
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
-    branches: [ main, develop ]
+    branches: [ main, test ]
 
 permissions:
   pull-requests: write
