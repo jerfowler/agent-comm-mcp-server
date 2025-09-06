@@ -10,6 +10,14 @@
 
 **Author:** Jeremy Fowler
 
+## 📦 Current Version
+
+[![Version](https://img.shields.io/npm/v/@jerfowler/agent-comm-mcp-server?label=NPM%20Version&color=blue)](https://www.npmjs.com/package/@jerfowler/agent-comm-mcp-server)
+[![Release](https://img.shields.io/github/v/release/jerfowler/agent-comm-mcp-server?label=Latest%20Release)](https://github.com/jerfowler/agent-comm-mcp-server/releases/latest)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-green)](./CHANGELOG.md)
+
+**Latest Release:** See [releases](https://github.com/jerfowler/agent-comm-mcp-server/releases) for version history and changes.
+
 ---
 
 ## What This Does
