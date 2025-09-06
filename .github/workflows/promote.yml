@@ -29,7 +29,7 @@ permissions:
   issues: write
 
 env:
-  SOURCE_BRANCH: develop
+  SOURCE_BRANCH: test
   TARGET_BRANCH: main
 
 jobs:

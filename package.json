@@ -43,8 +43,8 @@
     "version:major": "node scripts/bump-version.cjs --force-type=major",
     "release:dry": "npm run version:bump:dry",
     "release:manual": "npm run ci:full && npm run version:bump && git push && git push --tags",
-    "workflow:promote": "gh workflow run promote.yml --ref develop",
-    "workflow:promote:force": "gh workflow run promote.yml --ref develop -f force_promote=true",
+    "workflow:promote": "gh workflow run promote.yml --ref test",
+    "workflow:promote:force": "gh workflow run promote.yml --ref test -f force_promote=true",
     "workflow:release": "gh workflow run release.yml --ref main"
   },
   "keywords": [
