@@ -119,66 +119,11 @@ jobs:
             echo "✅ No breaking changes detected"
           fi
           
-      - name: Auto-label PR
-        if: always()
+      - name: Validation Status
         run: |
-          echo "Adding labels to PR..."
-          
-          # Remove existing type labels first
-          gh pr edit ${{ github.event.pull_request.number }} \
-            --remove-label "enhancement" \
-            --remove-label "bug" \
-            --remove-label "documentation" \
-            --remove-label "maintenance" \
-            --remove-label "performance" \
-            --remove-label "testing" \
-            --remove-label "breaking-change" || true
-          
-          LABELS=""
-          
-          # Add type-based labels
-          case "${{ steps.validate_title.outputs.pr_type }}" in
-            "feat")
-              LABELS="$LABELS,enhancement"
-              ;;
-            "fix")
-              LABELS="$LABELS,bug"
-              ;;
-            "docs")
-              LABELS="$LABELS,documentation"
-              ;;
-            "chore"|"ci"|"build")
-              LABELS="$LABELS,maintenance"
-              ;;
-            "perf")
-              LABELS="$LABELS,performance"
-              ;;
-            "test")
-              LABELS="$LABELS,testing"
-              ;;
-          esac
-          
-          # Add breaking change label
-          if [ "${{ steps.check_breaking.outputs.has_breaking_changes }}" = "true" ]; then
-            LABELS="$LABELS,breaking-change"
-          fi
-          
-          # Add validation status labels
-          if [ "${{ steps.validate_title.outputs.valid_title }}" = "false" ] || \
-             [ "${{ steps.validate_commits.outputs.all_commits_valid }}" = "false" ]; then
-            LABELS="$LABELS,needs-work"
-          else
-            LABELS="$LABELS,ready-for-review"
-          fi
-          
-          # Remove leading comma and apply labels
-          LABELS=$(echo "$LABELS" | sed 's/^,//')
-          if [ -n "$LABELS" ]; then
-            gh pr edit ${{ github.event.pull_request.number }} --add-label "$LABELS"
-          fi
-          
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "✅ PR validation completed"
+          echo "Title validation: ${{ steps.validate_title.outputs.valid_title }}"
+          echo "Commits validation: ${{ steps.validate_commits.outputs.all_commits_valid }}"
           
       - name: Comment on PR
         if: steps.validate_title.outputs.valid_title == 'false' || steps.validate_commits.outputs.all_commits_valid == 'false'
