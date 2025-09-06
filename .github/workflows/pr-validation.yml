@@ -32,8 +32,8 @@ jobs:
           PR_TITLE="${{ github.event.pull_request.title }}"
           echo "Validating PR title: $PR_TITLE"
           
-          # Strip optional emoji prefix and check conventional commit format
-          CLEANED_TITLE=$(echo "$PR_TITLE" | sed -E 's/^[🚀✨🐛🔧📝♻️⚡🎨🏗️🔨🎯🎉🔥🌟💥🚨🔒📋🎭🌍🎪🏆📊⭐🔔🎁🎈🎂🎊🎄🎃🎅🦋🌈🔮💎🎭🎪🔔🎁🎈🎂🎊🎄🎃🎅🦋🌈🔮💎]+\s*//']
+          # Check conventional commit format (skip emoji stripping for now)
+          CLEANED_TITLE="$PR_TITLE"
           
           if echo "$CLEANED_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([^)]+\))?(!)?: .+'; then
             echo "✅ PR title follows conventional commit format"
