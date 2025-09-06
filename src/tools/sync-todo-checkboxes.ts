@@ -7,7 +7,7 @@ import { ServerConfig } from '../types.js';
 import { validateRequiredString } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
 import { LockManager } from '../utils/lock-manager.js';
-import * as fs from 'fs-extra';
+import * as fs from '../utils/fs-extra-safe.js';
 import * as path from 'path';
 
 interface TodoUpdate {
