@@ -381,7 +381,7 @@ function generateRecommendation(confidence: number, warnings: string[]): string 
     return 'Cannot complete with DONE status. Use ERROR status or provide evidence.';
   }
 
-  if (warnings.includes('No progress updates recorded')) {
+  if (warnings.some(warning => warning.includes('No progress updates recorded'))) {
     return 'Use report_progress tool to document actual work before marking DONE';
   }
 
