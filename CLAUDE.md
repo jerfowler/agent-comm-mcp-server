@@ -76,6 +76,168 @@ npm run type-check     # TypeScript validation with strict mode
 npm run ci             # Complete CI pipeline (type + lint + test)
 ```
 
+## Git Feature Branch Workflow
+
+This repository uses **Git Feature Branch Workflow** with **branch protection** on `main`. Direct commits to main are **prohibited**.
+
+### Branch Protection Rules
+- ✅ **No direct commits** to `main` - all changes via pull requests
+- ✅ **Required code reviews** - at least 1 approval needed
+- ✅ **Required status checks** - comprehensive CI must pass:
+  - `Comprehensive Testing / Quick Validation (Unit + Smoke)`
+  - `Comprehensive Testing / Server Lifecycle Testing`
+  - `Comprehensive Testing / MCP Protocol Integration (18, 20, 22)`
+  - `Comprehensive Testing / Security & Dependency Scan`
+  - `Comprehensive Testing / End-to-End Testing` (PR only)
+- ✅ **Up-to-date branches** - must sync with main before merge
+- ✅ **Admin enforcement** - even admins must follow workflow
+
+### Development Workflow
+
+#### 1. Create Feature Branch
+```bash
+# From main branch
+git checkout main && git pull origin main
+
+# Create feature branch with proper naming
+git checkout -b feature/task-delegation-improvements
+# or
+git checkout -b fix/typescript-strict-mode-error
+# or  
+git checkout -b docs/api-reference-update
+```
+
+#### 2. Make Changes and Test
+```bash
+# Run comprehensive CI pipeline before committing
+npm run ci                    # Type check + lint + all tests
+
+# Development cycle
+npm run test:watch           # Watch mode during development
+npm run dev                  # Auto-reload during changes
+```
+
+#### 3. Commit with Conventional Format
+```bash
+git add .
+git commit -m "feat: add task delegation improvements
+
+- Implement duplicate prevention in create_task tool
+- Add comprehensive validation for task parameters  
+- Update test coverage to maintain 95%+ requirement
+- Add JSDoc documentation for new public APIs
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+#### 4. Push and Create PR
+```bash
+# Push feature branch
+git push -u origin feature/task-delegation-improvements
+
+# Create PR using custom alias (auto-configured)
+gh pr-create                 # Uses: gh pr create --fill --assignee @me
+```
+
+#### 5. Monitor and Merge
+```bash
+# Check CI status
+gh pr-checks                 # View status check results
+
+# Merge when approved and CI passes
+gh pr-merge                  # Uses: gh pr merge --squash --delete-branch
+```
+
+### Pre-configured GitHub CLI Aliases
+
+The repository includes these workflow aliases:
+
+```bash
+gh pr-create                 # Create PR with auto-fill and self-assignment
+gh pr-checks                 # Check PR CI status and results
+gh pr-merge                  # Squash merge with automatic branch cleanup
+gh feature                   # Create feature branch from GitHub issue
+gh workflow-status           # Check recent workflow runs
+```
+
+### Branch Naming Conventions
+
+Use descriptive branch names with type prefixes:
+
+- `feature/` - New features (`feature/mcp-protocol-validation`)
+- `fix/` - Bug fixes (`fix/context-manager-null-ref`)  
+- `docs/` - Documentation (`docs/api-reference-update`)
+- `refactor/` - Code improvements (`refactor/error-handling`)
+- `test/` - Test additions (`test/integration-coverage`)
+- `chore/` - Maintenance (`chore/dependency-updates`)
+- `perf/` - Performance (`perf/file-io-optimization`)
+- `ci/` - CI/CD changes (`ci/parallel-execution`)
+
+### PR Requirements Checklist
+
+Before your PR can be merged:
+
+#### Code Quality ✅
+- [ ] TypeScript compilation passes (`npm run type-check`)
+- [ ] ESLint passes with zero warnings (`npm run lint`)
+- [ ] All tests pass (`npm test`)
+- [ ] Test coverage maintained at 95%+
+- [ ] Code follows existing patterns
+
+#### Documentation ✅  
+- [ ] README.md updated (if needed)
+- [ ] PROTOCOL.md updated (for API changes)
+- [ ] JSDoc comments added for new APIs
+- [ ] CHANGELOG.md entry (if applicable)
+
+#### Security & Testing ✅
+- [ ] Security audit passes (`npm audit`)
+- [ ] No hardcoded credentials
+- [ ] Comprehensive test coverage for new code
+- [ ] Integration tests updated (if needed)
+
+### Troubleshooting Workflow Issues
+
+#### Branch Protection Bypass Attempt
+```bash
+# This will fail with "Changes must be made through a pull request"
+git push origin main
+# ❌ remote: error: GH006: Protected branch update failed
+```
+
+#### Failed CI Checks
+```bash
+# Check what failed
+gh pr-checks
+
+# Run locally to debug
+npm run ci                   # Full pipeline
+npm run test:unit            # Unit tests only
+npm run type-check          # TypeScript issues
+npm run lint                # Code style issues
+```
+
+#### Merge Conflicts
+```bash
+# Update your branch with latest main
+git checkout main && git pull origin main
+git checkout your-branch
+git rebase main              # Or use: git merge main
+
+# Resolve conflicts, then
+git add . && git rebase --continue
+git push --force-with-lease origin your-branch
+```
+
+### Documentation References
+
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Complete contribution guide
+- **[BRANCHING.md](./BRANCHING.md)** - Detailed branching strategy  
+- **[.github/pull_request_template.md](./.github/pull_request_template.md)** - PR template
+- **[.github/ISSUE_TEMPLATE/](./.github/ISSUE_TEMPLATE/)** - Issue templates
+
 ## Tool Categories (17 Total)
 
 ### Context-Based Tools (5 - Recommended)
