@@ -35,7 +35,17 @@
     "ci": "npm run type-check && npm run lint:all && npm run test:quick",
     "ci:full": "npm run type-check && npm run lint:all && npm run test:all",
     "clean": "rm -rf dist src/generated",
-    "prepublishOnly": "npm run clean && npm run build"
+    "prepublishOnly": "npm run clean && npm run build",
+    "version:bump": "node scripts/bump-version.js",
+    "version:bump:dry": "node scripts/bump-version.js --dry-run",
+    "version:patch": "node scripts/bump-version.js --force-type=patch",
+    "version:minor": "node scripts/bump-version.js --force-type=minor",
+    "version:major": "node scripts/bump-version.js --force-type=major",
+    "release:dry": "npm run version:bump:dry",
+    "release:manual": "npm run ci:full && npm run version:bump && git push && git push --tags",
+    "workflow:promote": "gh workflow run promote.yml --ref develop",
+    "workflow:promote:force": "gh workflow run promote.yml --ref develop -f force_promote=true",
+    "workflow:release": "gh workflow run release.yml --ref main"
   },
   "keywords": [
     "mcp",

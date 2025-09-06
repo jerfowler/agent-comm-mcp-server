@@ -39,6 +39,38 @@ npm run ci
 ```
 
 ### 4. Commit Using Conventional Commits
+We use [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning and changelog generation.
+
+#### Commit Format
+```
+type(scope): description
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Commit Types
+- **feat**: New features (triggers minor version bump)
+- **fix**: Bug fixes (triggers patch version bump) 
+- **docs**: Documentation changes only
+- **style**: Code style changes (formatting, no logic changes)
+- **refactor**: Code restructuring without functionality changes
+- **perf**: Performance improvements
+- **test**: Adding or updating tests
+- **chore**: Maintenance tasks, tooling, dependencies
+- **ci**: CI/CD configuration changes
+- **build**: Build system changes
+
+#### Breaking Changes
+For breaking changes, add `!` after type or include `BREAKING CHANGE:` in footer:
+```bash
+feat!: redesign MCP protocol interface
+
+BREAKING CHANGE: The task creation API now requires explicit agent names
+```
+
+#### Examples
 ```bash
 git add .
 git commit -m "feat: add new MCP tool for task delegation
@@ -178,6 +210,19 @@ All PRs automatically run:
 
 ## 🛠 Development Workflow
 
+### Branch Strategy
+
+We use a **develop→main** branch strategy with automated versioning:
+
+- **`develop` branch** - Integration branch for new features
+- **`main` branch** - Stable release branch with automated versioning
+- **Feature branches** - Created from `develop` for individual features
+
+#### Workflow Overview
+```
+feature/* → develop (via PR) → main (automated promotion) → npm release
+```
+
 ### Local Development
 ```bash
 # Install dependencies
@@ -191,6 +236,49 @@ npm run test:watch
 
 # Run full CI pipeline locally
 npm run ci
+```
+
+### Feature Development Process
+
+1. **Create feature branch from develop**:
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Work on your feature**:
+   ```bash
+   # Make changes with conventional commits
+   git add .
+   git commit -m "feat: add new functionality"
+   
+   # Push and create PR to develop
+   git push -u origin feature/your-feature-name
+   gh pr create --base develop --fill
+   ```
+
+3. **Integration testing**: Once merged to `develop`, comprehensive validation runs
+
+4. **Promotion to main**: Weekly automated promotion from `develop` to `main`
+
+5. **Automated release**: Merging to `main` triggers:
+   - Semantic version bump (based on commit types)
+   - CHANGELOG.md update
+   - Git tag creation  
+   - NPM package publication
+   - GitHub release creation
+
+### Manual Promotion (if needed)
+
+Repository maintainers can trigger manual promotion:
+
+```bash
+# Trigger promotion workflow
+gh workflow run promote.yml --ref develop
+
+# Or force promotion even without changes  
+gh workflow run promote.yml --ref develop -f force_promote=true
 ```
 
 ### GitHub CLI Workflow
