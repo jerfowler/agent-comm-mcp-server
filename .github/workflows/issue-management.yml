@@ -100,25 +100,29 @@ jobs:
             
             // If this is their first issue (and not the repo owner)
             if (issues.data.length === 1 && issueAuthor !== context.repo.owner) {
+              const welcomeMessage = [
+                `👋 Welcome to the Agent Communication MCP Server project, @${issueAuthor}!`,
+                '',
+                'Thank you for taking the time to create this issue.',
+                '',
+                '🔍 **What happens next:**',
+                '- Your issue has been automatically assigned and labeled',
+                '- I\'ll review it and provide feedback within 24-48 hours',
+                '- If it\'s a bug, I\'ll prioritize it based on severity',
+                '- If it\'s a feature request, I\'ll evaluate it against the project roadmap',
+                '',
+                '📚 **Helpful resources:**',
+                `- [Contributing Guide](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/CONTRIBUTING.md)`,
+                `- [Protocol Documentation](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/docs/PROTOCOL.md)`,
+                '',
+                'Thanks for contributing to making AI agent coordination better! 🚀'
+              ].join('\n');
+              
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: `👋 Welcome to the Agent Communication MCP Server project, @${issueAuthor}!
-
-Thank you for taking the time to create this ${issue.labels.find(l => l.name === 'bug') ? 'bug report' : issue.labels.find(l => l.name === 'enhancement') ? 'feature request' : 'issue'}. 
-
-🔍 **What happens next:**
-- Your issue has been automatically assigned and labeled
-- I'll review it and provide feedback within 24-48 hours
-- If it's a bug, I'll prioritize it based on severity
-- If it's a feature request, I'll evaluate it against the project roadmap
-
-📚 **Helpful resources:**
-- [Contributing Guide](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/CONTRIBUTING.md)
-- [Protocol Documentation](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/docs/PROTOCOL.md)
-
-Thanks for contributing to making AI agent coordination better! 🚀`
+                body: welcomeMessage
               });
               
               console.log(`Welcomed first-time contributor: ${issueAuthor}`);
@@ -275,19 +279,23 @@ Thanks for contributing to making AI agent coordination better! 🚀`
             if (body === '/branch') {
               const branchName = `issue-${issue.number}-${issue.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').substring(0, 50)}`;
               
+              const branchMessage = [
+                '🌿 **Development branch suggestion:**',
+                '',
+                '```bash',
+                `gh issue develop ${issue.number} --name ${branchName}`,
+                '# or manually:',
+                `git checkout -b ${branchName}`,
+                '```',
+                '',
+                'This will create a feature branch linked to this issue. When you create a PR from this branch, it will automatically reference this issue.'
+              ].join('\n');
+              
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: `🌿 **Development branch suggestion:**
-
-\`\`\`bash
-gh issue develop ${issue.number} --name ${branchName}
-# or manually:
-git checkout -b ${branchName}
-\`\`\`
-
-This will create a feature branch linked to this issue. When you create a PR from this branch, it will automatically reference this issue.`
+                body: branchMessage
               });
             }
             

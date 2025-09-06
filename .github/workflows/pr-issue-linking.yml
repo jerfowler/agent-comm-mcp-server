@@ -69,19 +69,23 @@ jobs:
                 });
                 
                 // Add comment to issue about the linked PR
+                const linkMessage = [
+                  '🔗 **Linked Pull Request**',
+                  '',
+                  `PR #${pr.number} has been created to address this issue.`,
+                  '',
+                  `**PR Title:** ${pr.title}`,
+                  `**Author:** @${pr.user.login}`,
+                  `**Branch:** \`${pr.head.ref}\``,
+                  '',
+                  `[View Pull Request →](${pr.html_url})`
+                ].join('\n');
+                
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issueNumber,
-                  body: `🔗 **Linked Pull Request**
-
-PR #${pr.number} has been created to address this issue.
-
-**PR Title:** ${pr.title}
-**Author:** @${pr.user.login}
-**Branch:** \`${pr.head.ref}\`
-
-[View Pull Request →](${pr.html_url})`
+                  body: linkMessage
                 });
                 
                 // Add PR label to issue
@@ -114,13 +118,17 @@ PR #${pr.number} has been created to address this issue.
             // Add comment to PR listing linked issues
             if (linkedIssues.size > 0) {
               const issueLinks = Array.from(linkedIssues).map(num => `#${num}`).join(', ');
+              const prLinkMessage = [
+                `🎯 **Linked Issues:** ${issueLinks}`,
+                '',
+                'This PR will automatically close the linked issues when merged.'
+              ].join('\n');
+              
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: `🎯 **Linked Issues:** ${issueLinks}
-
-This PR will automatically close the linked issues when merged.`
+                body: prLinkMessage
               });
             }
 
@@ -161,21 +169,25 @@ This PR will automatically close the linked issues when merged.`
             for (const issueNumber of issuesToClose) {
               try {
                 // Add resolution comment to issue
+                const resolutionMessage = [
+                  `🎉 **Resolved by PR #${pr.number}**`,
+                  '',
+                  'This issue has been automatically closed because the linked pull request has been merged.',
+                  '',
+                  `**PR Title:** ${pr.title}`,
+                  `**Merged by:** @${pr.merged_by?.login || pr.user.login}`,
+                  `**Commit:** ${pr.merge_commit_sha?.substring(0, 7) || 'N/A'}`,
+                  '',
+                  `[View merged PR →](${pr.html_url})`,
+                  '',
+                  'Thank you for the contribution! 🚀'
+                ].join('\n');
+                
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issueNumber,
-                  body: `🎉 **Resolved by PR #${pr.number}**
-
-This issue has been automatically closed because the linked pull request has been merged.
-
-**PR Title:** ${pr.title}
-**Merged by:** @${pr.merged_by?.login || pr.user.login}
-**Commit:** ${pr.merge_commit_sha?.substring(0, 7) || 'N/A'}
-
-[View merged PR →](${pr.html_url})
-
-Thank you for the contribution! 🚀`
+                  body: resolutionMessage
                 });
                 
                 // Close the issue
@@ -239,14 +251,18 @@ Thank you for the contribution! 🚀`
                   ? '📝 **PR converted to draft** - Work in progress'
                   : '✅ **PR ready for review** - Ready to merge';
                 
+                const updateMessage = [
+                  statusMessage,
+                  '',
+                  `PR #${pr.number}: ${pr.title}`,
+                  `[View PR →](${pr.html_url})`
+                ].join('\n');
+                
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issueNumber,
-                  body: `${statusMessage}
-
-PR #${pr.number}: ${pr.title}
-[View PR →](${pr.html_url})`
+                  body: updateMessage
                 });
                 
                 console.log(`Updated issue #${issueNumber} with PR status: ${github.event.action}`);

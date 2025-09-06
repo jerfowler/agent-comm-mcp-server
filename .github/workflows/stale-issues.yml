@@ -219,35 +219,48 @@ jobs:
             
             // Create summary issue if there are many stale items
             if (staleIssues.length + stalePRsFiltered.length >= 5) {
-              const reportBody = `# 📊 Stale Items Report
-
-## Summary
-- **Stale Issues:** ${staleIssues.length}
-- **Stale PRs:** ${stalePRsFiltered.length}
-- **Report Date:** ${new Date().toISOString().split('T')[0]}
-
-${staleIssues.length > 0 ? `
-## 🐛 Stale Issues
-${staleIssues.map(issue => `- #${issue.number}: ${issue.title}`).join('\n')}
-` : ''}
-
-${stalePRsFiltered.length > 0 ? `
-## 🔄 Stale Pull Requests  
-${stalePRsFiltered.map(pr => `- #${pr.number}: ${pr.title}`).join('\n')}
-` : ''}
-
-## Actions Taken
-- Items marked as stale will be closed in 7 days without activity
-- Repository maintainers should review and take action on important items
-
----
-*This report was generated automatically by the stale issue management workflow.*`;
+              const reportBody = [
+                '# 📊 Stale Items Report',
+                '',
+                '## Summary',
+                `- **Stale Issues:** ${staleIssues.length}`,
+                `- **Stale PRs:** ${stalePRsFiltered.length}`,
+                `- **Report Date:** ${new Date().toISOString().split('T')[0]}`,
+                ''
+              ];
+              
+              if (staleIssues.length > 0) {
+                reportBody.push('## 🐛 Stale Issues');
+                staleIssues.forEach(issue => {
+                  reportBody.push(`- #${issue.number}: ${issue.title}`);
+                });
+                reportBody.push('');
+              }
+              
+              if (stalePRsFiltered.length > 0) {
+                reportBody.push('## 🔄 Stale Pull Requests');
+                stalePRsFiltered.forEach(pr => {
+                  reportBody.push(`- #${pr.number}: ${pr.title}`);
+                });
+                reportBody.push('');
+              }
+              
+              reportBody.push(
+                '## Actions Taken',
+                '- Items marked as stale will be closed in 7 days without activity',
+                '- Repository maintainers should review and take action on important items',
+                '',
+                '---',
+                '*This report was generated automatically by the stale issue management workflow.*'
+              );
+              
+              const reportBodyString = reportBody.join('\n');
 
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: `📊 Stale Items Report - ${new Date().toISOString().split('T')[0]}`,
-                body: reportBody,
+                body: reportBodyString,
                 labels: ['maintenance', 'report']
               });
               
