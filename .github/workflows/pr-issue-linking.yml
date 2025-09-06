@@ -1,0 +1,252 @@
+# PR-Issue Linking Workflow
+# Automatically links pull requests to issues and manages issue lifecycle
+
+name: PR-Issue Linking
+
+on:
+  pull_request:
+    types: [opened, closed, converted_to_draft, ready_for_review]
+  pull_request_target:
+    types: [opened, closed]
+
+jobs:
+  # Link PRs to issues automatically
+  link-pr-to-issues:
+    name: Link PR to Issues
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    
+    steps:
+      - name: Find and link related issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+            const prTitle = pr.title || '';
+            const prBranch = pr.head.ref;
+            
+            // Extract issue numbers from various patterns
+            const issuePatterns = [
+              /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi,
+              /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(?:https?:\/\/github\.com\/[^\/]+\/[^\/]+\/issues\/)(\d+)/gi,
+              /#(\d+)/g,
+              /issue[_\s-]*(\d+)/gi
+            ];
+            
+            const linkedIssues = new Set();
+            
+            // Check PR body and title for issue references
+            const textToCheck = prTitle + ' ' + prBody;
+            for (const pattern of issuePatterns) {
+              let match;
+              while ((match = pattern.exec(textToCheck)) !== null) {
+                linkedIssues.add(parseInt(match[1]));
+              }
+            }
+            
+            // Check branch name for issue number (e.g., issue-123-feature-name)
+            const branchIssueMatch = prBranch.match(/(?:issue|fix|feature)[_\s-]*(\d+)/i);
+            if (branchIssueMatch) {
+              linkedIssues.add(parseInt(branchIssueMatch[1]));
+            }
+            
+            console.log(`Found potential linked issues: ${Array.from(linkedIssues).join(', ')}`);
+            
+            // Validate and process each linked issue
+            for (const issueNumber of linkedIssues) {
+              try {
+                // Check if issue exists
+                const issue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+                
+                // Add comment to issue about the linked PR
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `🔗 **Linked Pull Request**
+
+PR #${pr.number} has been created to address this issue.
+
+**PR Title:** ${pr.title}
+**Author:** @${pr.user.login}
+**Branch:** \`${pr.head.ref}\`
+
+[View Pull Request →](${pr.html_url})`
+                });
+                
+                // Add PR label to issue
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: ['has-pr']
+                });
+                
+                // Remove needs-triage if present
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    name: 'needs-triage'
+                  });
+                } catch (error) {
+                  // Label might not exist, ignore
+                }
+                
+                console.log(`Successfully linked PR #${pr.number} to issue #${issueNumber}`);
+                
+              } catch (error) {
+                console.log(`Issue #${issueNumber} not found or error linking: ${error.message}`);
+              }
+            }
+            
+            // Add comment to PR listing linked issues
+            if (linkedIssues.size > 0) {
+              const issueLinks = Array.from(linkedIssues).map(num => `#${num}`).join(', ');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `🎯 **Linked Issues:** ${issueLinks}
+
+This PR will automatically close the linked issues when merged.`
+              });
+            }
+
+  # Handle PR closure and issue resolution
+  close-linked-issues:
+    name: Close Linked Issues
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    
+    steps:
+      - name: Close issues linked to merged PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+            const prTitle = pr.title || '';
+            
+            // Extract issue numbers that should be closed
+            const closePatterns = [
+              /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi,
+              /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(?:https?:\/\/github\.com\/[^\/]+\/[^\/]+\/issues\/)(\d+)/gi
+            ];
+            
+            const issuesToClose = new Set();
+            
+            const textToCheck = prTitle + ' ' + prBody;
+            for (const pattern of closePatterns) {
+              let match;
+              while ((match = pattern.exec(textToCheck)) !== null) {
+                issuesToClose.add(parseInt(match[1]));
+              }
+            }
+            
+            console.log(`Issues to close: ${Array.from(issuesToClose).join(', ')}`);
+            
+            // Close each linked issue
+            for (const issueNumber of issuesToClose) {
+              try {
+                // Add resolution comment to issue
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `🎉 **Resolved by PR #${pr.number}**
+
+This issue has been automatically closed because the linked pull request has been merged.
+
+**PR Title:** ${pr.title}
+**Merged by:** @${pr.merged_by?.login || pr.user.login}
+**Commit:** ${pr.merge_commit_sha?.substring(0, 7) || 'N/A'}
+
+[View merged PR →](${pr.html_url})
+
+Thank you for the contribution! 🚀`
+                });
+                
+                // Close the issue
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  state: 'closed',
+                  state_reason: 'completed'
+                });
+                
+                console.log(`Successfully closed issue #${issueNumber}`);
+                
+              } catch (error) {
+                console.log(`Error closing issue #${issueNumber}: ${error.message}`);
+              }
+            }
+            
+  # Handle PR draft/ready status
+  update-pr-status:
+    name: Update PR Status
+    runs-on: ubuntu-latest
+    if: github.event.action == 'converted_to_draft' || github.event.action == 'ready_for_review'
+    
+    steps:
+      - name: Update linked issues with PR status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+            const prTitle = pr.title || '';
+            const prBranch = pr.head.ref;
+            
+            // Find linked issues (same logic as linking step)
+            const issuePatterns = [
+              /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi,
+              /#(\d+)/g,
+              /issue[_\s-]*(\d+)/gi
+            ];
+            
+            const linkedIssues = new Set();
+            
+            const textToCheck = prTitle + ' ' + prBody;
+            for (const pattern of issuePatterns) {
+              let match;
+              while ((match = pattern.exec(textToCheck)) !== null) {
+                linkedIssues.add(parseInt(match[1]));
+              }
+            }
+            
+            const branchIssueMatch = prBranch.match(/(?:issue|fix|feature)[_\s-]*(\d+)/i);
+            if (branchIssueMatch) {
+              linkedIssues.add(parseInt(branchIssueMatch[1]));
+            }
+            
+            // Update each linked issue
+            for (const issueNumber of linkedIssues) {
+              try {
+                const statusMessage = github.event.action === 'converted_to_draft' 
+                  ? '📝 **PR converted to draft** - Work in progress'
+                  : '✅ **PR ready for review** - Ready to merge';
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `${statusMessage}
+
+PR #${pr.number}: ${pr.title}
+[View PR →](${pr.html_url})`
+                });
+                
+                console.log(`Updated issue #${issueNumber} with PR status: ${github.event.action}`);
+                
+              } catch (error) {
+                console.log(`Error updating issue #${issueNumber}: ${error.message}`);
+              }
+            }
