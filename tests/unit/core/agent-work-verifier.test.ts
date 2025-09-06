@@ -318,9 +318,12 @@ describe('Agent Work Verifier', () => {
         return Promise.resolve(true);
       });
 
-      mockFs.listDirectory
-        .mockResolvedValueOnce(['active-task'])
-        .mockResolvedValueOnce(['file1.js']);
+      mockFs.listDirectory.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') {
+          return Promise.resolve(['active-task']);
+        }
+        return Promise.resolve(['file1.js']);
+      });
 
       mockFs.getStats.mockImplementation((path: string) => {
         // Return directory stats for task directory
