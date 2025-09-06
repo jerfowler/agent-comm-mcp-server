@@ -5,7 +5,7 @@
  * and detailed progress metrics based on plan step completion
  */
 
-import fs from 'fs-extra';
+import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { validateRequiredString } from '../utils/validation.js';
 import { TrackTaskProgressArgs, TrackTaskProgressResult, ServerConfig } from '../types.js';

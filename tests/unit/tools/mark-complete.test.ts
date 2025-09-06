@@ -46,16 +46,16 @@ describe('Mark Complete Tool', () => {
     
     // Setup agent work verifier mock - return high confidence for tests
     mockAgentVerifier.verifyAgentWork.mockResolvedValue({
+      success: true,
       confidence: 100,
       evidence: {
         filesModified: 5,
         testsRun: true,
-        mcpProgressTracking: true,
-        timeSpentMinutes: 30
+        mcpProgress: true,
+        timeSpent: 30
       },
       warnings: [],
-      recommendation: 'Work verified successfully',
-      nextSteps: []
+      recommendation: 'Work verified successfully'
     });
     
     // Setup TaskContextManager mock

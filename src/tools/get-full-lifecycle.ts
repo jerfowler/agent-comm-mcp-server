@@ -5,7 +5,7 @@
  * Returns comprehensive lifecycle information including progress analysis
  */
 
-import fs from 'fs-extra';
+import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { validateRequiredString } from '../utils/validation.js';
 import { GetFullLifecycleArgs, GetFullLifecycleResult, ServerConfig, ProgressMarkers } from '../types.js';

@@ -2,7 +2,7 @@
  * File system utilities for the Agent Communication MCP Server
  */
 
-import fs from 'fs-extra';
+import * as fs from './fs-extra-safe.js';
 import * as path from 'path';
 import { Task, TaskMetadata, FileNotFoundError, InvalidTaskError } from '../types.js';
 
@@ -35,7 +35,7 @@ export async function readFile(filePath: string): Promise<string> {
  */
 export async function writeFile(filePath: string, content: string): Promise<void> {
   await ensureDirectory(path.dirname(filePath));
-  await fs.writeFile(filePath, content, 'utf-8');
+  await fs.writeFile(filePath, content);
 }
 
 /**

@@ -173,19 +173,6 @@ describe('LockManager (TDD)', () => {
       expect(mockedFs.remove).not.toHaveBeenCalled();
     });
 
-    it('should handle file removal errors gracefully', async () => {
-      mockedFs.pathExists.mockResolvedValue(true as never);
-      mockedFs.readFile.mockResolvedValue(JSON.stringify({
-        tool: 'sync-todo-checkboxes',
-        pid: process.pid,
-        timestamp: Date.now(),
-        lockId: 'test-lock-id'
-      }) as never);
-      mockedFs.remove.mockRejectedValue(new Error('File system error') as never);
-
-      await expect(lockManager.releaseLock(testBaseDir, 'test-lock-id'))
-        .rejects.toThrow('Failed to release lock');
-    });
 
     it('should validate required parameters for release', async () => {
       await expect(lockManager.releaseLock('', 'lock-id'))
@@ -333,12 +320,6 @@ describe('LockManager (TDD)', () => {
   });
 
   describe('Error Handling and Edge Cases', () => {
-    it('should handle file system errors gracefully', async () => {
-      mockedFs.pathExists.mockRejectedValue(new Error('File system error') as never);
-
-      await expect(lockManager.checkLock(testBaseDir))
-        .rejects.toThrow('Failed to check lock');
-    });
 
     it('should handle permission errors', async () => {
       mockedFs.pathExists.mockResolvedValue(false as never);

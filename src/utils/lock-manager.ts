@@ -3,7 +3,7 @@
  * Provides file-based locking mechanism with timeout and cleanup capabilities
  */
 
-import * as fs from 'fs-extra';
+import * as fs from './fs-extra-safe.js';
 import * as path from 'path';
 import { AgentCommError } from '../types.js';
 
