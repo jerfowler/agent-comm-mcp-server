@@ -13,7 +13,7 @@
     },
     "Ref": {
       "type": "http",
-      "url": "https://api.ref.tools/mcp?apiKey=YOUR_REF_API_KEY"
+      "url": "https://api.ref.tools/mcp?apiKey=29543a76f4d4e07592a9"
     },
     "serena": {
       "type": "stdio",
