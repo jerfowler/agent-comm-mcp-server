@@ -102,7 +102,7 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           
           # Run version bump script
-          if ! node scripts/bump-version.js $FORCE_ARG $DRY_RUN_ARG; then
+          if ! node scripts/bump-version.cjs $FORCE_ARG $DRY_RUN_ARG; then
             echo "No version bump needed"
             echo "should_release=false" >> $GITHUB_OUTPUT
             exit 0
