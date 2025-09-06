@@ -74,7 +74,7 @@ describe('Agent Work Verifier', () => {
 
       mockFs.listDirectory.mockResolvedValue(['PLAN.md', 'INIT.md', 'file1.js']);
 
-      mockFs.getStats.mockImplementation((path: string) => {
+      mockFs.getStats.mockImplementation((_path: string) => {
         return Promise.resolve(testUtils.createMockStats({
           mtime: recentTime
         }) as any);
