@@ -9,13 +9,16 @@ import * as validation from '../../../src/utils/validation.js';
 import { TaskContextManager, CompletionResult } from '../../../src/core/TaskContextManager.js';
 import { ServerConfig, InvalidTaskError } from '../../../src/types.js';
 import { testUtils } from '../../utils/testUtils.js';
+import * as agentVerifier from '../../../src/core/agent-work-verifier.js';
 
 // Mock modules
 jest.mock('../../../src/utils/validation.js');
 jest.mock('../../../src/core/TaskContextManager.js');
+jest.mock('../../../src/core/agent-work-verifier.js');
 
 const mockValidation = validation as jest.Mocked<typeof validation>;
 const MockTaskContextManager = TaskContextManager as jest.MockedClass<typeof TaskContextManager>;
+const mockAgentVerifier = agentVerifier as jest.Mocked<typeof agentVerifier>;
 
 describe('Mark Complete Tool', () => {
   let mockConfig: ServerConfig;
@@ -40,6 +43,20 @@ describe('Mark Complete Tool', () => {
     // Setup default validation mocks
     mockValidation.validateRequiredString
       .mockImplementation((value) => value as string);
+    
+    // Setup agent work verifier mock - return high confidence for tests
+    mockAgentVerifier.verifyAgentWork.mockResolvedValue({
+      confidence: 100,
+      evidence: {
+        filesModified: 5,
+        testsRun: true,
+        mcpProgressTracking: true,
+        timeSpentMinutes: 30
+      },
+      warnings: [],
+      recommendation: 'Work verified successfully',
+      nextSteps: []
+    });
     
     // Setup TaskContextManager mock
     mockContextManager = {

@@ -3,7 +3,7 @@
  * Tests for intelligent handling of unchecked plan items
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { markComplete } from '../../../src/tools/mark-complete.js';
 import { ServerConfig } from '../../../src/types.js';
 import fs from 'fs-extra';
@@ -11,6 +11,12 @@ import path from 'path';
 import { tmpdir } from 'os';
 import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
 import { EventLogger, MockTimerDependency } from '../../../src/logging/EventLogger.js';
+import * as agentVerifier from '../../../src/core/agent-work-verifier.js';
+
+// Mock the agent work verifier
+jest.mock('../../../src/core/agent-work-verifier.js');
+
+const mockAgentVerifier = agentVerifier as jest.Mocked<typeof agentVerifier>;
 
 describe('Mark Complete Reconciliation Logic', () => {
   let mockConfig: ServerConfig;
@@ -19,6 +25,19 @@ describe('Mark Complete Reconciliation Logic', () => {
   let taskDir: string;
 
   beforeEach(async () => {
+    // Setup agent work verifier mock - return high confidence for tests
+    mockAgentVerifier.verifyAgentWork.mockResolvedValue({
+      confidence: 100,
+      evidence: {
+        filesModified: 5,
+        testsRun: true,
+        mcpProgressTracking: true,
+        timeSpentMinutes: 30
+      },
+      warnings: [],
+      recommendation: 'Work verified successfully',
+      nextSteps: []
+    });
     // Create temporary test directory
     testDir = await fs.mkdtemp(path.join(tmpdir(), 'mark-complete-test-'));
     agentDir = path.join(testDir, 'test-agent');

@@ -28,8 +28,11 @@ const PACKAGE_PATH = path.join(__dirname, '../package.json');
 const CHANGELOG_PATH = path.join(__dirname, '../CHANGELOG.md');
 
 // Utility functions
+const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+
 function log(message, color = '\x1b[0m') {
-  console.log(`${color}${message}\x1b[0m`);
+  // Disable colors in CI environment to prevent parsing issues
+  console.log(isCI ? message : `${color}${message}\x1b[0m`);
 }
 
 function success(message) { log(`✓ ${message}`, '\x1b[32m'); }
