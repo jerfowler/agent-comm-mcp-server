@@ -312,8 +312,10 @@ describe('Agent Work Verifier', () => {
     it('should provide specific recommendations based on confidence', async () => {
       mockFs.pathExists.mockImplementation((path: string) => {
         if (path === '/test/comm/test-agent') return Promise.resolve(true);
+        if (path === '/test/comm/test-agent/active-task') return Promise.resolve(true);
         if (path.includes('PLAN.md')) return Promise.resolve(true);
-        return Promise.resolve(false);
+        if (path.includes('DONE.md') || path.includes('ERROR.md')) return Promise.resolve(false);
+        return Promise.resolve(true);
       });
 
       mockFs.listDirectory
@@ -389,12 +391,18 @@ describe('Agent Work Verifier', () => {
       
       mockFs.pathExists.mockImplementation((path: string) => {
         if (path === '/test/comm/test-agent') return Promise.resolve(true);
-        return Promise.resolve(false);
+        if (path === '/test/comm/test-agent/active-task') return Promise.resolve(true);
+        if (path.includes('PLAN.md')) return Promise.resolve(true);
+        if (path.includes('DONE.md') || path.includes('ERROR.md')) return Promise.resolve(false);
+        return Promise.resolve(true);
       });
 
-      mockFs.listDirectory
-        .mockResolvedValueOnce(['active-task'])
-        .mockResolvedValueOnce(['file1.js', 'file2.js', 'file3.js']);
+      mockFs.listDirectory.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') {
+          return Promise.resolve(['active-task']);
+        }
+        return Promise.resolve(['file1.js', 'file2.js', 'file3.js']);
+      });
 
       mockFs.getStats.mockImplementation((path: string) => {
         // Return directory stats for task directory
@@ -465,17 +473,22 @@ describe('Agent Work Verifier', () => {
     it('should handle empty or malformed PLAN.md', async () => {
       mockFs.pathExists.mockImplementation((path: string) => {
         if (path === '/test/comm/test-agent') return Promise.resolve(true);
+        if (path === '/test/comm/test-agent/active-task') return Promise.resolve(true);
         if (path.includes('PLAN.md')) return Promise.resolve(true);
-        return Promise.resolve(false);
+        if (path.includes('DONE.md') || path.includes('ERROR.md')) return Promise.resolve(false);
+        return Promise.resolve(true);
       });
 
-      mockFs.listDirectory
-        .mockResolvedValueOnce(['active-task'])
-        .mockResolvedValueOnce(['PLAN.md']);
+      mockFs.listDirectory.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') {
+          return Promise.resolve(['active-task']);
+        }
+        return Promise.resolve(['PLAN.md']);
+      });
 
       mockFs.getStats.mockImplementation((path: string) => {
         // Return directory stats for task directory
-        if (path.includes('-task') && !path.includes('.')) {
+        if (path.includes('active-task') && !path.includes('.md')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(),
             isDirectory: () => true,
@@ -498,14 +511,35 @@ describe('Agent Work Verifier', () => {
     });
 
     it('should handle tasks without mtime in stats', async () => {
-      mockFs.pathExists.mockResolvedValue(true);
-      mockFs.listDirectory
-        .mockResolvedValueOnce(['active-task'])
-        .mockResolvedValueOnce(['file1.js']);
+      mockFs.pathExists.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') return Promise.resolve(true);
+        if (path === '/test/comm/test-agent/active-task') return Promise.resolve(true);
+        if (path.includes('PLAN.md')) return Promise.resolve(true);
+        if (path.includes('DONE.md') || path.includes('ERROR.md')) return Promise.resolve(false);
+        return Promise.resolve(true);
+      });
+      mockFs.listDirectory.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') {
+          return Promise.resolve(['active-task']);
+        }
+        return Promise.resolve(['file1.js']);
+      });
 
-      mockFs.getStats.mockResolvedValue(testUtils.createMockStats({
-        mtime: undefined as any // No modification time
-      }) as any);
+      mockFs.getStats.mockImplementation((path: string) => {
+        // Return directory stats for task directory
+        if (path.includes('active-task') && !path.includes('.js')) {
+          return Promise.resolve(testUtils.createMockStats({
+            mtime: undefined as any, // No modification time
+            isDirectory: () => true,
+            isFile: () => false
+          }) as any);
+        }
+        
+        // Return file stats for files
+        return Promise.resolve(testUtils.createMockStats({
+          mtime: undefined as any // No modification time
+        }) as any);
+      });
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
 
@@ -514,18 +548,34 @@ describe('Agent Work Verifier', () => {
     });
 
     it('should skip non-directory entries when finding active tasks', async () => {
-      mockFs.pathExists.mockResolvedValue(true);
-      mockFs.listDirectory.mockResolvedValueOnce(['task-dir', 'some-file.txt']);
+      mockFs.pathExists.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') return Promise.resolve(true);
+        if (path === '/test/comm/test-agent/task-dir') return Promise.resolve(true);
+        if (path.includes('PLAN.md')) return Promise.resolve(true);
+        if (path.includes('DONE.md') || path.includes('ERROR.md')) return Promise.resolve(false);
+        return Promise.resolve(true);
+      });
+      mockFs.listDirectory.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') {
+          return Promise.resolve(['task-dir', 'some-file.txt']);
+        }
+        return Promise.resolve(['PLAN.md']);
+      });
 
       let getStatsCallCount = 0;
-      mockFs.getStats.mockImplementation(() => {
+      mockFs.getStats.mockImplementation((path: string) => {
         getStatsCallCount++;
+        
+        // 'task-dir' should be a directory, 'some-file.txt' should not
+        const isDirectory = path.includes('task-dir') && !path.includes('some-file.txt');
+        
         return Promise.resolve(testUtils.createMockStats({
-          mtime: new Date()
+          mtime: new Date(),
+          isDirectory: () => isDirectory,
+          isFile: () => !isDirectory
         }) as any);
       });
 
-      mockFs.listDirectory.mockResolvedValueOnce(['PLAN.md']);
       mockFs.readFile.mockResolvedValue('- [x] Some work');
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
@@ -579,17 +629,22 @@ describe('Agent Work Verifier', () => {
     it('should award additional points for progress updates', async () => {
       mockFs.pathExists.mockImplementation((path: string) => {
         if (path === '/test/comm/test-agent') return Promise.resolve(true);
+        if (path === '/test/comm/test-agent/active-task') return Promise.resolve(true);
         if (path.includes('PLAN.md')) return Promise.resolve(true);
-        return Promise.resolve(false);
+        if (path.includes('DONE.md') || path.includes('ERROR.md')) return Promise.resolve(false);
+        return Promise.resolve(true);
       });
 
-      mockFs.listDirectory
-        .mockResolvedValueOnce(['active-task'])
-        .mockResolvedValueOnce(['PLAN.md']);
+      mockFs.listDirectory.mockImplementation((path: string) => {
+        if (path === '/test/comm/test-agent') {
+          return Promise.resolve(['active-task']);
+        }
+        return Promise.resolve(['PLAN.md']);
+      });
 
       mockFs.getStats.mockImplementation((path: string) => {
         // Return directory stats for task directory
-        if (path.includes('-task') && !path.includes('.')) {
+        if (path.includes('active-task') && !path.includes('.md')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(),
             isDirectory: () => true,
