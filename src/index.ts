@@ -10,7 +10,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
 import { AgentCommError, ServerConfig } from './types.js';
-import * as fs from 'fs-extra';
+import * as fs from './utils/fs-extra-safe.js';
 
 // Import core components
 import { ConnectionManager } from './core/ConnectionManager.js';

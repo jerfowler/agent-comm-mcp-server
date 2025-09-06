@@ -3,7 +3,7 @@
  * Logs all operations with detailed metadata for analysis and debugging
  */
 
-import fs from 'fs-extra';
+import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { EventEmitter } from 'events';
 
