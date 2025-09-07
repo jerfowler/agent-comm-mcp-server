@@ -3,7 +3,7 @@
  * Provides pure context-based API without exposing file system operations
  */
 
-import fs from 'fs-extra';
+import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { ConnectionManager, Connection } from './ConnectionManager.js';
 import { EventLogger } from '../logging/EventLogger.js';

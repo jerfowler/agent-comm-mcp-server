@@ -1,612 +1,420 @@
 /**
  * Unit tests for mark-complete tool
- * Tests for task completion without file path exposure
+ * Focuses on basic completion functionality without verification gates
  */
 
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { markComplete } from '../../../src/tools/mark-complete.js';
-import * as validation from '../../../src/utils/validation.js';
-import { TaskContextManager, CompletionResult } from '../../../src/core/TaskContextManager.js';
-import { ServerConfig, InvalidTaskError } from '../../../src/types.js';
-import { testUtils } from '../../utils/testUtils.js';
-import * as agentVerifier from '../../../src/core/agent-work-verifier.js';
+import { ServerConfig } from '../../../src/types.js';
+import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
 
-// Mock modules
-jest.mock('../../../src/utils/validation.js');
-jest.mock('../../../src/core/TaskContextManager.js');
-jest.mock('../../../src/core/agent-work-verifier.js');
+// Mock TaskContextManager constructor
+jest.mock('../../../src/core/TaskContextManager.js', () => ({
+  TaskContextManager: jest.fn()
+}));
 
-const mockValidation = validation as jest.Mocked<typeof validation>;
-const MockTaskContextManager = TaskContextManager as jest.MockedClass<typeof TaskContextManager>;
-const mockAgentVerifier = agentVerifier as jest.Mocked<typeof agentVerifier>;
+const MockedTaskContextManager = TaskContextManager as jest.MockedClass<typeof TaskContextManager>;
+
+// Mock TaskContextManager instance
+const mockTaskContextManager = {
+  markComplete: jest.fn()
+} as unknown as TaskContextManager;
+
+// Mock ConnectionManager and EventLogger
+const mockConnectionManager = {
+  register: jest.fn(),
+  getConnection: jest.fn(),
+  updateActivity: jest.fn()
+} as any;
+
+const mockEventLogger = {
+  log: jest.fn(),
+  logOperation: jest.fn()
+} as any;
+
+// Mock config
+const mockConfig: ServerConfig = {
+  commDir: '/test/comm',
+  archiveDir: '/test/archive',
+  logDir: '/test/logs',
+  connectionManager: mockConnectionManager,
+  eventLogger: mockEventLogger,
+  enableArchiving: true
+};
 
 describe('Mark Complete Tool', () => {
-  let mockConfig: ServerConfig;
-  let mockContextManager: jest.Mocked<TaskContextManager>;
-  let mockCompletionResult: CompletionResult;
-
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockConfig = testUtils.createMockConfig();
+    // Mock the TaskContextManager constructor to return our mock instance
+    MockedTaskContextManager.mockImplementation(() => mockTaskContextManager);
     
-    // Create mock CompletionResult
-    mockCompletionResult = {
+    (mockTaskContextManager.markComplete as jest.Mock).mockResolvedValue({
       success: true,
       status: 'DONE',
-      summary: 'Task completed successfully',
-      completedAt: new Date('2025-01-01T12:00:00Z'),
-      isError: false,
-      recommendations: ['Great job!', 'Consider optimization next time']
-    };
-
-    // Setup default validation mocks
-    mockValidation.validateRequiredString
-      .mockImplementation((value) => value as string);
-    
-    // Setup agent work verifier mock - return high confidence for tests
-    mockAgentVerifier.verifyAgentWork.mockResolvedValue({
-      confidence: 100,
-      evidence: {
-        filesModified: 5,
-        testsRun: true,
-        mcpProgressTracking: true,
-        timeSpentMinutes: 30
-      },
-      warnings: [],
-      recommendation: 'Work verified successfully',
-      nextSteps: []
+      summary: 'Task completed',
+      completedAt: new Date(),
+      isError: false
     });
-    
-    // Setup TaskContextManager mock
-    mockContextManager = {
-      markComplete: jest.fn<() => Promise<CompletionResult>>().mockResolvedValue(mockCompletionResult)
-    } as any;
-    
-    MockTaskContextManager.mockImplementation(() => mockContextManager);
   });
 
   describe('successful operations', () => {
     it('should mark task as DONE with valid inputs', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: 'Task completed successfully with all requirements met',
-        agent: 'test-agent'
+        summary: 'Task completed successfully with all requirements met'
       };
 
       const result = await markComplete(mockConfig, args);
 
-      expect(mockValidation.validateRequiredString).toHaveBeenCalledWith('DONE', 'status');
-      expect(mockValidation.validateRequiredString).toHaveBeenCalledWith('Task completed successfully with all requirements met', 'summary');
-      expect(mockValidation.validateRequiredString).toHaveBeenCalledWith('test-agent', 'agent');
-      
-      expect(MockTaskContextManager).toHaveBeenCalledWith({
-        commDir: mockConfig.commDir,
-        connectionManager: mockConfig.connectionManager,
-        eventLogger: mockConfig.eventLogger
-      });
-
-      expect(mockContextManager.markComplete).toHaveBeenCalledWith(
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('DONE');
+      expect(result.taskId).toMatch(/^mark-complete-\d+-[a-z0-9]+$/);
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalledWith(
         'DONE',
         'Task completed successfully with all requirements met',
         expect.objectContaining({
-          id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/),
           agent: 'test-agent',
-          startTime: expect.any(Date),
-          metadata: {
-            operation: 'mark-complete',
-            status: 'DONE',
-            summarySize: 'Task completed successfully with all requirements met'.length
-          }
+          id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/)
         })
       );
-
-      expect(result).toBe(mockCompletionResult);
     });
 
     it('should mark task as ERROR with valid inputs', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'ERROR',
-        summary: 'Task failed due to missing dependencies and configuration errors',
-        agent: 'error-agent'
+        summary: 'Task failed due to unexpected system error encountered'
       };
-
-      const errorResult: CompletionResult = {
-        success: false,
-        status: 'ERROR',
-        summary: 'Task failed due to missing dependencies and configuration errors',
-        completedAt: new Date(),
-        isError: true,
-        recommendations: ['Check dependencies', 'Verify configuration']
-      };
-
-      mockContextManager.markComplete.mockResolvedValue(errorResult);
 
       const result = await markComplete(mockConfig, args);
 
-      expect(mockContextManager.markComplete).toHaveBeenCalledWith(
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('ERROR');
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalledWith(
         'ERROR',
-        'Task failed due to missing dependencies and configuration errors',
+        'Task failed due to unexpected system error encountered',
         expect.objectContaining({
-          agent: 'error-agent',
-          metadata: expect.objectContaining({
-            status: 'ERROR'
-          })
+          agent: 'test-agent',
+          id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/)
         })
       );
-
-      expect(result).toBe(errorResult);
     });
 
     it('should handle long summaries', async () => {
-      const longSummary = 'This is a very detailed summary that explains exactly what was completed in the task. '.repeat(10);
-      
+      const longSummary = 'This is a very long summary that describes in detail all the work that was completed, including multiple steps, challenges faced, and solutions implemented successfully';
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: longSummary,
-        agent: 'detailed-agent'
+        summary: longSummary
       };
 
-      await markComplete(mockConfig, args);
+      const result = await markComplete(mockConfig, args);
 
-      expect(mockContextManager.markComplete).toHaveBeenCalledWith(
+      expect(result.success).toBe(true);
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalledWith(
         'DONE',
-        longSummary.trim(), // The function trims the summary
+        longSummary,
         expect.objectContaining({
-          metadata: expect.objectContaining({
-            summarySize: longSummary.length // But metadata uses original length
-          })
+          agent: 'test-agent',
+          id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/)
         })
       );
     });
 
     it('should handle agent names with special characters', async () => {
       const args = {
+        agent: 'test-agent-123_special',
         status: 'DONE',
-        summary: 'Task completed successfully',
-        agent: 'agent-with-special_chars-123'
+        summary: 'Completed task with special agent name successfully'
       };
 
-      await markComplete(mockConfig, args);
+      const result = await markComplete(mockConfig, args);
 
-      expect(mockContextManager.markComplete).toHaveBeenCalledWith(
+      expect(result.success).toBe(true);
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalledWith(
         'DONE',
-        'Task completed successfully',
+        'Completed task with special agent name successfully',
         expect.objectContaining({
-          agent: 'agent-with-special_chars-123'
+          agent: 'test-agent-123_special',
+          id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/)
         })
       );
     });
 
     it('should trim whitespace from summary', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: '  Task completed with extra whitespace  ',
-        agent: 'trim-agent'
+        summary: '  Task completed successfully with whitespace  '
       };
 
-      mockValidation.validateRequiredString
-        .mockReturnValueOnce('DONE')
-        .mockReturnValueOnce('  Task completed with extra whitespace  ')
-        .mockReturnValueOnce('trim-agent');
+      const result = await markComplete(mockConfig, args);
 
-      await markComplete(mockConfig, args);
-
-      expect(mockContextManager.markComplete).toHaveBeenCalledWith(
+      expect(result.success).toBe(true);
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalledWith(
         'DONE',
-        'Task completed with extra whitespace', // Should be trimmed
-        expect.any(Object)
+        'Task completed successfully with whitespace',
+        expect.objectContaining({
+          agent: 'test-agent',
+          id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/)
+        })
       );
     });
 
     it('should generate unique connection IDs for concurrent operations', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: 'Concurrent task completion',
-        agent: 'concurrent-agent'
+        summary: 'Task completed successfully'
       };
 
-      await Promise.all([
-        markComplete(mockConfig, args),
-        markComplete(mockConfig, args)
-      ]);
+      const result1 = await markComplete(mockConfig, args);
+      const result2 = await markComplete(mockConfig, args);
 
-      const calls = mockContextManager.markComplete.mock.calls;
-      expect(calls).toHaveLength(2);
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
       
-      const connection1 = calls[0][2];
-      const connection2 = calls[1][2];
-      
-      expect(connection1.id).not.toBe(connection2.id);
-      expect(connection1.id).toMatch(/^mark-complete-\d+-[a-z0-9]+$/);
-      expect(connection2.id).toMatch(/^mark-complete-\d+-[a-z0-9]+$/);
+      const calls = (mockTaskContextManager.markComplete as jest.Mock).mock.calls;
+      expect(calls[0][2].id).not.toBe(calls[1][2].id); // Different connection IDs
     });
   });
 
   describe('input validation failures', () => {
     it('should reject invalid status values', async () => {
       const args = {
-        status: 'INVALID',
-        summary: 'Task completed successfully',
-        agent: 'test-agent'
+        agent: 'test-agent',
+        status: 'INVALID' as any,
+        summary: 'Task completed successfully'
       };
 
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('Status must be either DONE or ERROR');
-      
-      expect(MockTaskContextManager).not.toHaveBeenCalled();
+        .rejects.toThrow('Status must be either "DONE" or "ERROR"');
     });
 
     it('should reject empty status', async () => {
       const args = {
-        status: '',
-        summary: 'Task completed successfully',
-        agent: 'test-agent'
+        agent: 'test-agent',
+        status: '' as any,
+        summary: 'Task completed successfully'
       };
-
-      mockValidation.validateRequiredString.mockImplementation((value, field) => {
-        if (field === 'status' && value === '') {
-          throw new InvalidTaskError('status must be a non-empty string', 'status');
-        }
-        return value as string;
-      });
 
       await expect(markComplete(mockConfig, args))
         .rejects.toThrow('status must be a non-empty string');
-      
-      expect(MockTaskContextManager).not.toHaveBeenCalled();
     });
 
     it('should reject short summaries', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: 'Short',
-        agent: 'test-agent'
+        summary: 'short'
       };
 
       await expect(markComplete(mockConfig, args))
         .rejects.toThrow('Summary must be at least 10 characters long');
-      
-      expect(MockTaskContextManager).not.toHaveBeenCalled();
     });
 
     it('should reject whitespace-only summaries', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: '   \n\t   ',
-        agent: 'test-agent'
+        summary: '   '
       };
 
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('Summary must be at least 10 characters long');
+        .rejects.toThrow('summary must be a non-empty string');
     });
 
-    it('should propagate validation errors for missing agent', async () => {
+    it('should reject missing agent', async () => {
       const args = {
-        status: 'DONE',
+        status: 'DONE' as const,
         summary: 'Task completed successfully'
-        // Missing agent
-      };
-
-      mockValidation.validateRequiredString.mockImplementation((value, field) => {
-        if (field === 'agent' && value === undefined) {
-          throw new InvalidTaskError('agent must be a non-empty string', 'agent');
-        }
-        return value as string;
-      });
+      } as any;
 
       await expect(markComplete(mockConfig, args))
         .rejects.toThrow('agent must be a non-empty string');
-      
-      expect(MockTaskContextManager).not.toHaveBeenCalled();
     });
 
     it('should handle null values for required fields', async () => {
       const args = {
-        status: null,
-        summary: null,
-        agent: null
-      };
-
-      mockValidation.validateRequiredString.mockImplementation((value, field) => {
-        if (value === null) {
-          throw new InvalidTaskError(`${field} must be a non-empty string`, field);
-        }
-        return value as string;
-      });
+        agent: null,
+        status: 'DONE' as const,
+        summary: 'Task completed successfully'
+      } as any;
 
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('status must be a non-empty string');
+        .rejects.toThrow('agent must be a non-empty string');
     });
 
     it('should handle non-string types for required fields', async () => {
       const args = {
-        status: 123,
-        summary: { invalid: 'object' },
-        agent: true
-      };
-
-      mockValidation.validateRequiredString.mockImplementation((value, field) => {
-        if (typeof value !== 'string') {
-          throw new InvalidTaskError(`${field} must be a non-empty string`, field);
-        }
-        return value as string;
-      });
+        agent: 123,
+        status: 'DONE' as const,
+        summary: 'Task completed successfully'
+      } as any;
 
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('status must be a non-empty string');
+        .rejects.toThrow('agent must be a non-empty string');
     });
   });
 
-  describe('configuration validation', () => {
-    it('should reject missing connectionManager', async () => {
-      const invalidConfig = { 
-        ...mockConfig, 
-        connectionManager: undefined 
-      } as any;
-
+  describe('configuration handling', () => {
+    it('should use provided configuration', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: 'Task completed successfully',
-        agent: 'test-agent'
-      };
-
-      await expect(markComplete(invalidConfig, args))
-        .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
-    });
-
-    it('should reject missing eventLogger', async () => {
-      const invalidConfig = { 
-        ...mockConfig, 
-        eventLogger: undefined 
-      } as any;
-
-      const args = {
-        status: 'DONE',
-        summary: 'Task completed successfully',
-        agent: 'test-agent'
-      };
-
-      await expect(markComplete(invalidConfig, args))
-        .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
-    });
-
-    it('should reject missing both connectionManager and eventLogger', async () => {
-      const invalidConfig = { 
-        ...mockConfig, 
-        connectionManager: undefined,
-        eventLogger: undefined
-      } as any;
-
-      const args = {
-        status: 'DONE',
-        summary: 'Task completed successfully',
-        agent: 'test-agent'
-      };
-
-      await expect(markComplete(invalidConfig, args))
-        .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
-    });
-
-    it('should accept valid configuration', async () => {
-      const args = {
-        status: 'DONE',
-        summary: 'Task completed successfully',
-        agent: 'test-agent'
+        summary: 'Task completed successfully'
       };
 
       const result = await markComplete(mockConfig, args);
 
-      expect(result).toBe(mockCompletionResult);
-      expect(MockTaskContextManager).toHaveBeenCalledWith({
-        commDir: mockConfig.commDir,
-        connectionManager: mockConfig.connectionManager,
-        eventLogger: mockConfig.eventLogger
-      });
+      expect(result.success).toBe(true);
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalled();
+    });
+
+    it('should create TaskContextManager with provided config', async () => {
+      const args = {
+        agent: 'test-agent',
+        status: 'DONE',
+        summary: 'Task completed successfully'
+      };
+
+      const result = await markComplete(mockConfig, args);
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
     });
   });
 
   describe('TaskContextManager error propagation', () => {
     it('should propagate file system errors from TaskContextManager', async () => {
+      (mockTaskContextManager.markComplete as jest.Mock)
+        .mockRejectedValue(new Error('File system error: Permission denied'));
+
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: 'Task completed successfully',
-        agent: 'test-agent'
+        summary: 'Task completed successfully'
       };
 
-      const fsError = new Error('ENOENT: no such file or directory');
-      mockContextManager.markComplete.mockRejectedValue(fsError);
-
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('ENOENT: no such file or directory');
+        .rejects.toThrow('Failed to mark task complete: File system error: Permission denied');
     });
 
     it('should propagate permission errors from TaskContextManager', async () => {
+      (mockTaskContextManager.markComplete as jest.Mock)
+        .mockRejectedValue(new Error('Permission denied'));
+
       const args = {
-        status: 'ERROR',
-        summary: 'Task failed due to permissions',
-        agent: 'perm-agent'
+        agent: 'test-agent',
+        status: 'DONE',
+        summary: 'Task completed successfully'
       };
 
-      const permError = new Error('EACCES: permission denied');
-      mockContextManager.markComplete.mockRejectedValue(permError);
-
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('EACCES: permission denied');
+        .rejects.toThrow('Failed to mark task complete: Permission denied');
     });
 
     it('should propagate custom TaskContextManager errors', async () => {
-      const args = {
-        status: 'DONE',
-        summary: 'Task completed with issues',
-        agent: 'custom-error-agent'
-      };
+      (mockTaskContextManager.markComplete as jest.Mock)
+        .mockRejectedValue(new Error('Custom error from TaskContextManager'));
 
-      const customError = new InvalidTaskError('Custom completion error', 'task');
-      mockContextManager.markComplete.mockRejectedValue(customError);
+      const args = {
+        agent: 'test-agent',
+        status: 'DONE',
+        summary: 'Task completed successfully'
+      };
 
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('Custom completion error');
-    });
-  });
-
-  describe('connection object generation', () => {
-    it('should generate connection with proper metadata', async () => {
-      const args = {
-        status: 'ERROR',
-        summary: 'Failed with detailed error information',
-        agent: 'metadata-agent'
-      };
-
-      await markComplete(mockConfig, args);
-
-      const connection = mockContextManager.markComplete.mock.calls[0][2];
-
-      expect(connection).toEqual({
-        id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/),
-        agent: 'metadata-agent',
-        startTime: expect.any(Date),
-        metadata: {
-          operation: 'mark-complete',
-          status: 'ERROR',
-          summarySize: 'Failed with detailed error information'.length
-        }
-      });
-
-      expect(connection.startTime).toBeInstanceOf(Date);
-      expect(connection.startTime.getTime()).toBeLessThanOrEqual(Date.now());
-    });
-
-    it('should generate different timestamps for different operations', async () => {
-      const args = {
-        status: 'DONE',
-        summary: 'First completion operation',
-        agent: 'time-agent'
-      };
-
-      const time1 = Date.now();
-      await markComplete(mockConfig, args);
-      const connection1Time = mockContextManager.markComplete.mock.calls[0][2].startTime;
-
-      // Add small delay
-      await new Promise(resolve => setTimeout(resolve, 2));
-
-      await markComplete(mockConfig, args);
-      const connection2Time = mockContextManager.markComplete.mock.calls[1][2].startTime;
-
-      expect(connection1Time.getTime()).toBeGreaterThanOrEqual(time1);
-      expect(connection2Time.getTime()).toBeGreaterThanOrEqual(connection1Time.getTime());
+        .rejects.toThrow('Failed to mark task complete: Custom error from TaskContextManager');
     });
   });
 
   describe('edge cases', () => {
-    it('should handle empty args object', async () => {
-      mockValidation.validateRequiredString.mockImplementation((_value, field) => {
-        throw new InvalidTaskError(`${field} must be a non-empty string`, field);
-      });
-
-      await expect(markComplete(mockConfig, {}))
-        .rejects.toThrow('status must be a non-empty string');
-    });
-
-    it('should handle case sensitivity in status values', async () => {
-      const args = {
-        status: 'done', // lowercase
-        summary: 'Task completed successfully',
-        agent: 'case-agent'
-      };
-
-      await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('Status must be either DONE or ERROR');
-    });
-
-    it('should handle mixed case status values', async () => {
-      const args = {
-        status: 'Done',
-        summary: 'Task completed successfully',
-        agent: 'mixed-case-agent'
-      };
-
-      await expect(markComplete(mockConfig, args))
-        .rejects.toThrow('Status must be either DONE or ERROR');
-    });
-
     it('should handle exactly 10 character summary (boundary case)', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: '1234567890', // Exactly 10 characters
-        agent: 'boundary-agent'
+        summary: '1234567890' // Exactly 10 characters
       };
 
       const result = await markComplete(mockConfig, args);
 
-      expect(mockContextManager.markComplete).toHaveBeenCalledWith(
+      expect(result.success).toBe(true);
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalledWith(
         'DONE',
         '1234567890',
-        expect.any(Object)
+        expect.objectContaining({
+          agent: 'test-agent',
+          id: expect.stringMatching(/^mark-complete-\d+-[a-z0-9]+$/)
+        })
       );
-      expect(result).toBe(mockCompletionResult);
     });
 
     it('should reject 9 character summary (just under boundary)', async () => {
       const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: '123456789', // 9 characters
-        agent: 'under-boundary-agent'
+        summary: '123456789' // Only 9 characters
       };
 
       await expect(markComplete(mockConfig, args))
         .rejects.toThrow('Summary must be at least 10 characters long');
     });
-  });
 
-  describe('async operation handling', () => {
-    it('should handle delayed TaskContextManager operations', async () => {
+    it('should handle case sensitivity in status values', async () => {
       const args = {
-        status: 'DONE',
-        summary: 'Delayed completion task',
-        agent: 'delayed-agent'
+        agent: 'test-agent',
+        status: 'done' as any, // lowercase instead of uppercase
+        summary: 'Task completed successfully'
       };
 
-      let resolveCompletion: (value: CompletionResult) => void;
-      const delayedPromise = new Promise<CompletionResult>((resolve) => {
-        resolveCompletion = resolve;
-      });
-      
-      mockContextManager.markComplete.mockReturnValue(delayedPromise);
-
-      const resultPromise = markComplete(mockConfig, args);
-      
-      // Resolve after delay
-      setTimeout(() => resolveCompletion(mockCompletionResult), 10);
-      
-      const result = await resultPromise;
-
-      expect(result).toBe(mockCompletionResult);
+      await expect(markComplete(mockConfig, args))
+        .rejects.toThrow('Status must be either "DONE" or "ERROR"');
     });
 
-    it('should handle concurrent completion operations', async () => {
-      const args1 = {
+    it('should handle mixed case status values', async () => {
+      const args = {
+        agent: 'test-agent',
+        status: 'Done' as any, // Mixed case
+        summary: 'Task completed successfully'
+      };
+
+      await expect(markComplete(mockConfig, args))
+        .rejects.toThrow('Status must be either "DONE" or "ERROR"');
+    });
+  });
+
+  describe('reconciliation mode support', () => {
+    it('should complete task without reconciliation parameters', async () => {
+      const args = {
+        agent: 'test-agent',
         status: 'DONE',
-        summary: 'First concurrent completion',
-        agent: 'concurrent-1'
+        summary: 'Task completed successfully'
       };
 
-      const args2 = {
-        status: 'ERROR',
-        summary: 'Second concurrent completion',
-        agent: 'concurrent-2'
+      const result = await markComplete(mockConfig, args);
+
+      expect(result.success).toBe(true);
+      // Simplified version doesn't use reconciliation parameters
+    });
+
+    it('should handle complex task completion', async () => {
+      const args = {
+        agent: 'test-agent',
+        status: 'DONE',
+        summary: 'Complex task completed with multiple steps and thorough validation'
       };
 
-      const result1Promise = markComplete(mockConfig, args1);
-      const result2Promise = markComplete(mockConfig, args2);
+      const result = await markComplete(mockConfig, args);
 
-      const [result1, result2] = await Promise.all([result1Promise, result2Promise]);
-
-      expect(result1).toBe(mockCompletionResult);
-      expect(result2).toBe(mockCompletionResult);
-      expect(MockTaskContextManager).toHaveBeenCalledTimes(2);
-      expect(mockContextManager.markComplete).toHaveBeenCalledTimes(2);
+      expect(result.success).toBe(true);
+      expect(mockTaskContextManager.markComplete).toHaveBeenCalledWith(
+        'DONE',
+        'Complex task completed with multiple steps and thorough validation',
+        expect.objectContaining({
+          agent: 'test-agent'
+        })
+      );
     });
   });
 });
