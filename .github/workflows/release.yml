@@ -155,13 +155,13 @@ jobs:
             BRANCH_NAME="release/v${{ steps.version.outputs.new_version }}"
             git checkout -b "$BRANCH_NAME"
             
-            # Add and commit version changes
-            git add package.json CHANGELOG.md src/generated/version.ts
+            # Add and commit version changes (generated files will be created during build)
+            git add package.json CHANGELOG.md
             git commit -m "chore: release v${{ steps.version.outputs.new_version }} [skip ci]
 
             - Automated version bump from ${{ steps.version.outputs.current_version }} to ${{ steps.version.outputs.new_version }}
             - Updated CHANGELOG.md with release notes
-            - Generated version.ts with new package info
+            - Version.ts will be auto-generated during build process
             
             Closes issues referenced in commits since v${{ steps.version.outputs.current_version }}
             
@@ -189,8 +189,8 @@ jobs:
             ### 📦 Changes Included
             - \`package.json\`: Updated version to ${{ steps.version.outputs.new_version }}
             - \`CHANGELOG.md\`: Generated changelog entries for new version
-            - \`src/generated/version.ts\`: Auto-generated version constants
-            - Git tag \`v${{ steps.version.outputs.new_version }}\` ready for creation
+            - Git tag \`v${{ steps.version.outputs.new_version }}\` created and pushed
+            - Generated files (\`version.ts\`) will be created during CI build
 
             ### 🔄 Next Steps After Merge
             1. **NPM Publication**: Automated publish to [@jerfowler/agent-comm-mcp-server](https://www.npmjs.com/package/@jerfowler/agent-comm-mcp-server)
