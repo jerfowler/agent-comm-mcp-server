@@ -231,7 +231,7 @@ jobs:
         id: create_pr
         run: |
           # Check if PR already exists
-          EXISTING_PR=$(gh pr list --base ${{ env.TARGET_BRANCH }} --head ${{ env.SOURCE_BRANCH }} --json number --jq '.[0].number // empty')
+          EXISTING_PR=$(gh pr list --base ${{ env.TARGET_BRANCH }} --head ${{ env.SOURCE_BRANCH }} --limit 1 | head -1 | cut -f1)
           
           if [ -n "$EXISTING_PR" ]; then
             echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
@@ -243,14 +243,16 @@ jobs:
           else
             # Create new PR with version information
             PR_TITLE="🚀 Release v${{ steps.version_analysis.outputs.new_version }}: ${{ env.SOURCE_BRANCH }} → ${{ env.TARGET_BRANCH }}"
-            PR_NUMBER=$(gh pr create \
+            gh pr create \
               --base ${{ env.TARGET_BRANCH }} \
               --head ${{ env.SOURCE_BRANCH }} \
               --title "$PR_TITLE" \
               --body-file ${{ steps.pr_body.outputs.pr_body_file }} \
               --label "release,automated" \
-              --assignee @me \
-              --json number --jq '.number')
+              --assignee @me
+              
+            # Get the PR number from the newly created PR
+            PR_NUMBER=$(gh pr list --base ${{ env.TARGET_BRANCH }} --head ${{ env.SOURCE_BRANCH }} --limit 1 | head -1 | cut -f1)
               
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
             echo "pr_action=created" >> $GITHUB_OUTPUT
