@@ -8,7 +8,6 @@ This file provides guidance to Claude Code when working with the **agent-comm-mc
 **Purpose**: MCP server for AI agent task communication and delegation with diagnostic lifecycle visibility  
 **Author**: Jeremy Fowler  
 **License**: MIT  
-**Version**: 0.6.1  
 
 This is a standalone TypeScript NPM package that implements a Model Context Protocol (MCP) server enabling Claude Code to coordinate multiple specialized agents, track their progress in real-time, and understand exactly how they approach and solve complex tasks.
 
@@ -326,164 +325,28 @@ git push --force-with-lease origin your-branch
 - **[.github/workflows/pr-issue-linking.yml](./.github/workflows/pr-issue-linking.yml)** - PR-issue linking and auto-closure  
 - **[.github/workflows/stale-issues.yml](./.github/workflows/stale-issues.yml)** - Stale issue lifecycle management
 
-### Comprehensive Automated Semver Workflow System
+### Automated Release Workflow
 
-This repository implements a **complete automated semantic versioning workflow** that handles the entire lifecycle from feature development to NPM publication.
+**Two-Stage Architecture:**
+1. **release.yml**: Creates version bump PRs with automated semantic versioning
+2. **publish.yml**: Publishes to NPM and creates GitHub releases after PR merge
 
-#### Workflow Architecture (8 GitHub Actions)
-- **`test-validation.yml`** - Performance validation and CI checks
-- **`comprehensive-testing.yml`** - Multi-layered testing strategy
-- **`promote.yml`** - Feature → test branch with version analysis
-- **`release.yml`** - Test → main with automated semver and NPM publication
-- **`pr-validation.yml`** - PR quality gates
-- **`issue-management.yml`** - Issue automation and labeling
-- **`pr-issue-linking.yml`** - PR-issue integration
-- **`stale-issues.yml`** - Stale issue lifecycle management
-
-#### Automated Semantic Versioning
-```bash
-# Version bump script with CI/CD integration
-node scripts/bump-version.cjs              # Analyze and bump version
-node scripts/bump-version.cjs --dry-run    # Preview changes only
-node scripts/bump-version.cjs --force-type=major  # Force version type
-node scripts/bump-version.cjs --no-commit --no-tag  # Skip git operations
-```
-
-**Conventional Commit Detection:**
-- `feat:` → Minor version bump (unless CI/CD related)
+**Version Bumping:**
+- `feat:` → Minor version bump
 - `fix:` → Patch version bump  
-- `BREAKING CHANGE` or `!:` → Major version bump (→ Minor in beta 0.x.x)
+- `BREAKING CHANGE` or `!:` → Major version bump
 - `chore/docs/test/style/refactor/ci:` → No version bump
 
-**Beta Versioning (0.x.x):**
-- Breaking changes and features → **Minor bump** (prevents 1.0.0 until ready)
-- Bug fixes → Patch bump
-- Major version (1.0.0) → Only with explicit `--force-type=major` or production readiness
-
-**Smart CI/CD Detection:**
-CI/CD "features" are automatically treated as chores:
-- Keywords: `workflow`, `CI`, `CD`, `github action`, `semver`, `branch`, `automation`, `pipeline`, `deployment`, `release`, `promotion`
-- Example: `feat: implement GitHub Actions workflow` → Treated as chore (no version bump)
-
-**Manual Version Override:**
-Force specific version bump with commit message tags:
+**Quick Commands:**
 ```bash
-git commit -m "fix: resolve critical issue [force-patch]"    # Forces patch
-git commit -m "feat: new feature [force-minor]"            # Forces minor  
-git commit -m "feat!: breaking change [force-major]"       # Forces major
+node scripts/bump-version.cjs --dry-run     # Preview version bump
+gh workflow run release.yml --ref main     # Trigger release workflow
 ```
 
-**Workflow Override:**
-```bash
-gh workflow run release.yml --ref main -f force_type=patch  # Manual dispatch
-```
+**NPM Publishing Requirements:**
+- `NPM_TOKEN` secret must be configured in repository settings
+- Use automated workflows - never publish manually
 
-#### Complete Release Flow (Two-Stage Architecture)
-```
-Feature Branch → Test Branch → Main Branch → NPM Publication
-     ↓              ↓             ↓              ↓
-  promote.yml   release.yml   Stage 1: PR   Stage 2: Publish
-                              Creation      NPM + GitHub Release
-```
-
-**Two-Stage Workflow Design:**
-- **Stage 1 (release.yml)**: Creates version bump PR instead of direct push to main
-- **Stage 2 (publish.yml)**: Triggers on main branch changes to publish NPM + create GitHub release
-- **Critical Fix**: Uses `[skip release]` instead of `[skip ci]` to allow Stage 2 to run
-
-**Key Features:**
-- ✅ **Automated version analysis** based on conventional commits
-- ✅ **CHANGELOG.md generation** with categorized changes  
-- ✅ **Version consistency** across package.json, CHANGELOG.md, and git tags
-- ✅ **GitHub release creation** with automated notes
-- ✅ **NPM publication** with provenance (requires `NPM_TOKEN` secret)
-- ✅ **Branch protection compliance** - no direct pushes to main
-- ✅ **Version badges** in README.md for visibility
-
-#### Workflow Verification
-```bash
-# Manual verification commands
-node scripts/bump-version.cjs --dry-run     # Test version detection
-npm run ci                                  # Full CI pipeline
-gh workflow run promote.yml --ref test     # Test promotion workflow
-gh workflow run release.yml --ref main     # Test release workflow
-```
-
-**Verification Command:** `.claude/commands/verify-workflow.yaml`
-- Validates all 8 GitHub Actions workflows
-- Tests version bump script functionality
-- Confirms version consistency across files
-- Checks workflow status and recent runs
-
-#### NPM Publishing Setup Requirements
-
-**Required Secret Configuration:**
-```bash
-# 1. Create NPM access token at npmjs.com:
-# Account → Access Tokens → Generate New Token → Automation
-
-# 2. Add to GitHub repository secrets:
-# Repository Settings → Secrets and variables → Actions → New repository secret
-# Name: NPM_TOKEN
-# Value: [your-npm-token]
-
-# 3. Retry failed publication (if needed):
-gh workflow run publish.yml --ref main
-```
-
-**Testing Results (v0.6.1 Pipeline):**
-- ✅ **Stage 1**: Version bump PR created and merged successfully
-- ✅ **Version Detection**: Correctly detected 0.6.0 → 0.6.1 change
-- ✅ **Package Build**: Generated 460.3 kB package with 127 files
-- ✅ **Git Tagging**: v0.6.1 tag created and pushed
-- ✅ **NPM Publish**: Successfully published with NPM_TOKEN authentication
-- ✅ **GitHub Release**: v0.6.1 release created with automated changelog
-- ✅ **Architecture Validation**: Complete two-stage workflow operational
-- ✅ **End-to-End Validation**: Full pipeline tested and verified working
-
-#### Implementation Lessons Learned
-
-#### YAML Syntax in GitHub Actions
-- **Problem**: Template literals with newlines cause YAML parsing errors
-- **Solution**: Use array `.join('\n')` approach for multiline strings
-- **Pattern**: Always validate YAML syntax before deploying workflows
-```bash
-python3 -c "import yaml; yaml.safe_load(open('.github/workflows/file.yml'))"
-```
-
-#### Performance Validation Fixes
-- **Problem**: MCP server startup failures in CI environment
-- **Solution**: Replace memory tests with simple binary execution tests using `--help` flag
-- **Pattern**: MCP servers require stdin connections not available in GitHub Actions
-
-#### Two-Stage Workflow Critical Fix
-- **Problem**: `[skip ci]` in release.yml prevented publish.yml from running
-- **Root Cause**: Stage 1 (release.yml) used `[skip ci]` to prevent re-triggering itself, but this also blocked Stage 2 (publish.yml)
-- **Solution**: Use `[skip release]` instead of `[skip ci]` to allow Stage 2 publication workflow to run
-- **Pattern**: Use workflow-specific skip tags to avoid blocking dependent workflows
-
-#### GitHub Actions Permissions
-- **Problem**: Workflows failed without explicit permissions
-- **Solution**: Add `permissions:` block to all workflow files
-- **Required**: `contents: write`, `id-token: write`, `issues: read`, `pull-requests: read`
-
-#### Single-Developer Workflow Adaptation
-- **Challenge**: GitHub doesn't allow self-approval by default
-- **Solution**: Admin can use `--admin` flag to merge: `gh pr merge --squash --delete-branch --admin`
-- **Branch Protection**: Configured to allow admin bypass for single-developer repository
-
-#### Issue Automation Validation
-- **Testing**: Issue #8 validates complete automation pipeline
-- **Results**: Auto-assignment ✅, priority labeling ✅, category detection ✅
-- **Keywords**: "critical" → `priority:high`, "testing" → `category:testing`
-
-#### Automated Semver Status
-- **Current State**: v0.6.1 successfully released (full end-to-end validation complete)
-- **Version Detection**: Fully functional with conventional commits and beta versioning
-- **CI/CD Pipeline**: All 8 workflows operational and tested
-- **NPM Publishing**: Live and verified - package available on NPM registry
-- **Two-Stage Architecture**: Proven working with branch protection compliance
-- **Ready for Production**: Complete automated release workflow operational
 
 ## Tool Categories (17 Total)
 
@@ -533,25 +396,13 @@ echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","st
 ./scripts/verify-hook-installation.sh  # Comprehensive validation
 ```
 
-## Publishing Process
+## Publishing
 
-### Current Status
-- **Version**: 0.6.1
-- **Published**: ✅ Available on NPM registry
-- **Ready**: ✅ All tests passing, build clean, two-stage workflow operational
+All releases are handled through automated GitHub Actions workflows:
+1. **release.yml**: Creates version bump PRs with automated semantic versioning
+2. **publish.yml**: Publishes to NPM and creates GitHub releases after PR merge
 
-### Publishing Steps (Automated)
-```bash
-# Automated via two-stage workflow:
-# 1. Stage 1: Create version bump PR via release.yml
-# 2. Stage 2: NPM publication via publish.yml after PR merge
-
-# Manual publishing (if needed):
-npm login                              # Browser-based authentication
-npm publish --access public           # Publish to npm registry
-gh release create v0.6.1             # Create GitHub release
-npx @jerfowler/agent-comm-mcp-server  # Test published package
-```
+**Never publish manually** - always use the automated two-stage workflow.
 
 ## Key Files
 
@@ -600,15 +451,13 @@ npx @jerfowler/agent-comm-mcp-server  # Test published package
 await eventLogger.waitForWriteQueueEmpty();
 ```
 
-### Hook Development
-- Always test with both `python3` and `python` commands
-- Use stdin for JSON input, not command-line arguments
-- Exit code 2 means "success with information"
-- Handle invalid JSON gracefully (exit code 0)
 
 ## Important Notes
 
 ### Security & Best Practices
+- **🔒 CRITICAL**: Never commit API keys or sensitive credentials to git
+- Use `.mcp.json.example` as template, actual `.mcp.json` is gitignored
+- Run `npm run setup` for safe MCP configuration setup
 - Never expose file paths to agents (use context IDs only)
 - Always validate tool parameters before processing
 - Use lock coordination for file operations
@@ -625,119 +474,34 @@ await eventLogger.waitForWriteQueueEmpty();
 - Validate JSON-RPC response structures
 - Use TypeScript type compliance checks
 
-### Common Gotchas
-- Hook must read from stdin, not argv
+### Important Notes
 - MCP tools return structured responses, not plain strings
-- TaskContextManager hides all file operations from agents
-- Archive operations require proper timestamp formatting
+- TaskContextManager abstracts all file operations from agents  
+- Archive operations use proper timestamp formatting
 
 ## TypeScript Strict Mode Requirements
 
-### Critical Testing Standards
-This project uses TypeScript strict mode with `exactOptionalPropertyTypes: true`. ALL tests must pass TypeScript compilation without errors or warnings.
+This project uses TypeScript strict mode with `exactOptionalPropertyTypes: true`. ALL tests must pass TypeScript compilation.
 
-**NEVER skip TypeScript type checking on tests** - this leads to runtime failures in CI/CD pipelines.
+**Key Patterns:**
+- Use factory function mocking for fs-extra: `jest.mock('fs-extra', () => ({...}))`
+- Type error assertions: `(error as Error).message`
+- Always return promises for async mock functions
+- Use proper type assertions instead of type casting
 
-### Jest + fs-extra Mock Patterns
+**Reference**: See `tests/unit/utils/file-system.test.ts` for correct patterns.
 
-#### ❌ WRONG - Automatic Mocking with Type Casting
-```typescript
-// DON'T DO THIS - causes "UnknownFunction" errors in strict mode
-jest.mock('fs-extra');
-const mockedFs = fs as unknown as MockedFsExtra;
-(mockedFs.pathExists as jest.Mock).mockImplementation(...);
-```
-
-#### ✅ CORRECT - Factory Function Mocking
-```typescript
-// Factory function mock - proper TypeScript pattern
-jest.mock('fs-extra', () => ({
-  pathExists: jest.fn(),
-  readFile: jest.fn(),
-  writeFile: jest.fn(),
-  readdir: jest.fn(),
-  stat: jest.fn(),
-  remove: jest.fn(),
-  ensureDir: jest.fn()
-}));
-
-// Properly typed mock interface
-const mockFs = fs as unknown as jest.Mocked<{
-  pathExists: jest.MockedFunction<(path: string) => Promise<boolean>>;
-  readFile: jest.MockedFunction<(path: string, encoding?: string) => Promise<string>>;
-  writeFile: jest.MockedFunction<(path: string, data: string) => Promise<void>>;
-  readdir: jest.MockedFunction<(path: string) => Promise<string[]>>;
-  stat: jest.MockedFunction<(path: string) => Promise<{ isDirectory: () => boolean; mtime?: Date }>>;
-  remove: jest.MockedFunction<(path: string) => Promise<void>>;
-  ensureDir: jest.MockedFunction<(path: string) => Promise<void>>;
-}>;
-
-// Clean mock calls - no type casting needed
-mockFs.pathExists.mockImplementation((filePath: string) => {
-  // implementation
-});
-```
-
-### Error Handling in Tests
-```typescript
-// ❌ WRONG - 'error' is of type 'unknown'
-} catch (error) {
-  expect(error.message).toContain('expected text');
-}
-
-// ✅ CORRECT - Proper error type assertion
-} catch (error) {
-  expect((error as Error).message).toContain('expected text');
-}
-```
-
-### Mock Call Assertions
-```typescript
-// ✅ CORRECT - Type-safe mock call assertions
-const writeFileCalls = mockFs.writeFile.mock.calls;
-const planWriteCall = writeFileCalls.find(call => 
-  (call as [string, string])[0].endsWith('PLAN.md')
-) as [string, string];
-expect(planWriteCall).toBeDefined();
-expect(planWriteCall[1]).toContain('expected content');
-```
-
-### Promise-based Mock Returns
-```typescript
-// ✅ CORRECT - Always return promises for async mocks
-mockFs.writeFile.mockImplementation(async (filePath: string, content: string) => {
-  // logic here
-  return Promise.resolve(); // ← Always return Promise for async functions
-});
-```
-
-### Fixing Common Strict Mode Errors
-
-1. **"UnknownFunction" errors**: Use factory function mocks instead of automatic mocking
-2. **"Object is of type 'unknown'"**: Add proper type assertions `(error as Error)`
-3. **"possibly undefined"**: Add null checks or proper type assertions
-4. **"not assignable to parameter"**: Check mock function signatures match expected types
-5. **Mock reassignment errors**: Use `.mockImplementation()` instead of reassigning mock functions
-
-### CI Pipeline Requirements
-
-**GitHub Actions MUST pass these checks**:
-- `npm run type-check` - Zero TypeScript errors
-- `npm run lint:all` - Zero ESLint warnings/errors  
-- `npm run test:all` - 100% test success rate
-- `npm run ci` - Complete pipeline validation
-
-### Verification Commands
+### Essential Commands
 ```bash
-# Always run these before committing
-npm run type-check      # TypeScript strict mode validation
-npm run lint:all        # Code quality checks
+# Before committing - must pass 100%
+npm run ci              # Complete pipeline (type + lint + test)
+npm run type-check      # TypeScript validation  
 npm run test:all        # Full test suite
-npm run ci              # Complete CI pipeline
+npm run lint:all        # Code quality
 
-# Quick validation during development
+# Development
 npm run test:unit       # Unit tests only
-npm run test:smoke      # Critical path tests
+npm run test:smoke      # Critical path validation
 ```
 
 ### References
@@ -779,9 +543,9 @@ node scripts/bump-version.cjs --dry-run         # Test version detection
 gh workflow list                                # List all workflows
 gh run list --limit 5                          # Recent workflow runs
 
-# Publishing
-npm run clean && npm run build && npm test:all  # Pre-publish verification
-npm publish --access public                     # Publish to npm
+# Publishing (automated only)
+gh workflow run release.yml --ref main          # Create release PR
+# After PR merge, publish.yml automatically publishes to NPM
 ```
 
 This MCP server is designed to make AI agent coordination simple, transparent, and powerful. Focus on the context-based tools for the best user experience.

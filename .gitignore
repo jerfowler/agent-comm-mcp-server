@@ -67,3 +67,6 @@ MCP-COMPLIANCE-*.md
 # Package manager - yarn and pnpm only (keep npm lock for CI)
 yarn.lock
 pnpm-lock.yaml
+
+# MCP Configuration with sensitive API keys
+.mcp.json

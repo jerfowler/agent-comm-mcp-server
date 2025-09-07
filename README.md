@@ -60,6 +60,14 @@ npm install && npm run build
 
 ### Setup with Claude
 
+**Quick Setup:**
+```bash
+# Install and setup in one step
+npm install -g @jerfowler/agent-comm-mcp-server
+npm run setup  # Creates .mcp.json with all configured servers
+```
+
+**Manual Setup:**
 Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_config.json`):
 
 ```json
@@ -76,7 +84,7 @@ Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_confi
 }
 ```
 
-That's it! Claude now has access to the agent communication tools.
+**🔒 Security Note:** Never commit API keys to git. The `.mcp.json` file is gitignored to protect sensitive credentials. Use `.mcp.json.example` as a template and `npm run setup` for easy configuration.
 
 ### Optional: TodoWrite Hook Integration
 

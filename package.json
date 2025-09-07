@@ -45,7 +45,8 @@
     "release:manual": "npm run ci:full && npm run version:bump && git push && git push --tags",
     "workflow:promote": "gh workflow run promote.yml --ref test",
     "workflow:promote:force": "gh workflow run promote.yml --ref test -f force_promote=true",
-    "workflow:release": "gh workflow run release.yml --ref main"
+    "workflow:release": "gh workflow run release.yml --ref main",
+    "setup": "node scripts/setup-mcp.js"
   },
   "keywords": [
     "mcp",

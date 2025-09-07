@@ -7,27 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.1] - 2025-09-07
 
+### 🛡️ Agent False Success Prevention (Issue #11)
+
+- **NEW**: Added Agent Work Verifier system to prevent false success reporting
+- **Implementation**: `src/core/agent-work-verifier.ts` - mandatory verification gates with confidence scoring
+- **Features**: File system evidence checking, MCP progress tracking validation, test execution verification
+- **Enhanced**: `mark_complete` tool with verification gate integration to prevent agents claiming completion without evidence
+- **Protection**: Prevents agents from marking tasks complete without actual work being performed
+- **Testing**: Comprehensive test suite (661 lines) covering all verification scenarios
+
+### 🔧 FileSystem Reliability Improvements (Issue #9)
+
+- **NEW**: SafeFileSystem wrapper (`src/utils/fs-extra-safe.ts`) resolving fs-extra runtime errors in MCP tools
+- **Robustness**: Provides reliable filesystem interface regardless of ESM/CJS import issues or module resolution conflicts
+- **Fallback**: Dynamic module loading with Node.js built-in fallbacks for maximum compatibility
+- **Coverage**: All filesystem operations (pathExists, readdir, writeFile, readFile, stat, remove, ensureDir)
+- **Testing**: Comprehensive test suite (583 lines) validating both primary and fallback mechanisms
+
 ### 🐛 Bug Fixes
 
-- exclude gitignored files from version PR [force-patch]
-- correct workflow logic for PR creation [force-patch]
-- implement two-stage release workflow architecture [force-patch]
-- comprehensive version management improvements v0.6.1 [force-patch]
-- rename bump-version script to use CommonJS extension
-- resolve YAML syntax errors in GitHub Actions workflows
-- add required permissions to GitHub Actions workflows (#6)
-
-### 🔧 Other Changes
-
-- release v0.6.1 test to main promotion (#19)
-- implement automated semver system with test branch workflow (#14)
-- implement comprehensive automated semver and branch workflow system
-- update MCP configuration
-- add MCP integration debug documentation
-- update CLAUDE.md with comprehensive GitHub issue workflow documentation
-- implement comprehensive GitHub issue workflow automation (#3)
-- implement comprehensive Git Feature Branch Workflow (#2)
-- add Git Feature Branch Workflow section to README (#1)
+- **Fixed**: TypeScript interface compliance in test mocks across multiple test files
+- **Corrected**: Import paths updated in 9 source files for SafeFileSystem compatibility
+- **Resolved**: Test compatibility issues with new SafeFileSystem wrapper implementation
 
 ## [0.6.0] - 2025-01-05
 
