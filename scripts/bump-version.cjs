@@ -104,8 +104,17 @@ function analyzeCommits(commits) {
     }
     // Check commit type
     else if (subject.startsWith('feat:') || subject.startsWith('feature:')) {
-      analysis.hasFeatures = true;
-      analysis.features.push(commit);
+      // Check if this is a CI/CD or workflow "feature" that should be treated as chore
+      const isCIFeature = subject.match(/feat:.*(?:workflow|CI|CD|github action|semver|branch|issue automation|pipeline|deployment|release|promotion)/i);
+      
+      if (isCIFeature) {
+        // Treat workflow/CI features as chores to prevent version bumps
+        analysis.chores.push(commit);
+      } else {
+        // Real features that add functionality to the MCP server
+        analysis.hasFeatures = true;
+        analysis.features.push(commit);
+      }
     }
     else if (subject.startsWith('fix:')) {
       analysis.hasFixes = true;

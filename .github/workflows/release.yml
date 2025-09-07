@@ -86,8 +86,24 @@ jobs:
           
           # Prepare force type argument (uses beta versioning logic by default)
           FORCE_ARG=""
+          
+          # Check for manual workflow dispatch override
           if [ -n "${{ github.event.inputs.force_type }}" ]; then
             FORCE_ARG="--force-type=${{ github.event.inputs.force_type }}"
+            echo "Manual override: ${{ github.event.inputs.force_type }}"
+          fi
+          
+          # Check commit message for version override tags
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -q '\[force-patch\]'; then
+            FORCE_ARG="--force-type=patch"
+            echo "Commit message override: patch"
+          elif echo "$COMMIT_MSG" | grep -q '\[force-minor\]'; then
+            FORCE_ARG="--force-type=minor"  
+            echo "Commit message override: minor"
+          elif echo "$COMMIT_MSG" | grep -q '\[force-major\]'; then
+            FORCE_ARG="--force-type=major"
+            echo "Commit message override: major"
           fi
           
           # Prepare dry run argument
