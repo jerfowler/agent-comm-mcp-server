@@ -378,19 +378,26 @@ git commit -m "feat!: breaking change [force-major]"       # Forces major
 gh workflow run release.yml --ref main -f force_type=patch  # Manual dispatch
 ```
 
-#### Complete Release Flow
+#### Complete Release Flow (Two-Stage Architecture)
 ```
 Feature Branch → Test Branch → Main Branch → NPM Publication
      ↓              ↓             ↓              ↓
-  promote.yml   release.yml   version bump   npm publish
+  promote.yml   release.yml   Stage 1: PR   Stage 2: Publish
+                              Creation      NPM + GitHub Release
 ```
+
+**Two-Stage Workflow Design:**
+- **Stage 1 (release.yml)**: Creates version bump PR instead of direct push to main
+- **Stage 2 (publish.yml)**: Triggers on main branch changes to publish NPM + create GitHub release
+- **Critical Fix**: Uses `[skip release]` instead of `[skip ci]` to allow Stage 2 to run
 
 **Key Features:**
 - ✅ **Automated version analysis** based on conventional commits
-- ✅ **CHANGELOG.md generation** with categorized changes
+- ✅ **CHANGELOG.md generation** with categorized changes  
 - ✅ **Version consistency** across package.json, CHANGELOG.md, and git tags
 - ✅ **GitHub release creation** with automated notes
-- ✅ **NPM publication** with provenance
+- ✅ **NPM publication** with provenance (requires `NPM_TOKEN` secret)
+- ✅ **Branch protection compliance** - no direct pushes to main
 - ✅ **Version badges** in README.md for visibility
 
 #### Workflow Verification
@@ -408,6 +415,30 @@ gh workflow run release.yml --ref main     # Test release workflow
 - Confirms version consistency across files
 - Checks workflow status and recent runs
 
+#### NPM Publishing Setup Requirements
+
+**Required Secret Configuration:**
+```bash
+# 1. Create NPM access token at npmjs.com:
+# Account → Access Tokens → Generate New Token → Automation
+
+# 2. Add to GitHub repository secrets:
+# Repository Settings → Secrets and variables → Actions → New repository secret
+# Name: NPM_TOKEN
+# Value: [your-npm-token]
+
+# 3. Retry failed publication (if needed):
+gh workflow run publish.yml --ref main
+```
+
+**Testing Results (v0.6.1 Pipeline):**
+- ✅ **Stage 1**: Version bump PR created and merged successfully
+- ✅ **Version Detection**: Correctly detected 0.6.0 → 0.6.1 change
+- ✅ **Package Build**: Generated 460.3 kB package with 127 files
+- ✅ **Git Tagging**: v0.6.1 tag created and pushed
+- ❌ **NPM Publish**: Failed due to missing `NPM_TOKEN` secret
+- ✅ **Architecture Validation**: Two-stage workflow operating correctly
+
 #### Implementation Lessons Learned
 
 #### YAML Syntax in GitHub Actions
@@ -423,10 +454,11 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/file.yml'))"
 - **Solution**: Replace memory tests with simple binary execution tests using `--help` flag
 - **Pattern**: MCP servers require stdin connections not available in GitHub Actions
 
-#### Version Persistence in Release Workflow
-- **Problem**: Version changes weren't committed before tagging
-- **Solution**: Add explicit commit step before push in release.yml
-- **Pattern**: Use `[skip ci]` in commit messages to avoid infinite loops
+#### Two-Stage Workflow Critical Fix
+- **Problem**: `[skip ci]` in release.yml prevented publish.yml from running
+- **Root Cause**: Stage 1 (release.yml) used `[skip ci]` to prevent re-triggering itself, but this also blocked Stage 2 (publish.yml)
+- **Solution**: Use `[skip release]` instead of `[skip ci]` to allow Stage 2 publication workflow to run
+- **Pattern**: Use workflow-specific skip tags to avoid blocking dependent workflows
 
 #### GitHub Actions Permissions
 - **Problem**: Workflows failed without explicit permissions
