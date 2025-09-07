@@ -26,11 +26,12 @@ export interface MarkCompleteResult {
  * Mark task as complete (DONE or ERROR) with intelligent reconciliation
  */
 export async function markComplete(
-  args: MarkCompleteArgs,
-  config?: ServerConfig,
-  taskContextManager?: TaskContextManager
+  config: ServerConfig,
+  args: Record<string, unknown>
 ): Promise<MarkCompleteResult> {
-  const { agent, status, summary, reconciliation_mode = 'strict', reconciliation_explanations } = args;
+  const agent = validateRequiredString(args['agent'], 'agent');
+  const status = validateRequiredString(args['status'], 'status') as 'DONE' | 'ERROR';
+  const summary = validateRequiredString(args['summary'], 'summary');
 
   // Validate inputs
   validateRequiredString(agent, 'agent');
@@ -45,36 +46,37 @@ export async function markComplete(
     throw new Error('Summary must be at least 10 characters long');
   }
 
-  // Create default configuration if not provided
-  if (!config) {
-    config = {
-      commDir: './comm',
-      archiveDir: './comm/.archive',
-      logDir: './comm/.logs'
-    };
-  }
-
-  // Create task context manager if not provided
-  if (!taskContextManager) {
-    taskContextManager = new TaskContextManager(config);
-  }
+  // Create task context manager with the provided config
+  const contextManager = new TaskContextManager({
+    commDir: config.commDir,
+    connectionManager: config.connectionManager,
+    eventLogger: config.eventLogger
+  });
 
   try {
     // Generate unique connection ID for this operation
     const connectionId = `mark-complete-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Mark task as complete using TaskContextManager
-    const completionResult = await taskContextManager.markTaskComplete(
+    // Create and register connection for this completion
+    const connection = {
+      id: connectionId,
       agent,
-      connectionId,
+      startTime: new Date(),
+      metadata: { operation: 'mark-complete' }
+    };
+    config.connectionManager.register(connection);
+    
+    // Mark task as complete using TaskContextManager
+    const completionResult = await contextManager.markComplete(
       status,
-      summary.trim()
+      summary.trim(),
+      connection
     );
 
     return {
       success: true,
       message: `Task marked as ${status} successfully`,
-      taskId: completionResult.taskId || 'unknown',
+      taskId: connectionId,
       completionResult
     };
 
