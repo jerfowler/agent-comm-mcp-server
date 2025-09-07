@@ -152,16 +152,52 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
           
+      - name: Analyze version bump
+        id: version_analysis
+        run: |
+          echo "Analyzing commits for version bump..."
+          git fetch origin main:main
+          
+          # Run version bump analysis (dry run)
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          
+          # Analyze what type of version bump is needed (force patch version for stability)
+          if node scripts/bump-version.cjs --dry-run --force-type=patch > version_analysis.txt 2>&1; then
+            # Extract version information from dry run output (handle ANSI codes)
+            NEW_VERSION=$(grep "New version:" version_analysis.txt | tail -1 | sed 's/.*New version: //' | sed 's/\x1b\[[0-9;]*m//g')
+            BUMP_TYPE=$(grep "Version bump type:" version_analysis.txt | tail -1 | sed 's/.*Version bump type: //' | sed 's/\x1b\[[0-9;]*m//g')
+            
+            echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+            echo "needs_bump=true" >> $GITHUB_OUTPUT
+            
+            echo "📊 Version Analysis:"
+            echo "Current: $CURRENT_VERSION"
+            echo "New: $NEW_VERSION"
+            echo "Type: $BUMP_TYPE"
+          else
+            echo "needs_bump=false" >> $GITHUB_OUTPUT
+            echo "new_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            echo "bump_type=none" >> $GITHUB_OUTPUT
+            echo "⚠️ No version bump needed or analysis failed"
+          fi
+          
       - name: Generate promotion PR body
         id: pr_body
         run: |
           # Get commit range
           git fetch origin main:main
           
-          # Generate commit summary
+          # Generate commit summary with version information
           echo "## 🚀 Promotion: ${{ env.SOURCE_BRANCH }} → ${{ env.TARGET_BRANCH }}" > pr_body.md
           echo "" >> pr_body.md
-          echo "### 📊 Summary" >> pr_body.md
+          echo "### 📦 Version Information" >> pr_body.md
+          echo "- **Current Version**: \`${{ steps.version_analysis.outputs.current_version }}\`" >> pr_body.md
+          echo "- **New Version**: \`${{ steps.version_analysis.outputs.new_version }}\`" >> pr_body.md
+          echo "- **Bump Type**: ${{ steps.version_analysis.outputs.bump_type }}" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "### 📊 Validation Summary" >> pr_body.md
           echo "- **Commits**: ${{ needs.validate.outputs.commits_count }}" >> pr_body.md
           echo "- **Tests**: ✅ All passed" >> pr_body.md
           echo "- **Coverage**: ✅ Requirements met" >> pr_body.md
@@ -195,7 +231,7 @@ jobs:
         id: create_pr
         run: |
           # Check if PR already exists
-          EXISTING_PR=$(gh pr list --base ${{ env.TARGET_BRANCH }} --head ${{ env.SOURCE_BRANCH }} --json number --jq '.[0].number // empty')
+          EXISTING_PR=$(gh pr list --base ${{ env.TARGET_BRANCH }} --head ${{ env.SOURCE_BRANCH }} --limit 1 | head -1 | cut -f1)
           
           if [ -n "$EXISTING_PR" ]; then
             echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
@@ -205,15 +241,16 @@ jobs:
             gh pr edit $EXISTING_PR --body-file ${{ steps.pr_body.outputs.pr_body_file }}
             echo "✅ Updated existing promotion PR #$EXISTING_PR"
           else
-            # Create new PR
-            PR_NUMBER=$(gh pr create \
+            # Create new PR with version information
+            PR_TITLE="🚀 Release v${{ steps.version_analysis.outputs.new_version }}: ${{ env.SOURCE_BRANCH }} → ${{ env.TARGET_BRANCH }}"
+            gh pr create \
               --base ${{ env.TARGET_BRANCH }} \
               --head ${{ env.SOURCE_BRANCH }} \
-              --title "🚀 Promote ${{ env.SOURCE_BRANCH }} to ${{ env.TARGET_BRANCH }}" \
-              --body-file ${{ steps.pr_body.outputs.pr_body_file }} \
-              --label "release,automated" \
-              --assignee @me \
-              --json number --jq '.number')
+              --title "$PR_TITLE" \
+              --body-file ${{ steps.pr_body.outputs.pr_body_file }}
+              
+            # Get the PR number from the newly created PR
+            PR_NUMBER=$(gh pr list --base ${{ env.TARGET_BRANCH }} --head ${{ env.SOURCE_BRANCH }} --limit 1 | head -1 | cut -f1)
               
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
             echo "pr_action=created" >> $GITHUB_OUTPUT

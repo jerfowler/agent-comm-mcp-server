@@ -21,13 +21,18 @@ const { execSync } = require('child_process');
 
 // Configuration
 const DRY_RUN = process.argv.includes('--dry-run');
+const NO_COMMIT = process.argv.includes('--no-commit');
+const NO_TAG = process.argv.includes('--no-tag');
 const FORCE_TYPE = process.argv.find(arg => arg.startsWith('--force-type='))?.split('=')[1];
 const PACKAGE_PATH = path.join(__dirname, '../package.json');
 const CHANGELOG_PATH = path.join(__dirname, '../CHANGELOG.md');
 
 // Utility functions
+const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+
 function log(message, color = '\x1b[0m') {
-  console.log(`${color}${message}\x1b[0m`);
+  // Disable colors in CI environment to prevent parsing issues
+  console.log(isCI ? message : `${color}${message}\x1b[0m`);
 }
 
 function success(message) { log(`✓ ${message}`, '\x1b[32m'); }
@@ -213,11 +218,27 @@ function createGitTag(version) {
   const message = `Release ${version}`;
   
   if (!DRY_RUN) {
-    execCommand(`git add package.json CHANGELOG.md`);
-    execCommand(`git commit -m "release: ${version}"`);
-    execCommand(`git tag -a ${tag} -m "${message}"`);
+    // Only commit if not disabled
+    if (!NO_COMMIT) {
+      execCommand(`git add package.json CHANGELOG.md`);
+      execCommand(`git commit -m "release: ${version}
+
+- Automated version bump
+- Updated CHANGELOG.md with release notes"`);
+    }
+    
+    // Only tag if not disabled
+    if (!NO_TAG) {
+      execCommand(`git tag -a ${tag} -m "${message}"`);
+    }
   }
-  success(`Created git tag: ${tag}`);
+  
+  if (!NO_TAG) {
+    success(`Created git tag: ${tag}`);
+  }
+  if (!NO_COMMIT) {
+    success(`Committed version changes`);
+  }
 }
 
 function main() {
@@ -261,10 +282,24 @@ function main() {
   const changelogEntry = generateChangelogEntry(newVersion, analysis);
   
   if (DRY_RUN) {
-    log('\nChangelog entry would be:');
+    log('');
+    log('Changelog entry would be:');
+    log('');
     log('---');
     log(changelogEntry);
     log('---');
+    log('');
+    
+    // Output for GitHub Actions consumption
+    log('📊 Summary:');
+    log(`Current version: ${currentVersion}`);
+    log(`New version: ${newVersion}`);
+    log(`Version bump type: ${versionType}`);
+    log(`Commits analyzed: ${commits.length}`);
+    log(`Features: ${analysis.features.length}`);
+    log(`Fixes: ${analysis.fixes.length}`);
+    log(`Breaking changes: ${analysis.breaking.length}`);
+    
     process.exit(0);
   }
   
