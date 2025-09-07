@@ -8,7 +8,7 @@ This file provides guidance to Claude Code when working with the **agent-comm-mc
 **Purpose**: MCP server for AI agent task communication and delegation with diagnostic lifecycle visibility  
 **Author**: Jeremy Fowler  
 **License**: MIT  
-**Version**: 0.6.0  
+**Version**: 0.6.1  
 
 This is a standalone TypeScript NPM package that implements a Model Context Protocol (MCP) server enabling Claude Code to coordinate multiple specialized agents, track their progress in real-time, and understand exactly how they approach and solve complex tasks.
 
@@ -436,8 +436,10 @@ gh workflow run publish.yml --ref main
 - ✅ **Version Detection**: Correctly detected 0.6.0 → 0.6.1 change
 - ✅ **Package Build**: Generated 460.3 kB package with 127 files
 - ✅ **Git Tagging**: v0.6.1 tag created and pushed
-- ❌ **NPM Publish**: Failed due to missing `NPM_TOKEN` secret
-- ✅ **Architecture Validation**: Two-stage workflow operating correctly
+- ✅ **NPM Publish**: Successfully published with NPM_TOKEN authentication
+- ✅ **GitHub Release**: v0.6.1 release created with automated changelog
+- ✅ **Architecture Validation**: Complete two-stage workflow operational
+- ✅ **End-to-End Validation**: Full pipeline tested and verified working
 
 #### Implementation Lessons Learned
 
@@ -476,10 +478,12 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/file.yml'))"
 - **Keywords**: "critical" → `priority:high`, "testing" → `category:testing`
 
 #### Automated Semver Status
-- **Current State**: Ready for 1.0.0 major release (83 commits analyzed)
-- **Version Detection**: Functional with conventional commits
-- **CI/CD Pipeline**: All 8 workflows operational
-- **NPM Publishing**: Configured with provenance and access controls
+- **Current State**: v0.6.1 successfully released (full end-to-end validation complete)
+- **Version Detection**: Fully functional with conventional commits and beta versioning
+- **CI/CD Pipeline**: All 8 workflows operational and tested
+- **NPM Publishing**: Live and verified - package available on NPM registry
+- **Two-Stage Architecture**: Proven working with branch protection compliance
+- **Ready for Production**: Complete automated release workflow operational
 
 ## Tool Categories (17 Total)
 
@@ -532,14 +536,20 @@ echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","st
 ## Publishing Process
 
 ### Current Status
-- **Version**: 0.6.0
-- **Ready**: ✅ All tests passing, build clean, npm package configured
+- **Version**: 0.6.1
+- **Published**: ✅ Available on NPM registry
+- **Ready**: ✅ All tests passing, build clean, two-stage workflow operational
 
-### Publishing Steps
+### Publishing Steps (Automated)
 ```bash
+# Automated via two-stage workflow:
+# 1. Stage 1: Create version bump PR via release.yml
+# 2. Stage 2: NPM publication via publish.yml after PR merge
+
+# Manual publishing (if needed):
 npm login                              # Browser-based authentication
 npm publish --access public           # Publish to npm registry
-gh release create v0.6.0             # Create GitHub release
+gh release create v0.6.1             # Create GitHub release
 npx @jerfowler/agent-comm-mcp-server  # Test published package
 ```
 

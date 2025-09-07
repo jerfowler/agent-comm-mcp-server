@@ -1,6 +1,5 @@
 # Agent Communication MCP Server
 
-[![npm version](https://badge.fury.io/js/%40jerfowler%2Fagent-comm-mcp-server.svg)](https://www.npmjs.com/package/@jerfowler/agent-comm-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/jerfowler/agent-comm-mcp-server)](https://github.com/jerfowler/agent-comm-mcp-server)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
