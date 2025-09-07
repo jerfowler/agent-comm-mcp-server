@@ -16,9 +16,8 @@ describe('Version Synchronization', () => {
     // Get the server version from config
     const serverInfo = getServerInfo();
     
-    // Ensure they match
+    // Ensure they match (dynamic version check)
     expect(serverInfo.version).toBe(packageJson.version);
-    expect(serverInfo.version).toBe('0.6.0'); // Also verify current expected version
   });
   
   test('server info contains required fields', () => {

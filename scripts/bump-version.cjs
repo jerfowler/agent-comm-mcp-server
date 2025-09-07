@@ -91,10 +91,14 @@ function analyzeCommits(commits) {
 
   for (const commit of commits) {
     const { subject, body } = commit;
-    const fullMessage = `${subject}\n${body}`.toLowerCase();
+    // Check for breaking changes using conventional commit format
+    // Must be either:
+    // 1. Subject contains !: (e.g., "feat!: breaking change")
+    // 2. Body contains "BREAKING CHANGE:" at start of line
+    const hasBreakingInSubject = subject.includes('!:');
+    const hasBreakingInBody = /^BREAKING[ -]CHANGE:/im.test(body);
     
-    // Check for breaking changes
-    if (fullMessage.includes('breaking change') || subject.includes('!:')) {
+    if (hasBreakingInSubject || hasBreakingInBody) {
       analysis.hasBreaking = true;
       analysis.breaking.push(commit);
     }
@@ -115,15 +119,30 @@ function analyzeCommits(commits) {
   return analysis;
 }
 
-function determineVersionBump(analysis) {
+function determineVersionBump(analysis, currentVersion) {
   if (FORCE_TYPE) {
     info(`Force version type: ${FORCE_TYPE}`);
     return FORCE_TYPE;
   }
 
-  if (analysis.hasBreaking) return 'major';
-  if (analysis.hasFeatures) return 'minor';
-  if (analysis.hasFixes) return 'patch';
+  const [major] = currentVersion.split('.').map(Number);
+  const isBeta = major === 0;
+  
+  if (isBeta) {
+    // Beta versioning (0.x.x): breaking changes and features both bump minor
+    // This prevents accidental jumps to 1.0.0 until explicitly ready
+    if (analysis.hasBreaking || analysis.hasFeatures) {
+      info('Beta version detected - using minor bump for breaking changes/features');
+      return 'minor';
+    }
+    if (analysis.hasFixes) return 'patch';
+  } else {
+    // Standard semver for production versions (1.0.0+)
+    if (analysis.hasBreaking) return 'major';
+    if (analysis.hasFeatures) return 'minor';
+    if (analysis.hasFixes) return 'patch';
+  }
+  
   return 'none';
 }
 
@@ -266,7 +285,7 @@ function main() {
   info(`Found ${commits.length} commits since ${lastTag || 'start'}`);
   
   const analysis = analyzeCommits(commits);
-  const versionType = determineVersionBump(analysis);
+  const versionType = determineVersionBump(analysis, currentVersion);
   
   if (versionType === 'none') {
     info('No version bump required (only chore commits)');

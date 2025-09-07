@@ -84,7 +84,7 @@ jobs:
         run: |
           echo "Analyzing commits for version bump..."
           
-          # Prepare force type argument
+          # Prepare force type argument (uses beta versioning logic by default)
           FORCE_ARG=""
           if [ -n "${{ github.event.inputs.force_type }}" ]; then
             FORCE_ARG="--force-type=${{ github.event.inputs.force_type }}"
