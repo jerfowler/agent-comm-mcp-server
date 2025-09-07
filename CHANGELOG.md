@@ -5,6 +5,30 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2025-09-07
+
+### 🐛 Bug Fixes
+
+- exclude gitignored files from version PR [force-patch]
+- correct workflow logic for PR creation [force-patch]
+- implement two-stage release workflow architecture [force-patch]
+- comprehensive version management improvements v0.6.1 [force-patch]
+- rename bump-version script to use CommonJS extension
+- resolve YAML syntax errors in GitHub Actions workflows
+- add required permissions to GitHub Actions workflows (#6)
+
+### 🔧 Other Changes
+
+- release v0.6.1 test to main promotion (#19)
+- implement automated semver system with test branch workflow (#14)
+- implement comprehensive automated semver and branch workflow system
+- update MCP configuration
+- add MCP integration debug documentation
+- update CLAUDE.md with comprehensive GitHub issue workflow documentation
+- implement comprehensive GitHub issue workflow automation (#3)
+- implement comprehensive Git Feature Branch Workflow (#2)
+- add Git Feature Branch Workflow section to README (#1)
+
 ## [0.6.0] - 2025-01-05
 
 ### 🤖 Agent Templates & Documentation
