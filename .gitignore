@@ -70,3 +70,5 @@ pnpm-lock.yaml
 
 # MCP Configuration with sensitive API keys
 .mcp.json
+.mcp.json.local
+.mcp.json.backup
