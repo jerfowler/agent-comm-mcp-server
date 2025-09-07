@@ -188,9 +188,15 @@ function generateChangelogEntry(newVersion, analysis) {
     entry += '\n';
   }
   
-  if (analysis.fixes.length > 0) {
+  // Filter CI/CD related fixes from CHANGELOG (but keep them for version analysis)
+  const filteredFixes = analysis.fixes.filter(commit => {
+    const subject = commit.subject.toLowerCase();
+    return !subject.match(/workflow|ci\/cd|github action|pipeline|deployment|release|promotion|bump-version|changelog|semver|gitignore|github\.com|\.yml|\.yaml|git\s+|exclude gitignored|correct workflow|two-stage.*workflow|stage.*workflow|pr creation/i);
+  });
+  
+  if (filteredFixes.length > 0) {
     entry += `### 🐛 Bug Fixes\n\n`;
-    analysis.fixes.forEach(commit => {
+    filteredFixes.forEach(commit => {
       const cleanSubject = commit.subject.replace(/^fix:\s*/, '');
       entry += `- ${cleanSubject}\n`;
     });
@@ -200,7 +206,7 @@ function generateChangelogEntry(newVersion, analysis) {
   // Filter out CI/CD related chores from CHANGELOG (but keep them for version analysis)
   const filteredChores = analysis.chores.filter(commit => {
     const subject = commit.subject.toLowerCase();
-    return !subject.match(/workflow|ci\/cd|github action|pipeline|deployment|release|promotion|bump-version|changelog|semver|gitignore|github\.com|\.yml|\.yaml|git\s+/i);
+    return !subject.match(/workflow|ci\/cd|github action|pipeline|deployment|release|promotion|bump-version|changelog|semver|gitignore|github\.com|\.yml|\.yaml|git\s+|exclude gitignored|correct workflow|two-stage.*workflow|stage.*workflow|pr creation/i);
   });
   
   if (filteredChores.length > 0) {
