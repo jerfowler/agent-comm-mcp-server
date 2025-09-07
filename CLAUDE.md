@@ -240,6 +240,23 @@ Use descriptive branch names with type prefixes:
 - `perf/` - Performance (`perf/file-io-optimization`)
 - `ci/` - CI/CD changes (`ci/parallel-execution`)
 
+### Commit Type Guidelines
+
+**For MCP Server Features (Version Bumps):**
+- `feat:` - New MCP tools, server capabilities, or user-facing functionality
+- `fix:` - Bug fixes in server behavior, tool functionality, or user experience
+- `perf:` - Performance improvements in server or tool execution
+
+**For Infrastructure/Meta (No Version Bump):**
+- `ci:` - GitHub Actions workflows, automation, testing infrastructure
+- `chore:` - Dependencies, build scripts, maintenance tasks  
+- `docs:` - Documentation updates, README improvements
+- `test:` - Test additions, test infrastructure improvements
+- `refactor:` - Code organization without functional changes
+
+**Automatic Detection:**
+The system automatically detects CI/CD "features" and treats them as chores to prevent unnecessary version bumps.
+
 ### PR Requirements Checklist
 
 Before your PR can be merged:
@@ -333,10 +350,33 @@ node scripts/bump-version.cjs --no-commit --no-tag  # Skip git operations
 ```
 
 **Conventional Commit Detection:**
-- `feat:` → Minor version bump
+- `feat:` → Minor version bump (unless CI/CD related)
 - `fix:` → Patch version bump  
-- `BREAKING CHANGE` or `!:` → Major version bump
-- `chore/docs/test/style/refactor:` → No version bump
+- `BREAKING CHANGE` or `!:` → Major version bump (→ Minor in beta 0.x.x)
+- `chore/docs/test/style/refactor/ci:` → No version bump
+
+**Beta Versioning (0.x.x):**
+- Breaking changes and features → **Minor bump** (prevents 1.0.0 until ready)
+- Bug fixes → Patch bump
+- Major version (1.0.0) → Only with explicit `--force-type=major` or production readiness
+
+**Smart CI/CD Detection:**
+CI/CD "features" are automatically treated as chores:
+- Keywords: `workflow`, `CI`, `CD`, `github action`, `semver`, `branch`, `automation`, `pipeline`, `deployment`, `release`, `promotion`
+- Example: `feat: implement GitHub Actions workflow` → Treated as chore (no version bump)
+
+**Manual Version Override:**
+Force specific version bump with commit message tags:
+```bash
+git commit -m "fix: resolve critical issue [force-patch]"    # Forces patch
+git commit -m "feat: new feature [force-minor]"            # Forces minor  
+git commit -m "feat!: breaking change [force-major]"       # Forces major
+```
+
+**Workflow Override:**
+```bash
+gh workflow run release.yml --ref main -f force_type=patch  # Manual dispatch
+```
 
 #### Complete Release Flow
 ```

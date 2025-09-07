@@ -162,8 +162,8 @@ jobs:
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           
-          # Analyze what type of version bump is needed (force patch version for stability)
-          if node scripts/bump-version.cjs --dry-run --force-type=patch > version_analysis.txt 2>&1; then
+          # Analyze what type of version bump is needed (uses beta versioning logic)
+          if node scripts/bump-version.cjs --dry-run > version_analysis.txt 2>&1; then
             # Extract version information from dry run output (handle ANSI codes)
             NEW_VERSION=$(grep "New version:" version_analysis.txt | tail -1 | sed 's/.*New version: //' | sed 's/\x1b\[[0-9;]*m//g')
             BUMP_TYPE=$(grep "Version bump type:" version_analysis.txt | tail -1 | sed 's/.*Version bump type: //' | sed 's/\x1b\[[0-9;]*m//g')
