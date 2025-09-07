@@ -247,8 +247,7 @@ jobs:
               --base ${{ env.TARGET_BRANCH }} \
               --head ${{ env.SOURCE_BRANCH }} \
               --title "$PR_TITLE" \
-              --body-file ${{ steps.pr_body.outputs.pr_body_file }} \
-              --label "release,automated"
+              --body-file ${{ steps.pr_body.outputs.pr_body_file }}
               
             # Get the PR number from the newly created PR
             PR_NUMBER=$(gh pr list --base ${{ env.TARGET_BRANCH }} --head ${{ env.SOURCE_BRANCH }} --limit 1 | head -1 | cut -f1)
