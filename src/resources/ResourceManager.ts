@@ -48,7 +48,7 @@ export class ResourceManager {
   private readonly pageSize: number;
 
   constructor(private config: ResourceManagerConfig) {
-    this.pageSize = config.pageSize || 20;
+    this.pageSize = config.pageSize ?? 20;
     this.initializeDefaultProviders();
   }
 
@@ -244,9 +244,9 @@ export class ResourceManager {
           const content = await provider.readResource(uri);
           return {
             uri,
-            name: uri.split('/').pop() || uri,
+            name: uri.split('/').pop() ?? uri,
             mimeType: content.mimeType,
-            size: content.text?.length || content.blob?.length || 0,
+            size: content.text?.length ?? content.blob?.length ?? 0,
             lastModified: new Date().toISOString()
           };
         }
@@ -388,7 +388,7 @@ export class ResourceManager {
     try {
       const fs = await import('../utils/fs-extra-safe.js');
       const packageJson = await fs.readJSON('./package.json') as { version?: string };
-      return packageJson.version || '0.0.0';
+      return packageJson.version ?? '0.0.0';
     } catch {
       return '0.0.0';
     }

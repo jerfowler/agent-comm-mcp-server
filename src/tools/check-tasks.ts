@@ -36,9 +36,7 @@ export async function checkTasks(
   const agent = validateRequiredString(args['agent'], 'agent');
   validateAgentName(agent);
   
-  if (!config.connectionManager || !config.eventLogger) {
-    throw new Error('TaskContextManager requires connectionManager and eventLogger');
-  }
+  // connectionManager and eventLogger are guaranteed by ServerConfig type
   
   // Create mock connection for the agent
   const connection = {

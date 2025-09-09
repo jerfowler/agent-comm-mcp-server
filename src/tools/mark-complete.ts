@@ -38,7 +38,7 @@ interface ReconciledCompletion {
  */
 function extractUncheckedItems(content: string): string[] {
   const uncheckedRegex = /^- \[ \] \*\*([^:]+)\*\*:/gm;
-  const matches = content.match(uncheckedRegex) || [];
+  const matches = content.match(uncheckedRegex) ?? [];
   return matches.map(match => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
@@ -50,7 +50,7 @@ function extractUncheckedItems(content: string): string[] {
  */
 function extractCheckedItems(content: string): string[] {
   const checkedRegex = /^- \[x\] \*\*([^:]+)\*\*:/gmi;
-  const matches = content.match(checkedRegex) || [];
+  const matches = content.match(checkedRegex) ?? [];
   return matches.map(match => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
@@ -168,7 +168,7 @@ function reconcileCompletion(
     return { status, summary };
   }
   
-  const mode = reconciliation?.mode || 'strict';
+  const mode = reconciliation?.mode ?? 'strict';
   
   switch (mode) {
     case 'auto_complete':
@@ -192,7 +192,7 @@ ${summary}`,
       
     case 'reconcile': {
       // Document variance with explanations
-      const explanations = reconciliation?.explanations || {};
+      const explanations = reconciliation?.explanations ?? {};
       return {
         status: status === 'DONE' ? 'DONE' : 'ERROR',
         summary: `## Task Completion with Variance
@@ -244,7 +244,7 @@ ${summary}`,
       
     case 'strict':
       // Strict mode - reject if unchecked items exist and status is DONE
-      if (status === 'DONE' && validation.hasIncompleteItems) {
+      if (status === 'DONE') {
         throw new Error(`Cannot mark DONE with ${validation.uncheckedItems.length} unchecked items. Use reconciliation mode or complete all items first.`);
       }
       return { status, summary };
@@ -272,7 +272,7 @@ export async function markComplete(
   
   const reconciliation: ReconciliationOptions | undefined = reconciliationMode ? {
     mode: reconciliationMode as 'strict' | 'auto_complete' | 'reconcile' | 'force',
-    explanations: reconciliationExplanations || undefined
+    explanations: reconciliationExplanations ?? undefined
   } : undefined;
   
   // Validate status
@@ -299,10 +299,7 @@ export async function markComplete(
     }
   };
   
-  // Ensure required components exist
-  if (!config.connectionManager || !config.eventLogger) {
-    throw new Error('Configuration missing required components: connectionManager and eventLogger');
-  }
+  // connectionManager and eventLogger are guaranteed by ServerConfig type
 
   // **MANDATORY VERIFICATION GATE** - Prevents false success reporting
   // This addresses Issue #11: Agent False Success Reporting

@@ -1022,7 +1022,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       ]
     };
 
-    return capabilities[agent] || ['General development capabilities'];
+    return capabilities[agent] ?? ['General development capabilities'];
   }
 
   private isValidPlanFormat(content: string): boolean {
@@ -1104,9 +1104,8 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
           ? stat.isDirectory() 
           : stat.mode ? (stat.mode & 0o170000) === 0o040000 : false;
           
-        // Check if mtime exists and is valid
-        const mtime = stat.mtime || (stat.mtimeMs ? new Date(stat.mtimeMs) : new Date(0));
-        const mtimeValue = typeof mtime.getTime === 'function' ? mtime.getTime() : 0;
+        // Get mtime value directly
+        const mtimeValue = stat.mtime.getTime();
         
         if (mtimeValue > latestTime && isDirectory) {
           latestTime = mtimeValue;

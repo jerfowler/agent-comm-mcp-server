@@ -22,7 +22,7 @@ function validatePlanFormat(content: string): PlanValidationResult {
   
   // Check for checkbox format: - [ ] **Title**: Description
   const checkboxRegex = /^- \[ \] \*\*[^:]+\*\*:/gm;
-  const checkboxes = content.match(checkboxRegex) || [];
+  const checkboxes = content.match(checkboxRegex) ?? [];
   
   // Require at least one checkbox
   if (checkboxes.length === 0) {
@@ -47,7 +47,7 @@ function validatePlanFormat(content: string): PlanValidationResult {
         const hasDetails = nextLines.some(l => l.trim().startsWith('-') && !l.trim().startsWith('- [ ]'));
         
         if (!hasDetails) {
-          const checkboxTitle = checkbox.match(/\*\*([^:]+)\*\*/)?.[1] || 'Unknown';
+          const checkboxTitle = checkbox.match(/\*\*([^:]+)\*\*/)?.[1] ?? 'Unknown';
           errors.push(`Checkbox "${checkboxTitle}" missing required detail points. Each checkbox must have 2-5 detail bullets.`);
         }
       }
@@ -109,10 +109,7 @@ export async function submitPlan(
     }
   };
   
-  // Ensure required components exist
-  if (!config.connectionManager || !config.eventLogger) {
-    throw new Error('Configuration missing required components: connectionManager and eventLogger');
-  }
+  // connectionManager and eventLogger are guaranteed by ServerConfig type
   
   const contextManager = new TaskContextManager({
     commDir: config.commDir,

@@ -240,9 +240,7 @@ export class EventLogger extends EventEmitter {
     const byOperation: Record<string, { count: number; successful: number; totalDuration: number; failures: number }> = {};
     
     for (const entry of entries) {
-      if (!byOperation[entry.operation]) {
-        byOperation[entry.operation] = { count: 0, successful: 0, totalDuration: 0, failures: 0 };
-      }
+      byOperation[entry.operation] ??= { count: 0, successful: 0, totalDuration: 0, failures: 0 };
       
       byOperation[entry.operation].count++;
       byOperation[entry.operation].totalDuration += entry.duration;
@@ -258,9 +256,7 @@ export class EventLogger extends EventEmitter {
     const byAgent: Record<string, { count: number; successful: number; totalDuration: number }> = {};
     
     for (const entry of entries) {
-      if (!byAgent[entry.agent]) {
-        byAgent[entry.agent] = { count: 0, successful: 0, totalDuration: 0 };
-      }
+      byAgent[entry.agent] ??= { count: 0, successful: 0, totalDuration: 0 };
       
       byAgent[entry.agent].count++;
       byAgent[entry.agent].totalDuration += entry.duration;

@@ -96,7 +96,7 @@ class FsExtraImporter {
     // Strategy 2: Try dynamic import with default
     try {
       const fsExtra = await import('fs-extra');
-      const fsExtraDefault = (fsExtra as { default?: FsExtraModule }).default || fsExtra;
+      const fsExtraDefault = (fsExtra as { default?: FsExtraModule }).default ?? fsExtra;
       if (this.validateFsExtraModule(fsExtraDefault)) {
         this.importedFs = fsExtraDefault;
         this.importMethod = 'dynamic-import';
@@ -230,7 +230,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.writeFile) {
       try {
-        return await this.fsExtra.writeFile(filePath, data);
+        await this.fsExtra.writeFile(filePath, data);
+        return;
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.writeFile failed, using Node.js fallback: ${(error as Error).message}`);
@@ -278,7 +279,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.remove) {
       try {
-        return await this.fsExtra.remove(filePath);
+        await this.fsExtra.remove(filePath);
+        return;
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.remove failed, using Node.js fallback: ${(error as Error).message}`);
@@ -306,7 +308,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.ensureDir) {
       try {
-        return await this.fsExtra.ensureDir(dirPath);
+        await this.fsExtra.ensureDir(dirPath);
+        return;
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.ensureDir failed, using Node.js fallback: ${(error as Error).message}`);
@@ -322,7 +325,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.appendFile) {
       try {
-        return await this.fsExtra.appendFile(filePath, data);
+        await this.fsExtra.appendFile(filePath, data);
+        return;
       } catch (error) {
         console.warn(`fs-extra.appendFile failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -337,7 +341,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.move) {
       try {
-        return await this.fsExtra.move(src, dest, options);
+        await this.fsExtra.move(src, dest, options);
+        return;
       } catch (error) {
         console.warn(`fs-extra.move failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -352,7 +357,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.copy) {
       try {
-        return await this.fsExtra.copy(src, dest, options);
+        await this.fsExtra.copy(src, dest, options);
+        return;
       } catch (error) {
         console.warn(`fs-extra.copy failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -383,7 +389,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.mkdir) {
       try {
-        return await this.fsExtra.mkdir(dirPath, options);
+        await this.fsExtra.mkdir(dirPath, options);
+        return;
       } catch (error) {
         console.warn(`fs-extra.mkdir failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -407,7 +414,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.chmod) {
       try {
-        return await this.fsExtra.chmod(filePath, mode);
+        await this.fsExtra.chmod(filePath, mode);
+        return;
       } catch (error) {
         console.warn(`fs-extra.chmod failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -422,7 +430,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.utimes) {
       try {
-        return await this.fsExtra.utimes(filePath, atime, mtime);
+        await this.fsExtra.utimes(filePath, atime, mtime);
+        return;
       } catch (error) {
         console.warn(`fs-extra.utimes failed, using Node.js fallback: ${(error as Error).message}`);
       }

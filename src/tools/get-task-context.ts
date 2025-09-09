@@ -30,10 +30,7 @@ export async function getTaskContext(
     metadata: { operation: 'get-task-context', taskId }
   };
   
-  // Ensure required components exist
-  if (!config.connectionManager || !config.eventLogger) {
-    throw new Error('Configuration missing required components: connectionManager and eventLogger');
-  }
+  // connectionManager and eventLogger are guaranteed by ServerConfig type
   
   const contextManager = new TaskContextManager({
     commDir: config.commDir,
