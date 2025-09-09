@@ -5,12 +5,12 @@
 
 import { jest } from '@jest/globals';
 import { syncTodoCheckboxes } from '../../../src/tools/sync-todo-checkboxes.js';
-import * as fs from 'fs-extra';
+import * as fs from '../../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import { AgentCommError, ServerConfig } from '../../../src/types.js';
 
 // Mock fs-extra with factory function - proper TypeScript pattern
-jest.mock('fs-extra', () => ({
+jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
   pathExists: jest.fn(),
   readFile: jest.fn(),
   writeFile: jest.fn(),

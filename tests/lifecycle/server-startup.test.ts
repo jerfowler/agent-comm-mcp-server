@@ -3,7 +3,7 @@
  * These tests validate actual server initialization and would catch issues like fs.readJsonSync
  */
 
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import * as os from 'os';
 import { createMCPServer } from '../../src/index.js';

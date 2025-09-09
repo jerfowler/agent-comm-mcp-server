@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import * as fs from 'fs-extra';
+import * as fs from '../../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 
 // Import available tools to verify they exist

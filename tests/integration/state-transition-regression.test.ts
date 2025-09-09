@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import * as path from 'path';
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import { tmpdir } from 'os';
 
 // Import tools for state management

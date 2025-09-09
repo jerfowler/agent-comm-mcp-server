@@ -47,7 +47,7 @@ export class TaskResourceProvider implements ResourceProvider {
     try {
       const resources: Resource[] = [];
       // Get all agents from comm directory
-      const fs = await import('fs-extra');
+      const fs = await import('../../utils/fs-extra-safe.js');
       const path = await import('path');
       const commDir = process.env['AGENT_COMM_DIR'] || './comm';
       

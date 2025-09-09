@@ -12,7 +12,7 @@ import { getConfig } from '../../src/config.js';
 import { ServerConfig, CreateTaskResponse } from '../../src/types.js';
 import { ConnectionManager } from '../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../src/logging/EventLogger.js';
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 // Use Jest-provided __dirname
 

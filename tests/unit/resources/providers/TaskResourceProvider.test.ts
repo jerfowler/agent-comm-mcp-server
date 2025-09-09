@@ -10,7 +10,7 @@ import { EventLogger } from '../../../../src/logging/EventLogger.js';
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 
 // Mock dependencies
-jest.mock('fs-extra', () => ({
+jest.mock('../../../../src/utils/fs-extra-safe.js', () => ({
   pathExists: jest.fn(),
   readdir: jest.fn(),
   stat: jest.fn()
@@ -19,7 +19,7 @@ jest.mock('../../../../src/core/TaskContextManager.js');
 jest.mock('../../../../src/logging/EventLogger.js');
 
 // Import fs-extra after mocking
-import * as fs from 'fs-extra';
+import * as fs from '../../../../src/utils/fs-extra-safe.js';
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('TaskResourceProvider', () => {
