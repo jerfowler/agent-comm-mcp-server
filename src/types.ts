@@ -176,6 +176,24 @@ export class ArchiveError extends AgentCommError {
   }
 }
 
+export class AgentOwnershipError extends AgentCommError {
+  constructor(
+    message: string, 
+    public attemptingAgent: string, 
+    public taskId: string,
+    public actualOwner?: string
+  ) {
+    const details = {
+      attemptingAgent,
+      taskId,
+      actualOwner,
+      securityFlag: 'ownership_violation'
+    };
+    super(message, 'AGENT_OWNERSHIP_ERROR', details);
+    this.name = 'AgentOwnershipError';
+  }
+}
+
 // ========================
 // Diagnostic Tools Types (v0.4.0)
 // ========================

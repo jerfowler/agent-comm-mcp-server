@@ -265,7 +265,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
         taskId: 'invalid-task'
       };
       
-      await expect(reportProgress(config, args)).rejects.toThrow('Task not found: invalid-task');
+      await expect(reportProgress(config, args)).rejects.toThrow("Task 'invalid-task' not found for agent 'test-agent'.");
     });
 
     it('should handle multiple updates with specific taskId', async () => {
@@ -374,7 +374,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       };
       
       // The TaskContextManager should throw when taskId is not found
-      await expect(markComplete(config, args)).rejects.toThrow('Task not found: missing-task');
+      await expect(markComplete(config, args)).rejects.toThrow("Task 'missing-task' not found for agent 'test-agent'.");
     });
 
     it('should handle ERROR status with specific taskId', async () => {
@@ -533,7 +533,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       
       await expect(submitPlan(config, args))
         .rejects
-        .toThrow('Task not found: task-that-does-not-exist');
+        .toThrow("Task 'task-that-does-not-exist' not found for agent 'test-agent'.");
     });
 
     it('should handle taskId with special characters', async () => {
@@ -576,7 +576,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       
       await expect(submitPlan(config, args))
         .rejects
-        .toThrow('Task not found: ../../../etc/passwd');
+        .toThrow("Task '../../../etc/passwd' not found for agent 'test-agent'.");
     });
   });
 
