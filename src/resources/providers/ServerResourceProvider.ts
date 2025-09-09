@@ -242,9 +242,9 @@ export class ServerResourceProvider implements ResourceProvider {
         memoryUsage: process.memoryUsage()
       },
       system: {
-        loadAverage: (process as any).loadavg?.() || [0, 0, 0],
-        freemem: (process as any).freemem?.() || 0,
-        totalmem: (process as any).totalmem?.() || 0
+        loadAverage: (process as NodeJS.Process & { loadavg?: () => number[] }).loadavg?.() || [0, 0, 0],
+        freemem: (process as NodeJS.Process & { freemem?: () => number }).freemem?.() || 0,
+        totalmem: (process as NodeJS.Process & { totalmem?: () => number }).totalmem?.() || 0
       },
       timestamp: new Date().toISOString()
     };
@@ -296,7 +296,7 @@ export class ServerResourceProvider implements ResourceProvider {
     try {
       const packageJsonPath = path.resolve(process.cwd(), 'package.json');
       const packageJson = await fs.readJSON(packageJsonPath);
-      const version = packageJson.version || '0.0.0';
+      const version = (packageJson as { version?: string }).version || '0.0.0';
       
       // Update cache
       versionCache = { version, timestamp: Date.now() };

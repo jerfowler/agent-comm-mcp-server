@@ -10,7 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-restricted-syntax */
 
-import { Stats } from 'fs';
+import { Stats, MakeDirectoryOptions, Mode } from 'fs';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -51,18 +51,36 @@ export interface FsExtraDiagnostics {
   error: string | undefined;
 }
 
+// Type for fs-extra module interface
+interface FsExtraModule {
+  pathExists: (filePath: string) => Promise<boolean>;
+  readdir: (dirPath: string) => Promise<string[]>;
+  writeFile: (filePath: string, data: string) => Promise<void>;
+  readFile: (filePath: string, encoding?: string) => Promise<string>;
+  stat: (filePath: string) => Promise<Stats>;
+  remove: (filePath: string) => Promise<void>;
+  ensureDir: (dirPath: string) => Promise<void>;
+  appendFile?: (filePath: string, data: string) => Promise<void>;
+  move?: (src: string, dest: string, options?: Record<string, unknown>) => Promise<void>;
+  copy?: (src: string, dest: string, options?: Record<string, unknown>) => Promise<void>;
+  mkdtemp?: (prefix: string) => Promise<string>;
+  mkdir?: (dirPath: string, options?: Mode | MakeDirectoryOptions | null) => Promise<void>;
+  chmod?: (filePath: string, mode: string | number) => Promise<void>;
+  utimes?: (filePath: string, atime: Date | number, mtime: Date | number) => Promise<void>;
+}
+
 /**
  * Internal class to handle multiple import strategies for fs-extra
  */
 class FsExtraImporter {
-  private importedFs: any = null;
+  private importedFs: FsExtraModule | null = null;
   private importMethod: FsExtraDiagnostics['importMethod'] = 'node-builtin';
   private importError: string | undefined;
 
   /**
    * Try multiple import strategies to get fs-extra
    */
-  async tryImportFsExtra(): Promise<any> {
+  async tryImportFsExtra(): Promise<FsExtraModule | null> {
     // Strategy 1: Try ES module import (current approach)
     try {
       const fsExtra = await import('fs-extra');
@@ -78,7 +96,7 @@ class FsExtraImporter {
     // Strategy 2: Try dynamic import with default
     try {
       const fsExtra = await import('fs-extra');
-      const fsExtraDefault = (fsExtra as any).default || fsExtra;
+      const fsExtraDefault = (fsExtra as { default?: FsExtraModule }).default || fsExtra;
       if (this.validateFsExtraModule(fsExtraDefault)) {
         this.importedFs = fsExtraDefault;
         this.importMethod = 'dynamic-import';
@@ -110,7 +128,7 @@ class FsExtraImporter {
   /**
    * Validate that an fs-extra module has the required methods
    */
-  private validateFsExtraModule(fsModule: any): boolean {
+  private validateFsExtraModule(fsModule: unknown): fsModule is FsExtraModule {
     if (!fsModule || typeof fsModule !== 'object') {
       return false;
     }
@@ -118,7 +136,7 @@ class FsExtraImporter {
     const requiredMethods = ['pathExists', 'readdir', 'writeFile', 'readFile', 'stat', 'remove', 'ensureDir'];
     
     for (const method of requiredMethods) {
-      if (typeof fsModule[method] !== 'function') {
+      if (typeof (fsModule as Record<string, unknown>)[method] !== 'function') {
         return false;
       }
     }
@@ -134,7 +152,7 @@ class FsExtraImporter {
     return this.importError;
   }
 
-  getImportedFs(): any {
+  getImportedFs(): FsExtraModule | null {
     return this.importedFs;
   }
 }
@@ -143,7 +161,7 @@ class FsExtraImporter {
  * Safe filesystem implementation with Node.js built-in fallbacks
  */
 class SafeFileSystem implements SafeFsInterface {
-  private fsExtra: any = null;
+  private fsExtra: FsExtraModule | null = null;
   private fallbackMode = false;
   private importer = new FsExtraImporter();
 
@@ -244,7 +262,7 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.stat) {
       try {
-        return await this.fsExtra.stat(filePath) as Stats;
+        return await this.fsExtra.stat(filePath);
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.stat failed, using Node.js fallback: ${(error as Error).message}`);
@@ -277,7 +295,7 @@ class SafeFileSystem implements SafeFsInterface {
       }
     } catch (error) {
       // If file doesn't exist, that's fine for remove operation
-      if ((error as any).code !== 'ENOENT') {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         throw error;
       }
     }
@@ -314,7 +332,7 @@ class SafeFileSystem implements SafeFsInterface {
     await nodeFs.appendFile(filePath, data, 'utf8');
   }
 
-  async move(src: string, dest: string, options?: any): Promise<void> {
+  async move(src: string, dest: string, options?: Record<string, unknown>): Promise<void> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.move) {
@@ -329,7 +347,7 @@ class SafeFileSystem implements SafeFsInterface {
     await nodeFs.rename(src, dest);
   }
 
-  async copy(src: string, dest: string, options?: any): Promise<void> {
+  async copy(src: string, dest: string, options?: Record<string, unknown>): Promise<void> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.copy) {
@@ -360,7 +378,7 @@ class SafeFileSystem implements SafeFsInterface {
     return await nodeFs.mkdtemp(prefix);
   }
 
-  async mkdir(dirPath: string, options?: any): Promise<void> {
+  async mkdir(dirPath: string, options?: Mode | MakeDirectoryOptions | null): Promise<void> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.mkdir) {
@@ -372,7 +390,16 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback
-    await nodeFs.mkdir(dirPath, { recursive: true, ...options });
+    if (typeof options === 'object' && options !== null) {
+      // options is MakeDirectoryOptions
+      await nodeFs.mkdir(dirPath, { recursive: true, ...options });
+    } else if (options !== null && options !== undefined) {
+      // options is a Mode (string/number)
+      await nodeFs.mkdir(dirPath, { recursive: true, mode: options });
+    } else {
+      // options is null/undefined
+      await nodeFs.mkdir(dirPath, { recursive: true });
+    }
   }
 
   async chmod(filePath: string, mode: string | number): Promise<void> {
@@ -443,21 +470,21 @@ export const stat = (filePath: string) => safeFs.stat(filePath);
 export const remove = (filePath: string) => safeFs.remove(filePath);
 export const ensureDir = (dirPath: string) => safeFs.ensureDir(dirPath);
 export const appendFile = (filePath: string, data: string) => safeFs.appendFile(filePath, data);
-export const move = (src: string, dest: string, options?: any) => safeFs.move(src, dest, options);
-export const copy = (src: string, dest: string, options?: any) => safeFs.copy(src, dest, options);
+export const move = (src: string, dest: string, options?: Record<string, unknown>) => safeFs.move(src, dest, options);
+export const copy = (src: string, dest: string, options?: Record<string, unknown>) => safeFs.copy(src, dest, options);
 // JSON utility functions - always use Node.js built-in JSON methods
-export const readJSON = async (filePath: string): Promise<any> => {
+export const readJSON = async (filePath: string): Promise<unknown> => {
   const content = await readFile(filePath, 'utf8');
   return JSON.parse(content);
 };
 export const readJson = readJSON; // Alias
-export const writeJSON = async (filePath: string, data: any): Promise<void> => {
+export const writeJSON = async (filePath: string, data: unknown): Promise<void> => {
   const jsonStr = JSON.stringify(data, null, 2);
   await writeFile(filePath, jsonStr);
 };
 export const writeJson = writeJSON; // Alias
 export const mkdtemp = (prefix: string) => safeFs.mkdtemp(prefix);
-export const mkdir = (dirPath: string, options?: any) => safeFs.mkdir(dirPath, options);
+export const mkdir = (dirPath: string, options?: Mode | MakeDirectoryOptions | null) => safeFs.mkdir(dirPath, options);
 export const chmod = (filePath: string, mode: string | number) => safeFs.chmod(filePath, mode);
 export const utimes = (filePath: string, atime: Date | number, mtime: Date | number) => safeFs.utimes(filePath, atime, mtime);
 
@@ -467,7 +494,7 @@ export const ensureDirSync = (dirPath: string) => {
     mkdirSync(dirPath, { recursive: true });
   } catch (error) {
     // If directory already exists, that's fine
-    if ((error as any).code !== 'EEXIST') {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
       throw error;
     }
   }
