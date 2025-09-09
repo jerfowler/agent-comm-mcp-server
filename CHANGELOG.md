@@ -5,6 +5,16 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-09-09
+
+### ✨ Features
+
+- implement complete MCP Resources System (addresses #29) (#32)
+
+### 🐛 Bug Fixes
+
+- update setup script to use ES module syntax
+
 ## [0.6.1] - 2025-09-07
 
 ### 🛡️ Agent False Success Prevention (Issue #11)
