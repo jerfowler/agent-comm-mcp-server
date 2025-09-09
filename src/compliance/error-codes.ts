@@ -110,7 +110,7 @@ export function createMCPError(error: AgentCommError | Error): MCPError {
       data: {
         type: error.code,
         originalError: error.message,
-        ...(error.details && { details: error.details })
+        ...(error.details ? { details: error.details as Record<string, unknown> } : {})
       }
     };
   }

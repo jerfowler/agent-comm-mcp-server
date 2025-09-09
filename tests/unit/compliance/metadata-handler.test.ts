@@ -129,9 +129,9 @@ describe('MCP Metadata Handler Compliance', () => {
 
       const merged = mergeMCPMeta(meta1, meta2);
 
-      expect(merged.field1).toBe('value1');
-      expect(merged.field2).toBe('value2');
-      expect(merged.shared).toBe('updated');
+      expect(merged['field1']).toBe('value1');
+      expect(merged['field2']).toBe('value2');
+      expect(merged['shared']).toBe('updated');
     });
 
     it('should identify MCP reserved keys correctly', () => {
