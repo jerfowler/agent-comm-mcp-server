@@ -7,7 +7,8 @@ import { ServerConfig } from '../types.js';
 import { validateRequiredString } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
 import { LockManager } from '../utils/lock-manager.js';
-import * as fs from '../utils/fs-extra-safe.js';
+import { pathExists, readFile, writeFile } from '../utils/file-system.js';
+import { readdir, stat } from '../utils/fs-extra-safe.js';
 import * as path from 'path';
 
 interface TodoUpdate {
@@ -285,7 +286,7 @@ export async function syncTodoCheckboxes(
   
   // Find the target task for this agent
   const agentDir = path.join(config.commDir, agent);
-  if (!await fs.pathExists(agentDir)) {
+  if (!await pathExists(agentDir)) {
     throw new AgentCommError(`Agent directory not found: ${agent}`, 'AGENT_NOT_FOUND');
   }
   
@@ -294,7 +295,7 @@ export async function syncTodoCheckboxes(
   if (taskId) {
     // Use specific task if taskId provided
     const taskPath = path.join(agentDir, taskId);
-    if (!await fs.pathExists(taskPath)) {
+    if (!await pathExists(taskPath)) {
       return {
         success: false,
         matchedUpdates: 0,
@@ -306,8 +307,8 @@ export async function syncTodoCheckboxes(
     }
     
     // Check if task is active (for completed/error tasks, we still allow sync but warn)
-    const doneExists = await fs.pathExists(path.join(taskPath, 'DONE.md'));
-    const errorExists = await fs.pathExists(path.join(taskPath, 'ERROR.md'));
+    const doneExists = await pathExists(path.join(taskPath, 'DONE.md'));
+    const errorExists = await pathExists(path.join(taskPath, 'ERROR.md'));
     
     if (doneExists || errorExists) {
       return {
@@ -323,21 +324,21 @@ export async function syncTodoCheckboxes(
     targetTaskDir = taskId;
   } else {
     // Find first active task (backward compatibility)
-    const taskDirs = await fs.readdir(agentDir);
+    const taskDirs = await readdir(agentDir);
     
     for (const taskDir of taskDirs) {
       const taskPath = path.join(agentDir, taskDir);
       try {
-        const stat = await fs.stat(taskPath);
+        const statResult = await stat(taskPath);
         
         // Check if it's a directory using either method or stat mode
-        const isDirectory = typeof stat.isDirectory === 'function' 
-          ? stat.isDirectory() 
-          : stat.mode ? (stat.mode & 0o170000) === 0o040000 : false;
+        const isDirectory = typeof statResult.isDirectory === 'function' 
+          ? statResult.isDirectory() 
+          : statResult.mode ? (statResult.mode & 0o170000) === 0o040000 : false;
         
         if (isDirectory) {
-          const doneExists = await fs.pathExists(path.join(taskPath, 'DONE.md'));
-          const errorExists = await fs.pathExists(path.join(taskPath, 'ERROR.md'));
+          const doneExists = await pathExists(path.join(taskPath, 'DONE.md'));
+          const errorExists = await pathExists(path.join(taskPath, 'ERROR.md'));
           
           if (!doneExists && !errorExists) {
             targetTaskDir = taskDir;
@@ -387,7 +388,7 @@ export async function syncTodoCheckboxes(
   try {
     // Read the PLAN.md file
     const planPath = path.join(agentDir, targetTaskDir, 'PLAN.md');
-    if (!await fs.pathExists(planPath)) {
+    if (!await pathExists(planPath)) {
       return {
         success: false,
         matchedUpdates: 0,
@@ -398,7 +399,7 @@ export async function syncTodoCheckboxes(
       };
     }
   
-    let planContent = await fs.readFile(planPath, 'utf8');
+    let planContent = await readFile(planPath);
     const checkboxTitles = extractCheckboxTitles(planContent);
     
     if (checkboxTitles.length === 0) {
@@ -432,7 +433,7 @@ export async function syncTodoCheckboxes(
     
     // Write back the updated plan if changes were made
     if (matchedUpdates > 0) {
-      await fs.writeFile(planPath, planContent);
+      await writeFile(planPath, planContent);
     }
     
     return {
