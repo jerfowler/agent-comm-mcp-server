@@ -9,6 +9,8 @@ import { reportProgress } from '../../src/tools/report-progress.js';
 import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import { ServerConfig } from '../../src/types.js';
+import type { ConnectionManager } from '../../src/core/ConnectionManager.js';
+import type { EventLogger } from '../../src/logging/EventLogger.js';
 
 // Mock fs-extra with factory function - proper TypeScript pattern
 jest.mock('../../src/utils/fs-extra-safe.js', () => ({
@@ -56,12 +58,12 @@ function createMockServerConfig(): ServerConfig {
       getStatistics: jest.fn(),
       getConnectionCount: jest.fn(),
       hasConnection: jest.fn()
-    } as any,
+    } as unknown as ConnectionManager,
     eventLogger: {
       logOperation: jest.fn(),
       logError: jest.fn(),
       getOperationStatistics: jest.fn()
-    } as any
+    } as unknown as EventLogger
   };
 }
 
@@ -388,9 +390,8 @@ Step 3: Implement Authentication - COMPLETE
       const failedResults = results.filter(r => r.status === 'rejected');
       if (failedResults.length > 0) {
         failedResults.forEach(result => {
-          if (result.status === 'rejected') {
-            expect(result.reason.message).toContain('locked');
-          }
+          const error = result.reason as Error;
+          expect(error.message).toContain('locked');
         });
       }
     });

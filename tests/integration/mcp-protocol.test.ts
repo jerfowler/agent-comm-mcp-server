@@ -15,9 +15,7 @@ describe('MCP Protocol Integration', () => {
   }, 30000);
 
   afterAll(async () => {
-    if (testEnv) {
-      await testEnv.cleanup();
-    }
+    await testEnv.cleanup();
   }, 30000);
 
   describe('Server Initialization', () => {
@@ -68,7 +66,8 @@ describe('MCP Protocol Integration', () => {
       await server.close();
       
       // Clean up
-      delete process.env['AGENT_COMM_DIR'];
+      // Resetting to undefined is preferred over delete for dynamic keys
+      process.env['AGENT_COMM_DIR'] = undefined as unknown as string;
     });
   });
 
@@ -94,7 +93,8 @@ describe('MCP Protocol Integration', () => {
         if (originalDir) {
           process.env['AGENT_COMM_DIR'] = originalDir;
         } else {
-          delete process.env['AGENT_COMM_DIR'];
+          // Resetting to undefined is preferred over delete for dynamic keys
+          process.env['AGENT_COMM_DIR'] = undefined as unknown as string;
         }
       }
     });

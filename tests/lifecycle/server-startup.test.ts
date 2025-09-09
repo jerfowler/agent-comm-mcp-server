@@ -29,7 +29,8 @@ describe('Server Startup Lifecycle', () => {
     if (originalCommDir) {
       process.env['AGENT_COMM_DIR'] = originalCommDir;
     } else {
-      delete process.env['AGENT_COMM_DIR'];
+      // Resetting to undefined is preferred over delete for dynamic keys
+      process.env['AGENT_COMM_DIR'] = undefined as unknown as string;
     }
     
     // Clean up temporary directory
@@ -143,7 +144,8 @@ describe('Server Startup Lifecycle', () => {
     });
 
     it('should handle missing environment variables', () => {
-      delete process.env['AGENT_COMM_DIR'];
+      // Resetting to undefined is preferred over delete for dynamic keys
+      process.env['AGENT_COMM_DIR'] = undefined as unknown as string;
       
       // Should either use defaults or throw meaningful error
       const result = () => createMCPServer();

@@ -190,8 +190,8 @@ describe('File System Operations Regression Test', () => {
         await fs.chmod(restrictedDir, 0o755);
         
         // The function should handle the error gracefully
-        // Either return empty array or throw a meaningful error
-        expect(Array.isArray(result) || result === undefined).toBe(true);
+        // Return empty array or undefined on permission error
+        expect(Array.isArray(result)).toBe(true);
         
       } catch (error) {
         // Restore permissions even if test fails  

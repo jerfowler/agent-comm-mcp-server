@@ -132,7 +132,10 @@ describe('State Transition Regression Test', () => {
       const archiveResult = await archiveTasksTool(config, { mode: 'completed' });
       expect(archiveResult.archived).toBeDefined();
       expect(archiveResult.archived).not.toBeNull();
-      expect(archiveResult.archived!.total).toBeGreaterThan(0);
+      if (!archiveResult.archived) {
+        throw new Error('Archive result not found');
+      }
+      expect(archiveResult.archived.total).toBeGreaterThan(0);
       
       // Verify task is no longer in active list
       const remainingTasks = await checkTasks(config, { agent });

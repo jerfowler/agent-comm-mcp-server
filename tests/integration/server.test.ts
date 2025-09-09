@@ -183,9 +183,12 @@ describe('MCP Server Integration Tests', () => {
       const archiveResult = await archiveTasksTool(config, { mode: 'completed' });
       
       expect(archiveResult.archived).not.toBeNull();
-      expect(archiveResult.archived!.completed).toBe(2); // 1 per agent
-      expect(archiveResult.archived!.pending).toBe(0);
-      expect(archiveResult.archived!.total).toBe(2);
+      if (!archiveResult.archived) {
+        throw new Error('Archive result not found');
+      }
+      expect(archiveResult.archived.completed).toBe(2); // 1 per agent
+      expect(archiveResult.archived.pending).toBe(0);
+      expect(archiveResult.archived.total).toBe(2);
       expect(archiveResult.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/);
 
       // Verify tasks are moved
@@ -213,9 +216,12 @@ describe('MCP Server Integration Tests', () => {
       const archiveResult = await archiveTasksTool(config, { mode: 'all' });
       
       expect(archiveResult.archived).not.toBeNull();
-      expect(archiveResult.archived!.completed).toBe(2);
-      expect(archiveResult.archived!.pending).toBe(4); // pending + error tasks
-      expect(archiveResult.archived!.total).toBe(6);
+      if (!archiveResult.archived) {
+        throw new Error('Archive result not found');
+      }
+      expect(archiveResult.archived.completed).toBe(2);
+      expect(archiveResult.archived.pending).toBe(4); // pending + error tasks
+      expect(archiveResult.archived.total).toBe(6);
 
       // Verify all tasks are moved
       for (const agent of ['agent1', 'agent2']) {
@@ -231,7 +237,10 @@ describe('MCP Server Integration Tests', () => {
       });
       
       expect(archiveResult.archived).not.toBeNull();
-      expect(archiveResult.archived!.total).toBe(3); // All tasks for agent1
+      if (!archiveResult.archived) {
+        throw new Error('Archive result not found');
+      }
+      expect(archiveResult.archived.total).toBe(3); // All tasks for agent1
 
       // Verify only agent1 tasks are archived
       const agent1Tasks = await checkTasks(config, { agent: 'agent1' });
@@ -248,8 +257,11 @@ describe('MCP Server Integration Tests', () => {
       });
       
       expect(archiveResult.archived).not.toBeNull();
-      expect(archiveResult.archived!.completed).toBe(2);
-      expect(archiveResult.archived!.total).toBe(2);
+      if (!archiveResult.archived) {
+        throw new Error('Archive result not found');
+      }
+      expect(archiveResult.archived.completed).toBe(2);
+      expect(archiveResult.archived.total).toBe(2);
 
       // Verify no tasks were actually moved
       for (const agent of ['agent1', 'agent2']) {

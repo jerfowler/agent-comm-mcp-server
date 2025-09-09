@@ -16,8 +16,8 @@ export interface PromptScenario {
   name: string;
   prompt: string;
   expectedTool: string;
-  expectedParams: Record<string, any>;
-  expectedResponse: Record<string, any>;
+  expectedParams: Record<string, unknown>;
+  expectedResponse: Record<string, unknown>;
 }
 
 export interface TaskScenarioContext {
@@ -182,7 +182,7 @@ export const readmeTestHelpers = {
     });
 
     // Transform ArchiveResult into the expected test format
-    const archiveCount = result.archived?.total || 0;
+    const archiveCount = result.archived?.total ?? 0;
     return {
       success: true,
       archived: archiveCount,
@@ -193,9 +193,10 @@ export const readmeTestHelpers = {
   /**
    * Validate tool response format matches README expectations
    */
-  validateToolResponse(response: any, expectedFields: string[]): boolean {
+  validateToolResponse(response: unknown, expectedFields: string[]): boolean {
+    const responseObj = response as Record<string, unknown>;
     for (const field of expectedFields) {
-      if (!(field in response)) {
+      if (!(field in responseObj)) {
         return false;
       }
     }
