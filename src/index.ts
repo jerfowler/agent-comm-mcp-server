@@ -110,14 +110,14 @@ export function createMCPServer(): Server {
   );
 
   // Configure server with handlers
-  setupServerHandlers(server, config, resourceManager, taskContextManager);
+  setupServerHandlers(server, config, resourceManager);
   return server;
 }
 
 /**
  * Set up server request handlers
  */
-function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager, taskContextManager: TaskContextManager): void {
+function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager): void {
   // Tool call handler
   server.setRequestHandler(
     CallToolRequestSchema,
