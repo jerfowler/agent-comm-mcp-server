@@ -367,14 +367,26 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       const initialProgress = this.analyzePlanProgress(content);
       const progressMarkers = this.extractProgressMarkers(content);
 
-      // Find current active task for this agent
+      // Find task directory - either from taskId or use active task
       const agentDir = path.join(this.config.commDir, connection.agent);
       let activeTaskDir = '';
       
-      if (await fs.pathExists(agentDir)) {
+      // Check if taskId is provided in connection metadata
+      const taskId = connection.metadata?.taskId as string | undefined;
+      
+      if (taskId) {
+        // Use specified taskId
+        const taskPath = path.join(agentDir, taskId);
+        if (await fs.pathExists(taskPath)) {
+          activeTaskDir = taskId;
+        } else {
+          throw new Error(`Task not found: ${taskId}`);
+        }
+      } else if (await fs.pathExists(agentDir)) {
+        // No taskId provided - use most recently modified task (backward compatibility)
         const taskDirs = await fs.readdir(agentDir);
         
-        // For now, assume the most recently modified task directory
+        // Find the most recently modified task directory
         let latestTime = 0;
         
         for (const taskDir of taskDirs) {
@@ -385,11 +397,11 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
             activeTaskDir = taskDir;
           }
         }
+      }
 
-        if (activeTaskDir) {
-          const planPath = path.join(agentDir, activeTaskDir, 'PLAN.md');
-          await fs.writeFile(planPath, content);
-        }
+      if (activeTaskDir) {
+        const planPath = path.join(agentDir, activeTaskDir, 'PLAN.md');
+        await fs.writeFile(planPath, content);
       }
 
       const result: PlanSubmissionResult = {
@@ -447,9 +459,25 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
         }
       }
 
-      // Lock coordination - check for and acquire lock on task directory
+      // Find task directory - either from taskId or use active task
       const agentDir = path.join(this.config.commDir, connection.agent);
-      const activeTaskDir = await this.findActiveTaskDir(agentDir);
+      let activeTaskDir: string | null = null;
+      
+      // Check if taskId is provided in connection metadata
+      const taskId = connection.metadata?.taskId as string | undefined;
+      
+      if (taskId) {
+        // Use specified taskId
+        const taskPath = path.join(agentDir, taskId);
+        if (await fs.pathExists(taskPath)) {
+          activeTaskDir = taskId;
+        } else {
+          throw new Error(`Task not found: ${taskId}`);
+        }
+      } else {
+        // No taskId provided - find active task (backward compatibility)
+        activeTaskDir = await this.findActiveTaskDir(agentDir);
+      }
       
       if (activeTaskDir) {
         const lockManager = new LockManager();
@@ -570,11 +598,23 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       const isError = status === 'ERROR';
       const recommendations = isError ? this.extractRecommendations(summary) : undefined;
 
-      // Find and update the active task
+      // Find task directory - either from taskId or use active task
       const agentDir = path.join(this.config.commDir, connection.agent);
       let activeTaskDir = '';
       
-      if (await fs.pathExists(agentDir)) {
+      // Check if taskId is provided in connection metadata
+      const taskId = connection.metadata?.taskId as string | undefined;
+      
+      if (taskId) {
+        // Use specified taskId
+        const taskPath = path.join(agentDir, taskId);
+        if (await fs.pathExists(taskPath)) {
+          activeTaskDir = taskId;
+        } else {
+          throw new Error(`Task not found: ${taskId}`);
+        }
+      } else if (await fs.pathExists(agentDir)) {
+        // No taskId provided - use most recently modified task (backward compatibility)
         const taskDirs = await fs.readdir(agentDir);
         let latestTime = 0;
         
@@ -586,11 +626,11 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
             activeTaskDir = taskDir;
           }
         }
+      }
 
-        if (activeTaskDir) {
-          const completionPath = path.join(agentDir, activeTaskDir, `${status}.md`);
-          await fs.writeFile(completionPath, summary);
-        }
+      if (activeTaskDir) {
+        const completionPath = path.join(agentDir, activeTaskDir, `${status}.md`);
+        await fs.writeFile(completionPath, summary);
       }
 
       const result: CompletionResult = {

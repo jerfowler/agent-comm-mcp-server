@@ -197,9 +197,10 @@ The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everythi
 **Context-Based Tools (5 tools):**
 - Get clean task context without file paths
 - Submit implementation plans with automatic validation
-- Report progress updates in real-time
+- Report progress updates in real-time  
 - Complete tasks with intelligent reconciliation
 - Batch cleanup operations
+- **NEW**: Optional `taskId` parameter support for targeting specific tasks
 
 **Diagnostic Tools (2 tools):**
 - Get complete lifecycle visibility for any task

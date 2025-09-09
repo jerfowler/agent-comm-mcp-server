@@ -294,16 +294,18 @@ context = mcp_call('get_task_context',
 
 ---
 
-#### `submit_plan(content, agent)`
+#### `submit_plan(content, agent, taskId?)`
 Submit implementation plan content with automatic file creation.
 
 **Parameters:**
 - `content` (required): Plan content with **mandatory checkbox format**
 - `agent` (required): Agent name submitting the plan
+- `taskId` (optional): Specific task ID to target (defaults to current active task)
 
 **Returns:** Plan submission result with steps identified
 
 ```python
+# Example 1: Submit to current active task (default)
 result = mcp_call('submit_plan', 
     agent='senior-frontend-engineer',
     content="""
@@ -323,6 +325,12 @@ result = mcp_call('submit_plan',
   - Expected: Centralized state with proper typing
   - Error: If state issues, check provider setup
 """)
+
+# Example 2: Submit to specific task using taskId
+result = mcp_call('submit_plan',
+    agent='senior-frontend-engineer',
+    taskId='task-2024-01-15-dashboard-implementation',
+    content="# Plan for specific task...")
 ```
 
 **⚠️ MANDATORY PLAN FORMAT:**
@@ -344,12 +352,13 @@ Every trackable item MUST follow this structure:
 
 ---
 
-#### `report_progress(updates, agent)`
+#### `report_progress(updates, agent, taskId?)`
 Report progress updates on specific plan steps.
 
 **Parameters:**
 - `updates` (required): Array of step updates
 - `agent` (required): Agent name reporting progress
+- `taskId` (optional): Specific task ID to target (defaults to current active task)
 
 **Step Update Format:**
 ```typescript
@@ -385,13 +394,14 @@ mcp_call('report_progress',
 
 ---
 
-#### `mark_complete(status, summary, agent, [reconciliation_mode], [reconciliation_explanations])`
+#### `mark_complete(status, summary, agent, taskId?, [reconciliation_mode], [reconciliation_explanations])`
 Mark task as complete with **intelligent reconciliation** for unchecked plan items.
 
 **Parameters:**
 - `status` (required): "DONE" | "ERROR"
 - `summary` (required): Completion summary (minimum 10 characters)
 - `agent` (required): Agent name completing the task
+- `taskId` (optional): Specific task ID to target (defaults to current active task)
 - `reconciliation_mode` (optional): "strict" | "auto_complete" | "reconcile" | "force"
 - `reconciliation_explanations` (optional): Object mapping unchecked items to explanations
 
