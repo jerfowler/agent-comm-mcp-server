@@ -16,6 +16,7 @@ export async function reportProgress(
 ): Promise<ProgressReportResult> {
   const agent = validateRequiredString(args['agent'], 'agent');
   const updatesArray = args['updates'];
+  const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
   
   if (!Array.isArray(updatesArray)) {
     throw new Error('Progress updates must be an array');
@@ -58,12 +59,16 @@ export async function reportProgress(
     };
   });
   
-  // Create connection for the agent
+  // Create connection for the agent with optional taskId
   const connection = {
-    id: `report-progress-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `report-progress-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     agent,
     startTime: new Date(),
-    metadata: { operation: 'report-progress', updatesCount: updates.length }
+    metadata: { 
+      operation: 'report-progress', 
+      updatesCount: updates.length,
+      ...(taskId && { taskId }) // Include taskId if provided
+    }
   };
   
   // Ensure required components exist

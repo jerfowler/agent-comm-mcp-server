@@ -70,30 +70,15 @@ describe('get-task-context tool', () => {
     expect(mockInstance.getTaskContext).toHaveBeenCalled();
   });
 
-  it('should use default agent when not provided', async () => {
-    const mockContext: TaskContext = {
-      title: 'Test Task',
-      objective: 'Test objective',
-      requirements: [],
-      currentAgent: 'default-agent',
-      protocolInstructions: 'Test protocol',
-      agentCapabilities: [],
-      additionalContext: ''
-    };
-
-    const mockInstance = {
-      getTaskContext: jest.fn<() => Promise<TaskContext>>().mockResolvedValue(mockContext)
-    };
-    MockedTaskContextManager.mockImplementation(() => mockInstance as any);
-
+  it('should require agent when not provided', async () => {
     const args = {
       taskId: 'test-task-id'
       // agent not provided
     };
 
-    const result = await getTaskContext(mockConfig, args);
-
-    expect(result).toEqual(mockContext);
+    await expect(getTaskContext(mockConfig, args)).rejects.toThrow(
+      'Agent name is required. Please specify the agent performing this operation.'
+    );
   });
 
   it('should handle missing configuration components', async () => {

@@ -15,7 +15,12 @@ export async function getTaskContext(
   args: Record<string, unknown>
 ): Promise<TaskContext> {
   const taskId = validateOptionalString(args['taskId'], 'taskId') || '';
-  const agent = validateOptionalString(args['agent'], 'agent') || 'default-agent';
+  const agent = validateOptionalString(args['agent'], 'agent');
+  
+  // Require explicit agent specification - no default fallback
+  if (!agent || agent.trim() === '') {
+    throw new Error("Agent name is required. Please specify the agent performing this operation.");
+  }
   
   // Create connection for the agent
   const connection = {

@@ -8,6 +8,8 @@
  * ESLint disabled for 'any' types - required for dynamic module loading fallback
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { Stats } from 'fs';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -24,7 +26,7 @@ export interface SafeFsInterface {
   readdir(dirPath: string): Promise<string[]>;
   writeFile(filePath: string, data: string): Promise<void>;
   readFile(filePath: string, encoding?: string): Promise<string>;
-  stat(filePath: string): Promise<{ isDirectory: () => boolean; mtime?: Date }>;
+  stat(filePath: string): Promise<Stats>;
   remove(filePath: string): Promise<void>;
   ensureDir(dirPath: string): Promise<void>;
 }
@@ -236,12 +238,12 @@ class SafeFileSystem implements SafeFsInterface {
     return await nodeFs.readFile(filePath, { encoding: encoding as BufferEncoding });
   }
 
-  async stat(filePath: string): Promise<{ isDirectory: () => boolean; isFile: () => boolean; mtime: Date; mode: number; mtimeMs: number; size: number; birthtime: Date }> {
+  async stat(filePath: string): Promise<Stats> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.stat) {
       try {
-        return await this.fsExtra.stat(filePath);
+        return await this.fsExtra.stat(filePath) as Stats;
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.stat failed, using Node.js fallback: ${(error as Error).message}`);
@@ -249,16 +251,7 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback
-    const stats = await nodeFs.stat(filePath);
-    return {
-      isDirectory: () => stats.isDirectory(),
-      isFile: () => stats.isFile(),
-      mtime: stats.mtime,
-      mode: stats.mode,
-      mtimeMs: stats.mtimeMs,
-      size: stats.size,
-      birthtime: stats.birthtime
-    };
+    return await nodeFs.stat(filePath);
   }
 
   async remove(filePath: string): Promise<void> {
@@ -406,16 +399,8 @@ export const ensureDirSync = (dirPath: string) => {
 // Export diagnostic function
 export const getFsExtraDiagnostics = () => safeFs.getDiagnostics();
 
-// Export Stats interface for compatibility
-export interface Stats {
-  isDirectory(): boolean;
-  isFile(): boolean;
-  mtime: Date;
-  mode: number;
-  mtimeMs: number;
-  size: number;
-  birthtime: Date;
-}
+// Export Stats interface for compatibility - now uses Node.js built-in type
+export { Stats };
 
 // Export the safe filesystem instance for advanced usage
 export { safeFs };

@@ -7,7 +7,7 @@ import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { ConnectionManager, Connection } from './ConnectionManager.js';
 import { EventLogger } from '../logging/EventLogger.js';
-import { ProgressMarkers, AgentCommError } from '../types.js';
+import { ProgressMarkers, AgentCommError, AgentOwnershipError, TaskState, MultiTaskState } from '../types.js';
 import { LockManager } from '../utils/lock-manager.js';
 
 export interface TaskContext {
@@ -84,6 +84,13 @@ export interface CompletionResult {
   recommendations?: string[];
 }
 
+export interface OwnershipValidationResult {
+  valid: boolean;
+  agent: string;
+  taskId: string;
+  taskPath: string;
+}
+
 export interface TaskContextManagerConfig {
   commDir: string;
   connectionManager: ConnectionManager;
@@ -96,6 +103,7 @@ export interface TaskContextManagerConfig {
  */
 export class TaskContextManager {
   private config: TaskContextManagerConfig;
+  private currentTaskMap: Map<string, string> = new Map(); // agent -> current taskId
   private protocolInstructions = `## MCP Protocol
 
 Use these context-based operations for all task management:
@@ -181,6 +189,149 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
 
   constructor(config: TaskContextManagerConfig) {
     this.config = config;
+  }
+
+  /**
+   * Validate that an agent owns a specific task
+   * @throws {AgentOwnershipError} if agent doesn't own the task
+   */
+  async validateAgentOwnership(taskId: string, agent: string): Promise<OwnershipValidationResult> {
+    const startTime = Date.now();
+    
+    try {
+      // Reject default-agent immediately
+      if (agent === 'default-agent') {
+        throw new AgentOwnershipError(
+          "Invalid agent specification: 'default-agent' is not allowed. Please specify the actual agent name.",
+          agent,
+          taskId
+        );
+      }
+
+      // Require explicit agent specification
+      if (!agent || agent.trim() === '') {
+        throw new AgentOwnershipError(
+          "Agent name is required. Please specify the agent performing this operation.",
+          agent || '',
+          taskId
+        );
+      }
+
+      const taskPath = path.join(this.config.commDir, agent, taskId);
+      const initPath = path.join(taskPath, 'INIT.md');
+
+      // Check if task exists in agent's directory
+      if (!(await fs.pathExists(taskPath))) {
+        // Try to find the actual owner for better error message
+        let actualOwner: string | undefined;
+        
+        if (await fs.pathExists(this.config.commDir)) {
+          const agents = await fs.readdir(this.config.commDir);
+          for (const otherAgent of agents) {
+            const otherTaskPath = path.join(this.config.commDir, otherAgent, taskId);
+            if (await fs.pathExists(otherTaskPath)) {
+              const stat = await fs.stat(otherTaskPath);
+              if (stat.isDirectory()) {
+                actualOwner = otherAgent;
+                break;
+              }
+            }
+          }
+        }
+
+        const message = actualOwner
+          ? `Agent '${agent}' does not own task '${taskId}'. This task belongs to '${actualOwner}'.`
+          : `Task '${taskId}' not found for agent '${agent}'.`;
+
+        await this.config.eventLogger.logOperation({
+          timestamp: new Date(),
+          operation: 'validate_ownership',
+          agent,
+          taskId,
+          success: false,
+          duration: Date.now() - startTime,
+          metadata: {
+            validationResult: 'unauthorized',
+            securityFlag: 'ownership_violation',
+            actualOwner
+          },
+          error: {
+            message,
+            name: 'AgentOwnershipError'
+          }
+        });
+
+        throw new AgentOwnershipError(message, agent, taskId, actualOwner);
+      }
+
+      // Verify it's a valid task directory with INIT.md
+      if (!(await fs.pathExists(initPath))) {
+        const message = `Task '${taskId}' exists but is not properly initialized for agent '${agent}'.`;
+        
+        await this.config.eventLogger.logOperation({
+          timestamp: new Date(),
+          operation: 'validate_ownership',
+          agent,
+          taskId,
+          success: false,
+          duration: Date.now() - startTime,
+          metadata: {
+            validationResult: 'invalid_task',
+            securityFlag: 'incomplete_task'
+          },
+          error: {
+            message,
+            name: 'AgentOwnershipError'
+          }
+        });
+
+        throw new AgentOwnershipError(message, agent, taskId);
+      }
+
+      // Ownership is valid
+      const result: OwnershipValidationResult = {
+        valid: true,
+        agent,
+        taskId,
+        taskPath
+      };
+
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'validate_ownership',
+        agent,
+        taskId,
+        success: true,
+        duration: Date.now() - startTime,
+        metadata: {
+          taskPath,
+          validationResult: 'authorized'
+        }
+      });
+
+      return result;
+    } catch (error) {
+      // Re-throw if it's already an AgentOwnershipError
+      if (error instanceof AgentOwnershipError) {
+        throw error;
+      }
+
+      // Log unexpected errors
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'validate_ownership',
+        agent,
+        taskId,
+        success: false,
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'UnknownError'
+        }
+      });
+
+      throw error;
+    }
   }
 
   /**
@@ -274,12 +425,28 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     const startTime = Date.now();
 
     try {
+      // Validate agent specification first
+      if (connection.agent === 'default-agent') {
+        throw new AgentOwnershipError(
+          "Invalid agent specification: 'default-agent' is not allowed. Please specify the actual agent name.",
+          connection.agent,
+          taskId
+        );
+      }
+
+      if (!connection.agent || connection.agent.trim() === '') {
+        throw new AgentOwnershipError(
+          "Agent name is required. Please specify the agent performing this operation.",
+          connection.agent || '',
+          taskId
+        );
+      }
+
+      // Validate ownership
+      await this.validateAgentOwnership(taskId, connection.agent);
+
       const taskPath = path.join(this.config.commDir, connection.agent, taskId);
       const initPath = path.join(taskPath, 'INIT.md');
-
-      if (!(await fs.pathExists(initPath))) {
-        throw new Error('Task not found or not accessible');
-      }
 
       const initContent = await fs.readFile(initPath, 'utf8');
       const context = this.parseTaskContext(initContent, connection.agent);
@@ -357,6 +524,23 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     const startTime = Date.now();
 
     try {
+      // Validate agent specification first
+      if (connection.agent === 'default-agent') {
+        throw new AgentOwnershipError(
+          "Invalid agent specification: 'default-agent' is not allowed. Please specify the actual agent name.",
+          connection.agent,
+          ''
+        );
+      }
+
+      if (!connection.agent || connection.agent.trim() === '') {
+        throw new AgentOwnershipError(
+          "Agent name is required. Please specify the agent performing this operation.",
+          connection.agent || '',
+          ''
+        );
+      }
+
       // Validate plan format
       if (!this.isValidPlanFormat(content)) {
         throw new Error('Invalid plan format: Plan must contain clear steps with progress markers');
@@ -367,14 +551,30 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       const initialProgress = this.analyzePlanProgress(content);
       const progressMarkers = this.extractProgressMarkers(content);
 
-      // Find current active task for this agent
+      // Find task directory - either from taskId or use active task
       const agentDir = path.join(this.config.commDir, connection.agent);
       let activeTaskDir = '';
       
-      if (await fs.pathExists(agentDir)) {
+      // Check if taskId is provided in connection metadata
+      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      
+      // If no taskId provided, check for current task
+      if (!taskId) {
+        const currentTask = this.getCurrentTask(connection);
+        if (currentTask) {
+          taskId = currentTask;
+        }
+      }
+      
+      if (taskId) {
+        // Validate ownership for specified taskId
+        await this.validateAgentOwnership(taskId, connection.agent);
+        activeTaskDir = taskId;
+      } else if (await fs.pathExists(agentDir)) {
+        // No taskId or current task - use most recently modified task (backward compatibility)
         const taskDirs = await fs.readdir(agentDir);
         
-        // For now, assume the most recently modified task directory
+        // Find the most recently modified task directory
         let latestTime = 0;
         
         for (const taskDir of taskDirs) {
@@ -385,11 +585,16 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
             activeTaskDir = taskDir;
           }
         }
-
+        
+        // Validate ownership for the most recent task (backward compatibility)
         if (activeTaskDir) {
-          const planPath = path.join(agentDir, activeTaskDir, 'PLAN.md');
-          await fs.writeFile(planPath, content);
+          await this.validateAgentOwnership(activeTaskDir, connection.agent);
         }
+      }
+
+      if (activeTaskDir) {
+        const planPath = path.join(agentDir, activeTaskDir, 'PLAN.md');
+        await fs.writeFile(planPath, content);
       }
 
       const result: PlanSubmissionResult = {
@@ -440,6 +645,23 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     const startTime = Date.now();
 
     try {
+      // Validate agent specification first
+      if (connection.agent === 'default-agent') {
+        throw new AgentOwnershipError(
+          "Invalid agent specification: 'default-agent' is not allowed. Please specify the actual agent name.",
+          connection.agent,
+          ''
+        );
+      }
+
+      if (!connection.agent || connection.agent.trim() === '') {
+        throw new AgentOwnershipError(
+          "Agent name is required. Please specify the agent performing this operation.",
+          connection.agent || '',
+          ''
+        );
+      }
+
       // Validate updates
       for (const update of updates) {
         if (!update.step || !update.status || !update.description) {
@@ -447,9 +669,34 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
         }
       }
 
-      // Lock coordination - check for and acquire lock on task directory
+      // Find task directory - either from taskId or use active task
       const agentDir = path.join(this.config.commDir, connection.agent);
-      const activeTaskDir = await this.findActiveTaskDir(agentDir);
+      let activeTaskDir: string | null = null;
+      
+      // Check if taskId is provided in connection metadata
+      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      
+      // If no taskId provided, check for current task
+      if (!taskId) {
+        const currentTask = this.getCurrentTask(connection);
+        if (currentTask) {
+          taskId = currentTask;
+        }
+      }
+      
+      if (taskId) {
+        // Validate ownership for specified taskId
+        await this.validateAgentOwnership(taskId, connection.agent);
+        activeTaskDir = taskId;
+      } else {
+        // No taskId or current task - find active task (backward compatibility)
+        activeTaskDir = await this.findActiveTaskDir(agentDir);
+        
+        // Validate ownership for the found task
+        if (activeTaskDir) {
+          await this.validateAgentOwnership(activeTaskDir, connection.agent);
+        }
+      }
       
       if (activeTaskDir) {
         const lockManager = new LockManager();
@@ -563,6 +810,23 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     const startTime = Date.now();
 
     try {
+      // Validate agent specification first
+      if (connection.agent === 'default-agent') {
+        throw new AgentOwnershipError(
+          "Invalid agent specification: 'default-agent' is not allowed. Please specify the actual agent name.",
+          connection.agent,
+          ''
+        );
+      }
+
+      if (!connection.agent || connection.agent.trim() === '') {
+        throw new AgentOwnershipError(
+          "Agent name is required. Please specify the agent performing this operation.",
+          connection.agent || '',
+          ''
+        );
+      }
+
       if (!['DONE', 'ERROR'].includes(status)) {
         throw new Error('Invalid completion status: Must be DONE or ERROR');
       }
@@ -570,11 +834,27 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       const isError = status === 'ERROR';
       const recommendations = isError ? this.extractRecommendations(summary) : undefined;
 
-      // Find and update the active task
+      // Find task directory - either from taskId or use active task
       const agentDir = path.join(this.config.commDir, connection.agent);
       let activeTaskDir = '';
       
-      if (await fs.pathExists(agentDir)) {
+      // Check if taskId is provided in connection metadata
+      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      
+      // If no taskId provided, check for current task
+      if (!taskId) {
+        const currentTask = this.getCurrentTask(connection);
+        if (currentTask) {
+          taskId = currentTask;
+        }
+      }
+      
+      if (taskId) {
+        // Validate ownership for specified taskId
+        await this.validateAgentOwnership(taskId, connection.agent);
+        activeTaskDir = taskId;
+      } else if (await fs.pathExists(agentDir)) {
+        // No taskId or current task - use most recently modified task (backward compatibility)
         const taskDirs = await fs.readdir(agentDir);
         let latestTime = 0;
         
@@ -586,11 +866,16 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
             activeTaskDir = taskDir;
           }
         }
-
+        
+        // Validate ownership for the most recent task (backward compatibility)
         if (activeTaskDir) {
-          const completionPath = path.join(agentDir, activeTaskDir, `${status}.md`);
-          await fs.writeFile(completionPath, summary);
+          await this.validateAgentOwnership(activeTaskDir, connection.agent);
         }
+      }
+
+      if (activeTaskDir) {
+        const completionPath = path.join(agentDir, activeTaskDir, `${status}.md`);
+        await fs.writeFile(completionPath, summary);
       }
 
       const result: CompletionResult = {
@@ -894,5 +1179,226 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     return match[1].trim().split('\n')
       .filter(line => line.startsWith('- '))
       .map(line => line.substring(2).trim());
+  }
+
+  // ========================
+  // Multi-Task Workflow Support (Issue #25)
+  // ========================
+
+  /**
+   * Set the current task for an agent
+   * @param taskId - The task to set as current
+   * @param connection - The agent connection
+   * @returns true if successful
+   */
+  async setCurrentTask(taskId: string, connection: Connection): Promise<boolean> {
+    const startTime = Date.now();
+    
+    try {
+      // Validate ownership first
+      await this.validateAgentOwnership(taskId, connection.agent);
+      
+      // Set current task for the agent
+      this.currentTaskMap.set(connection.agent, taskId);
+      
+      // Store in connection metadata for persistence
+      connection.metadata = connection.metadata || {};
+      connection.metadata['currentTask'] = taskId;
+      
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'set_current_task',
+        agent: connection.agent,
+        taskId,
+        success: true,
+        duration: Date.now() - startTime,
+        metadata: {
+          previousTask: this.currentTaskMap.get(connection.agent),
+          newTask: taskId
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'set_current_task',
+        agent: connection.agent,
+        taskId,
+        success: false,
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'UnknownError'
+        }
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get the current task for an agent
+   * @param connection - The agent connection
+   * @returns The current task ID or null if not set
+   */
+  getCurrentTask(connection: Connection): string | null {
+    // Check connection metadata first (persistent across operations)
+    const metadataTask = connection.metadata?.['currentTask'] as string | undefined;
+    if (metadataTask) {
+      // Sync with internal map
+      this.currentTaskMap.set(connection.agent, metadataTask);
+      return metadataTask;
+    }
+    
+    // Check internal map
+    return this.currentTaskMap.get(connection.agent) || null;
+  }
+
+  /**
+   * Get multi-task state for an agent
+   * @param connection - The agent connection
+   * @returns Complete multi-task state information
+   */
+  async getMultiTaskState(connection: Connection): Promise<MultiTaskState> {
+    const startTime = Date.now();
+    
+    try {
+      const agentDir = path.join(this.config.commDir, connection.agent);
+      const tasks: TaskState[] = [];
+      const activeTasks: TaskState[] = [];
+      
+      if (await fs.pathExists(agentDir)) {
+        const taskDirs = await fs.readdir(agentDir);
+        
+        for (const taskDir of taskDirs) {
+          const taskPath = path.join(agentDir, taskDir);
+          const stat = await fs.stat(taskPath);
+          
+          if (!stat.isDirectory()) continue;
+          
+          const initPath = path.join(taskPath, 'INIT.md');
+          if (!(await fs.pathExists(initPath))) continue;
+          
+          const initContent = await fs.readFile(initPath, 'utf8');
+          const title = this.extractTitle(initContent);
+          const status = await this.determineTaskStatus(taskPath);
+          const progress = await this.extractProgress(taskPath);
+          
+          const taskState: TaskState = {
+            taskId: taskDir,
+            status,
+            title,
+            lastModified: stat.mtime,
+            ...(progress && { progress })
+          };
+          
+          tasks.push(taskState);
+          
+          // Task is active if it has a plan but is not completed
+          if (status === 'in_progress') {
+            activeTasks.push(taskState);
+          }
+        }
+      }
+      
+      // Get current task
+      const currentTask = this.getCurrentTask(connection);
+      
+      // Calculate task counts
+      const taskCount = {
+        total: tasks.length,
+        new: tasks.filter(t => t.status === 'new').length,
+        inProgress: tasks.filter(t => t.status === 'in_progress').length,
+        completed: tasks.filter(t => t.status === 'completed').length,
+        error: tasks.filter(t => t.status === 'error').length
+      };
+      
+      const multiTaskState: MultiTaskState = {
+        agent: connection.agent,
+        tasks,
+        activeTasks,
+        currentTask,
+        taskCount
+      };
+      
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'get_multi_task_state',
+        agent: connection.agent,
+        success: true,
+        duration: Date.now() - startTime,
+        metadata: {
+          taskCount: taskCount.total,
+          activeCount: activeTasks.length,
+          currentTask
+        }
+      });
+      
+      return multiTaskState;
+    } catch (error) {
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'get_multi_task_state',
+        agent: connection.agent,
+        success: false,
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'UnknownError'
+        }
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Enhanced submitPlan that respects current task when no taskId is provided
+   */
+  async submitPlanWithCurrentTask(content: string, connection: Connection): Promise<PlanSubmissionResult> {
+    // If taskId is not in metadata, check for current task
+    if (!connection.metadata?.['taskId']) {
+      const currentTask = this.getCurrentTask(connection);
+      if (currentTask) {
+        connection.metadata = connection.metadata || {};
+        connection.metadata['taskId'] = currentTask;
+      }
+    }
+    
+    // Delegate to existing submitPlan
+    return this.submitPlan(content, connection);
+  }
+
+  /**
+   * Enhanced reportProgress that respects current task when no taskId is provided
+   */
+  async reportProgressWithCurrentTask(updates: ProgressUpdate[], connection: Connection): Promise<ProgressReportResult> {
+    // If taskId is not in metadata, check for current task
+    if (!connection.metadata?.['taskId']) {
+      const currentTask = this.getCurrentTask(connection);
+      if (currentTask) {
+        connection.metadata = connection.metadata || {};
+        connection.metadata['taskId'] = currentTask;
+      }
+    }
+    
+    // Delegate to existing reportProgress
+    return this.reportProgress(updates, connection);
+  }
+
+  /**
+   * Enhanced markComplete that respects current task when no taskId is provided
+   */
+  async markCompleteWithCurrentTask(status: 'DONE' | 'ERROR', summary: string, connection: Connection): Promise<CompletionResult> {
+    // If taskId is not in metadata, check for current task
+    if (!connection.metadata?.['taskId']) {
+      const currentTask = this.getCurrentTask(connection);
+      if (currentTask) {
+        connection.metadata = connection.metadata || {};
+        connection.metadata['taskId'] = currentTask;
+      }
+    }
+    
+    // Delegate to existing markComplete
+    return this.markComplete(status, summary, connection);
   }
 }

@@ -72,3 +72,7 @@ pnpm-lock.yaml
 .mcp.json
 .mcp.json.local
 .mcp.json.backup
+
+# Agent Communication Directories (never commit task folders)
+comm/
+.serena/cache/

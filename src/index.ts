@@ -11,7 +11,9 @@ import {
   CallToolRequestSchema, 
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
-  ReadResourceRequestSchema
+  ReadResourceRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
 import { AgentCommError, ServerConfig } from './types.js';
@@ -22,6 +24,7 @@ import { ConnectionManager } from './core/ConnectionManager.js';
 import { EventLogger } from './logging/EventLogger.js';
 import { TaskContextManager } from './core/TaskContextManager.js';
 import { ResourceManager } from './resources/ResourceManager.js';
+import { PromptManager } from './prompts/PromptManager.js';
 
 // Import tools
 import { checkTasks } from './tools/check-tasks.js';
@@ -100,20 +103,21 @@ export function createMCPServer(): Server {
     {
       capabilities: {
         tools: {},
-        resources: {}
+        resources: {},
+        prompts: {}
       }
     }
   );
 
   // Configure server with handlers
-  setupServerHandlers(server, config, resourceManager);
+  setupServerHandlers(server, config, resourceManager, taskContextManager);
   return server;
 }
 
 /**
  * Set up server request handlers
  */
-function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager): void {
+function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager, taskContextManager: TaskContextManager): void {
   // Tool call handler
   server.setRequestHandler(
     CallToolRequestSchema,
@@ -758,6 +762,40 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
         throw new AgentCommError('URI parameter is required', 'INVALID_PARAMS');
       }
       return resourceManager.readResource(request.params.uri);
+    }
+  );
+
+  // Initialize PromptManager
+  const promptManager = new PromptManager(config);
+
+  // Prompts list handler
+  server.setRequestHandler(
+    ListPromptsRequestSchema,
+    async () => {
+      const result = await promptManager.listPrompts();
+      return {
+        prompts: result.prompts
+      };
+    }
+  );
+
+  // Prompts get handler
+  server.setRequestHandler(
+    GetPromptRequestSchema,
+    async (request: any) => {
+      try {
+        const { name, arguments: args } = request.params;
+        const result = await promptManager.getPrompt(name, args || {});
+        return {
+          description: result.description,
+          messages: result.messages
+        };
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new AgentCommError(error.message, 'PROMPT_ERROR');
+        }
+        throw new AgentCommError('Failed to get prompt', 'PROMPT_ERROR');
+      }
     }
   );
 }

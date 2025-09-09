@@ -62,10 +62,11 @@ function extractCheckedItems(content: string): string[] {
  */
 async function validateCompletion(
   config: ServerConfig, 
-  agent: string
+  agent: string,
+  taskId?: string
 ): Promise<CompletionValidation> {
   try {
-    // Find the current active task for the agent
+    // Find the task directory - either specified or active
     const agentDir = path.join(config.commDir, agent);
     if (!await fs.pathExists(agentDir)) {
       return {
@@ -77,19 +78,30 @@ async function validateCompletion(
       };
     }
     
-    const taskDirs = await fs.listDirectory(agentDir);
-    const activeTaskDir = await (async () => {
-      for (const dir of taskDirs) {
-        const donePath = path.join(agentDir, dir, 'DONE.md');
-        const errorPath = path.join(agentDir, dir, 'ERROR.md');
-        const doneExists = await fs.pathExists(donePath);
-        const errorExists = await fs.pathExists(errorPath);
-        if (!doneExists && !errorExists) {
-          return dir;
-        }
+    let activeTaskDir: string | null = null;
+    
+    if (taskId) {
+      // Use specified taskId
+      const taskPath = path.join(agentDir, taskId);
+      if (await fs.pathExists(taskPath)) {
+        activeTaskDir = taskId;
       }
-      return null;
-    })();
+    } else {
+      // Find active task (backward compatibility)
+      const taskDirs = await fs.listDirectory(agentDir);
+      activeTaskDir = await (async () => {
+        for (const dir of taskDirs) {
+          const donePath = path.join(agentDir, dir, 'DONE.md');
+          const errorPath = path.join(agentDir, dir, 'ERROR.md');
+          const doneExists = await fs.pathExists(donePath);
+          const errorExists = await fs.pathExists(errorPath);
+          if (!doneExists && !errorExists) {
+            return dir;
+          }
+        }
+        return null;
+      })();
+    }
     
     if (!activeTaskDir) {
       // No active task found
@@ -252,6 +264,7 @@ export async function markComplete(
   const status = validateRequiredString(args['status'], 'status');
   const summary = validateRequiredString(args['summary'], 'summary');
   const agent = validateRequiredString(args['agent'], 'agent');
+  const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
   
   // Parse reconciliation options if provided
   const reconciliationMode = args['reconciliation_mode'] as string | undefined;
@@ -272,16 +285,17 @@ export async function markComplete(
     throw new Error('Summary must be at least 10 characters long');
   }
   
-  // Create connection for the agent
+  // Create connection for the agent with optional taskId
   const connection = {
-    id: `mark-complete-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `mark-complete-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     agent,
     startTime: new Date(),
     metadata: { 
       operation: 'mark-complete', 
       status, 
       summarySize: summary.length,
-      reconciliationMode: reconciliation?.mode
+      reconciliationMode: reconciliation?.mode,
+      ...(taskId && { taskId }) // Include taskId if provided
     }
   };
   
@@ -368,7 +382,7 @@ export async function markComplete(
   }
   
   // Validate completion against plan checkboxes
-  const validation = await validateCompletion(config, agent);
+  const validation = await validateCompletion(config, agent, taskId);
   
   // Apply reconciliation logic
   const reconciledCompletion = reconcileCompletion(

@@ -70,6 +70,7 @@ export async function submitPlan(
 ): Promise<PlanSubmissionResult> {
   const content = validateRequiredString(args['content'], 'content');
   const agent = validateRequiredString(args['agent'], 'agent');
+  const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
   
   // Validate plan format before submission
   const validation = validatePlanFormat(content);
@@ -95,15 +96,16 @@ export async function submitPlan(
     throw new AgentCommError(errorMessage, 'PLAN_FORMAT_INVALID');
   }
   
-  // Create connection for the agent
+  // Create connection for the agent with optional taskId
   const connection = {
-    id: `submit-plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `submit-plan-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     agent,
     startTime: new Date(),
     metadata: { 
       operation: 'submit-plan', 
       contentSize: content.length,
-      checkboxCount: validation.checkboxCount
+      checkboxCount: validation.checkboxCount,
+      ...(taskId && { taskId }) // Include taskId if provided
     }
   };
   
