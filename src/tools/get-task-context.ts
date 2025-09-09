@@ -5,7 +5,7 @@
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, TaskContext } from '../core/TaskContextManager.js';
-import { validateOptionalString } from '../utils/validation.js';
+import { validateOptionalString, validateRequiredConfig } from '../utils/validation.js';
 
 /**
  * Get task context without exposing file operations
@@ -14,6 +14,9 @@ export async function getTaskContext(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<TaskContext> {
+  // Validate configuration has required components
+  validateRequiredConfig(config);
+  
   const taskId = validateOptionalString(args['taskId'], 'taskId') ?? '';
   const agent = validateOptionalString(args['agent'], 'agent');
   
@@ -29,8 +32,6 @@ export async function getTaskContext(
     startTime: new Date(),
     metadata: { operation: 'get-task-context', taskId }
   };
-  
-  // connectionManager and eventLogger are guaranteed by ServerConfig type
   
   const contextManager = new TaskContextManager({
     commDir: config.commDir,

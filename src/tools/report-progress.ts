@@ -5,7 +5,7 @@
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, ProgressUpdate, ProgressReportResult } from '../core/TaskContextManager.js';
-import { validateRequiredString } from '../utils/validation.js';
+import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 
 /**
  * Report progress updates without file exposure
@@ -14,6 +14,9 @@ export async function reportProgress(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<ProgressReportResult> {
+  // Validate configuration has required components
+  validateRequiredConfig(config);
+  
   const agent = validateRequiredString(args['agent'], 'agent');
   const updatesArray = args['updates'];
   const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
@@ -70,8 +73,6 @@ export async function reportProgress(
       ...(taskId && { taskId }) // Include taskId if provided
     }
   };
-  
-  // connectionManager and eventLogger are guaranteed by ServerConfig type
   
   const contextManager = new TaskContextManager({
     commDir: config.commDir,

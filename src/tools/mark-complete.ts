@@ -5,7 +5,7 @@
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, CompletionResult } from '../core/TaskContextManager.js';
-import { validateRequiredString } from '../utils/validation.js';
+import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { verifyAgentWork, DEFAULT_CONFIDENCE_THRESHOLD } from '../core/agent-work-verifier.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
@@ -261,6 +261,9 @@ export async function markComplete(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<CompletionResult> {
+  // Validate configuration has required components
+  validateRequiredConfig(config);
+  
   const status = validateRequiredString(args['status'], 'status');
   const summary = validateRequiredString(args['summary'], 'summary');
   const agent = validateRequiredString(args['agent'], 'agent');
@@ -299,8 +302,6 @@ export async function markComplete(
     }
   };
   
-  // connectionManager and eventLogger are guaranteed by ServerConfig type
-
   // **MANDATORY VERIFICATION GATE** - Prevents false success reporting
   // This addresses Issue #11: Agent False Success Reporting
   if (status === 'DONE') {

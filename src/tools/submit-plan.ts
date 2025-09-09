@@ -5,7 +5,7 @@
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, PlanSubmissionResult } from '../core/TaskContextManager.js';
-import { validateRequiredString } from '../utils/validation.js';
+import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
 
 interface PlanValidationResult {
@@ -68,6 +68,9 @@ export async function submitPlan(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<PlanSubmissionResult> {
+  // Validate configuration has required components
+  validateRequiredConfig(config);
+  
   const content = validateRequiredString(args['content'], 'content');
   const agent = validateRequiredString(args['agent'], 'agent');
   const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
@@ -108,8 +111,6 @@ export async function submitPlan(
       ...(taskId && { taskId }) // Include taskId if provided
     }
   };
-  
-  // connectionManager and eventLogger are guaranteed by ServerConfig type
   
   const contextManager = new TaskContextManager({
     commDir: config.commDir,
