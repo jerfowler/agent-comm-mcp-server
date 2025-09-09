@@ -7,7 +7,7 @@ import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { ConnectionManager, Connection } from './ConnectionManager.js';
 import { EventLogger } from '../logging/EventLogger.js';
-import { ProgressMarkers, AgentCommError, AgentOwnershipError } from '../types.js';
+import { ProgressMarkers, AgentCommError, AgentOwnershipError, TaskState, MultiTaskState } from '../types.js';
 import { LockManager } from '../utils/lock-manager.js';
 
 export interface TaskContext {
@@ -103,6 +103,7 @@ export interface TaskContextManagerConfig {
  */
 export class TaskContextManager {
   private config: TaskContextManagerConfig;
+  private currentTaskMap: Map<string, string> = new Map(); // agent -> current taskId
   private protocolInstructions = `## MCP Protocol
 
 Use these context-based operations for all task management:
@@ -555,14 +556,22 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir = '';
       
       // Check if taskId is provided in connection metadata
-      const taskId = connection.metadata?.['taskId'] as string | undefined;
+      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      
+      // If no taskId provided, check for current task
+      if (!taskId) {
+        const currentTask = this.getCurrentTask(connection);
+        if (currentTask) {
+          taskId = currentTask;
+        }
+      }
       
       if (taskId) {
         // Validate ownership for specified taskId
         await this.validateAgentOwnership(taskId, connection.agent);
         activeTaskDir = taskId;
       } else if (await fs.pathExists(agentDir)) {
-        // No taskId provided - use most recently modified task (backward compatibility)
+        // No taskId or current task - use most recently modified task (backward compatibility)
         const taskDirs = await fs.readdir(agentDir);
         
         // Find the most recently modified task directory
@@ -665,14 +674,22 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir: string | null = null;
       
       // Check if taskId is provided in connection metadata
-      const taskId = connection.metadata?.['taskId'] as string | undefined;
+      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      
+      // If no taskId provided, check for current task
+      if (!taskId) {
+        const currentTask = this.getCurrentTask(connection);
+        if (currentTask) {
+          taskId = currentTask;
+        }
+      }
       
       if (taskId) {
         // Validate ownership for specified taskId
         await this.validateAgentOwnership(taskId, connection.agent);
         activeTaskDir = taskId;
       } else {
-        // No taskId provided - find active task (backward compatibility)
+        // No taskId or current task - find active task (backward compatibility)
         activeTaskDir = await this.findActiveTaskDir(agentDir);
         
         // Validate ownership for the found task
@@ -822,14 +839,22 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir = '';
       
       // Check if taskId is provided in connection metadata
-      const taskId = connection.metadata?.['taskId'] as string | undefined;
+      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      
+      // If no taskId provided, check for current task
+      if (!taskId) {
+        const currentTask = this.getCurrentTask(connection);
+        if (currentTask) {
+          taskId = currentTask;
+        }
+      }
       
       if (taskId) {
         // Validate ownership for specified taskId
         await this.validateAgentOwnership(taskId, connection.agent);
         activeTaskDir = taskId;
       } else if (await fs.pathExists(agentDir)) {
-        // No taskId provided - use most recently modified task (backward compatibility)
+        // No taskId or current task - use most recently modified task (backward compatibility)
         const taskDirs = await fs.readdir(agentDir);
         let latestTime = 0;
         
@@ -1154,5 +1179,226 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     return match[1].trim().split('\n')
       .filter(line => line.startsWith('- '))
       .map(line => line.substring(2).trim());
+  }
+
+  // ========================
+  // Multi-Task Workflow Support (Issue #25)
+  // ========================
+
+  /**
+   * Set the current task for an agent
+   * @param taskId - The task to set as current
+   * @param connection - The agent connection
+   * @returns true if successful
+   */
+  async setCurrentTask(taskId: string, connection: Connection): Promise<boolean> {
+    const startTime = Date.now();
+    
+    try {
+      // Validate ownership first
+      await this.validateAgentOwnership(taskId, connection.agent);
+      
+      // Set current task for the agent
+      this.currentTaskMap.set(connection.agent, taskId);
+      
+      // Store in connection metadata for persistence
+      connection.metadata = connection.metadata || {};
+      connection.metadata['currentTask'] = taskId;
+      
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'set_current_task',
+        agent: connection.agent,
+        taskId,
+        success: true,
+        duration: Date.now() - startTime,
+        metadata: {
+          previousTask: this.currentTaskMap.get(connection.agent),
+          newTask: taskId
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'set_current_task',
+        agent: connection.agent,
+        taskId,
+        success: false,
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'UnknownError'
+        }
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get the current task for an agent
+   * @param connection - The agent connection
+   * @returns The current task ID or null if not set
+   */
+  getCurrentTask(connection: Connection): string | null {
+    // Check connection metadata first (persistent across operations)
+    const metadataTask = connection.metadata?.['currentTask'] as string | undefined;
+    if (metadataTask) {
+      // Sync with internal map
+      this.currentTaskMap.set(connection.agent, metadataTask);
+      return metadataTask;
+    }
+    
+    // Check internal map
+    return this.currentTaskMap.get(connection.agent) || null;
+  }
+
+  /**
+   * Get multi-task state for an agent
+   * @param connection - The agent connection
+   * @returns Complete multi-task state information
+   */
+  async getMultiTaskState(connection: Connection): Promise<MultiTaskState> {
+    const startTime = Date.now();
+    
+    try {
+      const agentDir = path.join(this.config.commDir, connection.agent);
+      const tasks: TaskState[] = [];
+      const activeTasks: TaskState[] = [];
+      
+      if (await fs.pathExists(agentDir)) {
+        const taskDirs = await fs.readdir(agentDir);
+        
+        for (const taskDir of taskDirs) {
+          const taskPath = path.join(agentDir, taskDir);
+          const stat = await fs.stat(taskPath);
+          
+          if (!stat.isDirectory()) continue;
+          
+          const initPath = path.join(taskPath, 'INIT.md');
+          if (!(await fs.pathExists(initPath))) continue;
+          
+          const initContent = await fs.readFile(initPath, 'utf8');
+          const title = this.extractTitle(initContent);
+          const status = await this.determineTaskStatus(taskPath);
+          const progress = await this.extractProgress(taskPath);
+          
+          const taskState: TaskState = {
+            taskId: taskDir,
+            status,
+            title,
+            lastModified: stat.mtime,
+            ...(progress && { progress })
+          };
+          
+          tasks.push(taskState);
+          
+          // Task is active if it has a plan but is not completed
+          if (status === 'in_progress') {
+            activeTasks.push(taskState);
+          }
+        }
+      }
+      
+      // Get current task
+      const currentTask = this.getCurrentTask(connection);
+      
+      // Calculate task counts
+      const taskCount = {
+        total: tasks.length,
+        new: tasks.filter(t => t.status === 'new').length,
+        inProgress: tasks.filter(t => t.status === 'in_progress').length,
+        completed: tasks.filter(t => t.status === 'completed').length,
+        error: tasks.filter(t => t.status === 'error').length
+      };
+      
+      const multiTaskState: MultiTaskState = {
+        agent: connection.agent,
+        tasks,
+        activeTasks,
+        currentTask,
+        taskCount
+      };
+      
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'get_multi_task_state',
+        agent: connection.agent,
+        success: true,
+        duration: Date.now() - startTime,
+        metadata: {
+          taskCount: taskCount.total,
+          activeCount: activeTasks.length,
+          currentTask
+        }
+      });
+      
+      return multiTaskState;
+    } catch (error) {
+      await this.config.eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'get_multi_task_state',
+        agent: connection.agent,
+        success: false,
+        duration: Date.now() - startTime,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'UnknownError'
+        }
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Enhanced submitPlan that respects current task when no taskId is provided
+   */
+  async submitPlanWithCurrentTask(content: string, connection: Connection): Promise<PlanSubmissionResult> {
+    // If taskId is not in metadata, check for current task
+    if (!connection.metadata?.['taskId']) {
+      const currentTask = this.getCurrentTask(connection);
+      if (currentTask) {
+        connection.metadata = connection.metadata || {};
+        connection.metadata['taskId'] = currentTask;
+      }
+    }
+    
+    // Delegate to existing submitPlan
+    return this.submitPlan(content, connection);
+  }
+
+  /**
+   * Enhanced reportProgress that respects current task when no taskId is provided
+   */
+  async reportProgressWithCurrentTask(updates: ProgressUpdate[], connection: Connection): Promise<ProgressReportResult> {
+    // If taskId is not in metadata, check for current task
+    if (!connection.metadata?.['taskId']) {
+      const currentTask = this.getCurrentTask(connection);
+      if (currentTask) {
+        connection.metadata = connection.metadata || {};
+        connection.metadata['taskId'] = currentTask;
+      }
+    }
+    
+    // Delegate to existing reportProgress
+    return this.reportProgress(updates, connection);
+  }
+
+  /**
+   * Enhanced markComplete that respects current task when no taskId is provided
+   */
+  async markCompleteWithCurrentTask(status: 'DONE' | 'ERROR', summary: string, connection: Connection): Promise<CompletionResult> {
+    // If taskId is not in metadata, check for current task
+    if (!connection.metadata?.['taskId']) {
+      const currentTask = this.getCurrentTask(connection);
+      if (currentTask) {
+        connection.metadata = connection.metadata || {};
+        connection.metadata['taskId'] = currentTask;
+      }
+    }
+    
+    // Delegate to existing markComplete
+    return this.markComplete(status, summary, connection);
   }
 }

@@ -244,5 +244,35 @@ export interface TrackTaskProgressResult {
 }
 
 // ========================
+// Multi-Task Workflow Types (Issue #25)
+// ========================
+
+export interface TaskState {
+  taskId: string;
+  status: 'new' | 'in_progress' | 'completed' | 'error';
+  title?: string;
+  lastModified: Date;
+  progress?: {
+    completed: number;
+    inProgress: number;
+    pending: number;
+  };
+}
+
+export interface MultiTaskState {
+  agent: string;
+  tasks: TaskState[];
+  activeTasks: TaskState[]; // Tasks with plans but not completed
+  currentTask: string | null;
+  taskCount: {
+    total: number;
+    new: number;
+    inProgress: number;
+    completed: number;
+    error: number;
+  };
+}
+
+// ========================
 // End of Types - Unused orchestration interfaces removed
 // ========================
