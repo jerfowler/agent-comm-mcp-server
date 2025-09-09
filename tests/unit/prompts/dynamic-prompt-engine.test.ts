@@ -107,7 +107,11 @@ describe('DynamicPromptEngine', () => {
         
         mockedTaskManager.getAgentTasks.mockResolvedValue(mockTasks);
         
-        // Mock PLAN.md content with checkboxes
+        // Mock PLAN.md file existence and content with checkboxes
+        mockedFs.pathExists.mockImplementation((path: string) => {
+          return Promise.resolve(path.includes('PLAN.md'));
+        });
+        
         mockedFs.readFile.mockImplementation((path: string) => {
           if (path.includes('PLAN.md')) {
             return Promise.resolve(`# Implementation Plan
@@ -130,9 +134,9 @@ describe('DynamicPromptEngine', () => {
         const textContent = messageContent.text;
         expect(textContent).toContain('Current Task Progress');
         expect(textContent).toContain('Step 1: Setup environment');
-        expect(textContent).toContain('✅ Complete');
+        expect(textContent).toContain('✅ Step 1: Setup environment');
         expect(textContent).toContain('Step 2: Implement core logic');
-        expect(textContent).toContain('⏳ Pending');
+        expect(textContent).toContain('⏳ Step 2: Implement core logic');
       });
     });
 
@@ -245,8 +249,8 @@ describe('DynamicPromptEngine', () => {
         if (messageContent.type !== 'text') throw new Error('Expected text content');
         const textContent = messageContent.text;
         expect(textContent).toContain('default-agent');
-        expect(textContent).toContain('ownership validation');
-        expect(textContent).toContain('Correct Usage');
+        expect(textContent).toContain('"default-agent" Error');
+        expect(textContent).toContain('✅ Correct');
       });
 
       it('should include context-aware troubleshooting', async () => {
@@ -261,6 +265,7 @@ describe('DynamicPromptEngine', () => {
         }];
         
         mockedTaskManager.getAgentTasks.mockResolvedValue(mockTasks);
+        mockedFs.pathExists.mockResolvedValue(true);
         mockedFs.readFile.mockResolvedValue('Error: Task execution failed');
         
         const content = await engine.generatePromptContent('troubleshooting-common-errors', {
@@ -270,9 +275,9 @@ describe('DynamicPromptEngine', () => {
         const messageContent = content.messages[0].content;
         if (messageContent.type !== 'text') throw new Error('Expected text content');
         const textContent = messageContent.text;
-        expect(textContent).toContain('Recent Errors');
+        expect(textContent).toContain('Recent Errors for test-agent');
         expect(textContent).toContain('task-123');
-        expect(textContent).toContain('Task execution failed');
+        expect(textContent).toContain('Task has error status');
       });
     });
 
@@ -322,10 +327,10 @@ describe('DynamicPromptEngine', () => {
         const messageContent = content.messages[0].content;
         if (messageContent.type !== 'text') throw new Error('Expected text content');
         const textContent = messageContent.text;
-        expect(textContent).toContain('Agent Compliance Status');
+        expect(textContent).toContain('Agent Compliance Status: test-agent');
         expect(textContent).toContain('test-agent');
-        expect(textContent).toContain('Completed Tasks: 1');
-        expect(textContent).toContain('In-Progress Tasks: 1');
+        expect(textContent).toContain('Completed: 1');
+        expect(textContent).toContain('In Progress: 1');
       });
     });
   });
