@@ -73,6 +73,7 @@ describe('Tool Coordination Integration (TDD)', () => {
   const testTaskDir = '2025-09-05T07-49-48-test-task';
   const testAgentPath = path.join(mockConfig.commDir, testAgent);
   const testTaskPath = path.join(testAgentPath, testTaskDir);
+  const testInitPath = path.join(testTaskPath, 'INIT.md');
   const testPlanPath = path.join(testTaskPath, 'PLAN.md');
   const testProgressPath = path.join(testTaskPath, 'PROGRESS.md');
   const testLockPath = path.join(testTaskPath, '.sync.lock');
@@ -173,6 +174,7 @@ Step 3: Implement Authentication - COMPLETE
         if (filePath === testLockPath) return Promise.resolve(true);
         if (filePath === testAgentPath) return Promise.resolve(true);
         if (filePath === testTaskPath) return Promise.resolve(true);
+        if (filePath === testInitPath) return Promise.resolve(true);
         if (filePath === testPlanPath) return Promise.resolve(true);
         if (filePath === testProgressPath) return Promise.resolve(true);
         return Promise.resolve(false);
@@ -191,6 +193,7 @@ Step 3: Implement Authentication - COMPLETE
             lockId: 'sync-lock-id'
           }));
         }
+        if (filePath === testInitPath) return Promise.resolve('# Test Task\n\nThis is a test task initialization.');
         if (filePath === testPlanPath) return Promise.resolve(samplePlanContent);
         if (filePath === testProgressPath) return Promise.resolve(sampleProgressContent);
         return Promise.resolve('');
