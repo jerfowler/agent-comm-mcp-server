@@ -73,10 +73,6 @@ pnpm-lock.yaml
 .mcp.json.local
 .mcp.json.backup
 
-# Agent communication files (preserve archive and logs)
+# Agent Communication Directories (never commit task folders)
 comm/
-!comm/.archive/
-!comm/.logs/
-
-# Serena cache files
 .serena/cache/
