@@ -13,6 +13,34 @@ The **Agent Communication MCP Server** provides a robust, context-based task man
 - **🔄 Intelligent Reconciliation**: Flexible task completion with plan variance handling
 - **⚡ Non-Blocking Architecture**: Preserves Claude Code parallelism with async-first design
 
+### 🚀 Enhanced Capabilities (v0.6.0)
+
+This version introduces **significant enhancements** for enterprise-grade task management:
+
+#### 🆔 Enhanced Task Management
+- **Optional `taskId` parameters** in `submit_plan`, `report_progress`, `mark_complete`
+- **Explicit task targeting** - work with any task by ID without changing context
+- **Flexible multi-task workflows** - concurrent task operations and any-order completion
+- **Current task tracking** with automatic fallback to active tasks
+
+#### 🔒 Strict Agent Ownership Validation  
+- **AgentOwnershipError** class with detailed ownership information
+- **Elimination of "default-agent"** fallback mechanism for security
+- **Comprehensive audit logging** for all ownership operations
+- **Cross-agent task protection** prevents unauthorized modifications
+
+#### 🎯 MCP Prompts Integration
+- **5 dynamic prompts** compliant with MCP 2025-06-18 specification
+- **Context-aware content generation** based on agent state and tasks
+- **Multi-modal support** with embedded resources and code examples  
+- **Error-specific troubleshooting** guides with real-time context
+
+#### 📊 Advanced Workflow Support
+- **Parallel task execution** across multiple agents
+- **Task context switching** for priority-based work management
+- **Coordinated multi-agent workflows** with dependency handling
+- **Dynamic task prioritization** with flexible scheduling
+
 ---
 
 ## Quick Start
@@ -277,19 +305,45 @@ Get task context without file paths - the **recommended starting point**.
 
 **Parameters:**
 - `taskId` (optional): Specific task ID. If omitted, returns current active task
-- `agent` (optional): Agent name (defaults to "default-agent")
+- `agent` (optional): **REQUIRED** - Agent name (**"default-agent" no longer supported**)
+
+**⚠️ BREAKING CHANGE (v0.6.0)**
+The `agent` parameter is now **effectively required** due to strict ownership validation:
+- **"default-agent" eliminated** for security reasons
+- **AgentOwnershipError** thrown for invalid agent names
+- **Must specify actual agent** (e.g., "senior-frontend-engineer")
 
 **Returns:** TaskContext with title, objective, requirements, protocol instructions
 
 ```python
-# Get current active task context
+# Example 1: Get current active task context
 context = mcp_call('get_task_context', agent='senior-frontend-engineer')
 
-# Get specific task context
+# Example 2: Get specific task context  
 context = mcp_call('get_task_context',
     agent='senior-frontend-engineer',
     taskId='2024-01-15T10-30-00-implement-dashboard'
 )
+
+# Example 3: **NEW** - Multi-task context switching
+# Get context for Task A
+context_a = mcp_call('get_task_context',
+    agent='senior-backend-engineer',
+    taskId='task-a-database-migration'
+)
+
+# Switch to Task B context
+context_b = mcp_call('get_task_context',
+    agent='senior-backend-engineer', 
+    taskId='task-b-api-endpoints'
+)
+
+# Work with both contexts as needed
+print(f"Task A status: {context_a['status']}")
+print(f"Task B status: {context_b['status']}")
+
+# ❌ This will now throw AgentOwnershipError
+# context = mcp_call('get_task_context', agent='default-agent')
 ```
 
 ---
@@ -597,6 +651,232 @@ mcp_call('mark_complete',
 
 # 5. Clean up
 mcp_call('archive_completed_tasks', agent='senior-frontend-engineer')
+```
+
+### 🔄 Multi-Task Workflow (v0.6.0)
+
+**NEW**: Enhanced multi-task management enables concurrent task operations and flexible workflows.
+
+#### Pattern 1: Parallel Task Execution
+
+```python
+# 1. Create multiple tasks for different components
+frontend_task = mcp_call('create_task',
+    agent='senior-frontend-engineer',
+    taskName='dashboard-component',
+    content='# Frontend: Dashboard Component Implementation'
+)
+
+backend_task = mcp_call('create_task', 
+    agent='senior-backend-engineer',
+    taskName='user-api-endpoints',
+    content='# Backend: User Management API'
+)
+
+database_task = mcp_call('create_task',
+    agent='senior-dba-advisor', 
+    taskName='user-schema-migration',
+    content='# Database: User Schema Updates'
+)
+
+# 2. Submit plans for each task concurrently
+mcp_call('submit_plan',
+    agent='senior-frontend-engineer',
+    taskId=frontend_task['taskId'],
+    content='''
+    # Frontend Implementation Plan
+    - [ ] **Component Architecture**: Design React components
+    - [ ] **State Management**: Implement Redux store
+    - [ ] **API Integration**: Connect to backend services
+    '''
+)
+
+mcp_call('submit_plan',
+    agent='senior-backend-engineer', 
+    taskId=backend_task['taskId'],
+    content='''
+    # Backend Implementation Plan
+    - [ ] **API Design**: Define REST endpoints
+    - [ ] **Database Models**: Create user entities
+    - [ ] **Authentication**: Implement JWT middleware
+    '''
+)
+
+# 3. Report progress independently on each task
+# Frontend progress
+mcp_call('report_progress',
+    agent='senior-frontend-engineer',
+    taskId=frontend_task['taskId'],
+    updates=[{"step": 1, "status": "COMPLETE", "description": "Component architecture defined"}]
+)
+
+# Backend progress (different task, different timing)
+mcp_call('report_progress',
+    agent='senior-backend-engineer',
+    taskId=backend_task['taskId'], 
+    updates=[{"step": 1, "status": "IN_PROGRESS", "description": "Working on API design"}]
+)
+
+# 4. Complete tasks as they finish (any order)
+# Backend finishes first
+mcp_call('mark_complete',
+    agent='senior-backend-engineer',
+    taskId=backend_task['taskId'],
+    status='DONE',
+    summary='API endpoints completed and tested'
+)
+
+# Frontend finishes later
+mcp_call('mark_complete', 
+    agent='senior-frontend-engineer',
+    taskId=frontend_task['taskId'],
+    status='DONE', 
+    summary='Dashboard component fully implemented'
+)
+```
+
+#### Pattern 2: Task Context Switching
+
+```python
+# Agent working on multiple tasks simultaneously
+agent = 'senior-system-architect'
+
+# Create two architectural tasks
+task_a = mcp_call('create_task', agent=agent, taskName='microservices-design')
+task_b = mcp_call('create_task', agent=agent, taskName='security-architecture')
+
+# Switch between tasks based on priority/blockers
+# Work on Task A
+context_a = mcp_call('get_task_context', agent=agent, taskId='microservices-design')
+mcp_call('submit_plan', agent=agent, taskId='microservices-design', content='# Microservices Plan...')
+
+# Switch to Task B when blocked on Task A  
+context_b = mcp_call('get_task_context', agent=agent, taskId='security-architecture')
+mcp_call('submit_plan', agent=agent, taskId='security-architecture', content='# Security Plan...')
+
+# Back to Task A when unblocked
+mcp_call('report_progress', 
+    agent=agent,
+    taskId='microservices-design',
+    updates=[{"step": 2, "status": "COMPLETE", "description": "Service boundaries defined"}]
+)
+
+# Continue with Task B
+mcp_call('report_progress',
+    agent=agent, 
+    taskId='security-architecture',
+    updates=[{"step": 1, "status": "COMPLETE", "description": "Threat model completed"}]
+)
+```
+
+#### Pattern 3: Coordinated Multi-Agent Workflow
+
+```python
+# Coordinated development with dependencies
+def coordinate_feature_development():
+    # Phase 1: Database setup (prerequisite for backend)
+    db_task = mcp_call('create_task',
+        agent='senior-dba-advisor',
+        taskName='user-tables-creation'
+    )
+    
+    mcp_call('submit_plan', agent='senior-dba-advisor', 
+             taskId=db_task['taskId'], content='# Database Plan...')
+    
+    # Wait for database completion (in real scenario, use polling)
+    mcp_call('mark_complete', agent='senior-dba-advisor',
+             taskId=db_task['taskId'], status='DONE', summary='Tables created')
+    
+    # Phase 2: Backend development (depends on database)
+    backend_task = mcp_call('create_task',
+        agent='senior-backend-engineer',
+        taskName='user-service-api'  
+    )
+    
+    # Phase 3: Frontend development (can start independently)
+    frontend_task = mcp_call('create_task',
+        agent='senior-frontend-engineer',
+        taskName='user-interface-components'
+    )
+    
+    # Concurrent backend and frontend work
+    mcp_call('submit_plan', agent='senior-backend-engineer',
+             taskId=backend_task['taskId'], content='# Backend API Plan...')
+    
+    mcp_call('submit_plan', agent='senior-frontend-engineer', 
+             taskId=frontend_task['taskId'], content='# Frontend UI Plan...')
+    
+    # Each agent reports progress independently
+    return {
+        'database': db_task['taskId'],
+        'backend': backend_task['taskId'], 
+        'frontend': frontend_task['taskId']
+    }
+
+# Execute coordinated workflow
+task_ids = coordinate_feature_development()
+```
+
+#### Pattern 4: Dynamic Task Prioritization
+
+```python
+# Agent managing multiple tasks with changing priorities
+class TaskManager:
+    def __init__(self, agent_name):
+        self.agent = agent_name
+        self.active_tasks = []
+    
+    def create_task(self, name, priority='medium'):
+        task = mcp_call('create_task', agent=self.agent, taskName=name)
+        self.active_tasks.append({
+            'id': task['taskId'],
+            'name': name,
+            'priority': priority,
+            'status': 'created'
+        })
+        return task['taskId']
+    
+    def work_on_highest_priority(self):
+        # Sort by priority
+        high_priority = [t for t in self.active_tasks if t['priority'] == 'high']
+        
+        if high_priority:
+            task = high_priority[0]
+            
+            # Get context for high priority task
+            context = mcp_call('get_task_context', 
+                agent=self.agent, 
+                taskId=task['id']
+            )
+            
+            # Work on it
+            if not task.get('planned'):
+                mcp_call('submit_plan', 
+                    agent=self.agent,
+                    taskId=task['id'],
+                    content=f'# High Priority Plan for {task["name"]}...'
+                )
+                task['planned'] = True
+            
+            return task['id']
+    
+    def update_priority(self, task_name, new_priority):
+        for task in self.active_tasks:
+            if task['name'] == task_name:
+                task['priority'] = new_priority
+                break
+
+# Usage
+manager = TaskManager('senior-frontend-engineer')
+task1 = manager.create_task('feature-a', 'low')
+task2 = manager.create_task('bug-fix-critical', 'high')  # Higher priority
+
+# Work on highest priority first
+current_task = manager.work_on_highest_priority()  # Returns bug-fix-critical
+
+# Priority changes dynamically
+manager.update_priority('feature-a', 'high')
+current_task = manager.work_on_highest_priority()  # Could switch to feature-a
 ```
 
 ### Diagnostic Monitoring Pattern
@@ -1221,6 +1501,140 @@ For agents supporting full lifecycle visibility:
 
 ### Common Error Patterns
 
+#### 🔒 Agent Ownership Validation Errors (v0.6.0)
+
+**NEW**: Strict ownership validation prevents agents from modifying tasks they don't own.
+
+```python
+# ❌ Wrong: Using "default-agent" placeholder
+try:
+    context = mcp_call('get_task_context', agent='default-agent')
+except AgentOwnershipError as e:
+    print(f"Ownership validation failed: {e.message}")
+    print(f"Agent: {e.agent}")
+    print(f"Task: {e.task_id}")
+    print(f"Actual Owner: {e.actual_owner}")
+
+# ✅ Correct: Use actual agent name
+context = mcp_call('get_task_context', agent='senior-frontend-engineer')
+```
+
+**AgentOwnershipError Details:**
+- **Error Type**: `AgentOwnershipError` (extends `AgentCommError`)
+- **When Thrown**: Agent attempts to access task owned by another agent
+- **Contains**: Agent name, task ID, actual owner information
+- **Solution**: Use correct agent name that owns the task
+
+```python
+# Example: Handling ownership validation errors
+try:
+    mcp_call('submit_plan', 
+        agent='senior-backend-engineer',  # Wrong agent
+        taskId='frontend-task-created-by-other-agent',
+        content='# Plan...'
+    )
+except AgentOwnershipError as e:
+    # Get the correct owner
+    correct_agent = e.actual_owner
+    print(f"Task '{e.task_id}' is owned by '{correct_agent}', not '{e.agent}'")
+    
+    # Use correct agent or delegate properly
+    mcp_call('submit_plan',
+        agent=correct_agent,  # Use actual owner
+        taskId=e.task_id,
+        content='# Plan...'
+    )
+```
+
+**Common Ownership Issues:**
+
+1. **"default-agent" Error**
+   ```python
+   # ❌ This always fails now
+   mcp_call('create_task', agent='default-agent', taskName='task')
+   
+   # ✅ Use specific agent
+   mcp_call('create_task', agent='senior-frontend-engineer', taskName='task')
+   ```
+
+2. **Cross-Agent Task Access**
+   ```python
+   # ❌ Agent A trying to modify Agent B's task
+   mcp_call('mark_complete', 
+       agent='senior-backend-engineer',    # Agent A
+       taskId='frontend-task-123',         # Belongs to Agent B
+       status='DONE')
+   
+   # ✅ Only the task owner can modify it
+   mcp_call('mark_complete',
+       agent='senior-frontend-engineer',   # Correct owner
+       taskId='frontend-task-123', 
+       status='DONE')
+   ```
+
+3. **Multi-Task Ownership Confusion**
+   ```python
+   # ❌ Wrong: Agent trying to complete task with wrong ownership
+   try:
+       for task_id in ['task-a', 'task-b', 'task-c']:
+           mcp_call('mark_complete',
+               agent='senior-backend-engineer',  # Same agent for all
+               taskId=task_id,
+               status='DONE')
+   except AgentOwnershipError as e:
+       print(f"Task {e.task_id} belongs to {e.actual_owner}, not {e.agent}")
+   
+   # ✅ Correct: Use appropriate agent for each task
+   task_ownership = {
+       'task-a': 'senior-frontend-engineer',
+       'task-b': 'senior-backend-engineer', 
+       'task-c': 'senior-system-architect'
+   }
+   
+   for task_id, owner in task_ownership.items():
+       mcp_call('mark_complete',
+           agent=owner,        # Correct owner for each task
+           taskId=task_id,
+           status='DONE')
+   ```
+
+#### Multi-Task Management Errors (v0.6.0)
+
+**NEW**: Enhanced multi-task workflow support introduces new error patterns.
+
+```python
+# ❌ Wrong: Assuming taskId parameter works everywhere
+try:
+    # This tool doesn't support taskId parameter
+    mcp_call('list_agents', taskId='some-task')
+except TypeError as e:
+    print("taskId parameter not supported for this tool")
+
+# ✅ Correct: Check tool documentation for parameter support
+mcp_call('list_agents')  # No taskId needed
+
+# Tools that DO support optional taskId:
+tools_with_taskid = [
+    'get_task_context',
+    'submit_plan', 
+    'report_progress',
+    'mark_complete'
+]
+```
+
+**Flexible Workflow Patterns:**
+```python
+# ✅ Correct: Any-order operations
+# Create multiple tasks
+task_a = mcp_call('create_task', agent='agent', taskName='task-a')
+task_b = mcp_call('create_task', agent='agent', taskName='task-b')
+
+# Work on A, then B, then back to A
+mcp_call('submit_plan', agent='agent', taskId='task-a', content='Plan A')
+mcp_call('submit_plan', agent='agent', taskId='task-b', content='Plan B')
+mcp_call('report_progress', agent='agent', taskId='task-a', updates=[...])
+```
+
 #### Task Context Errors
 ```python
 # ❌ Wrong: Requesting non-existent task
@@ -1299,6 +1713,192 @@ mcp_call('mark_complete',
 
 ---
 
+## MCP Prompts System (v0.6.0)
+
+The agent-comm MCP server now includes a comprehensive **MCP Prompts system** compliant with the **MCP 2025-06-18 specification**. This system provides **dynamic, context-aware guidance** for working with the task management protocol.
+
+### Available Prompts
+
+#### 1. `task-workflow-guide`
+**Purpose**: Comprehensive workflow guidance for task management  
+**Context-Aware**: Shows current agent tasks and progress  
+**Use Case**: Getting started with the protocol or understanding best practices
+
+```python
+# Get workflow guide for current agent context
+prompt = mcp_call('prompts/get', 
+    name='task-workflow-guide',
+    arguments={'agent': 'senior-frontend-engineer'}
+)
+
+# Get workflow guide for specific task
+prompt = mcp_call('prompts/get',
+    name='task-workflow-guide', 
+    arguments={'agent': 'senior-frontend-engineer', 'taskId': 'specific-task-id'}
+)
+```
+
+#### 2. `agent-validation-requirements`
+**Purpose**: Agent ownership validation guidelines and troubleshooting  
+**Context-Aware**: Agent-specific validation rules and common issues  
+**Use Case**: Resolving ownership validation errors
+
+```python
+# Get validation requirements for specific agent
+prompt = mcp_call('prompts/get',
+    name='agent-validation-requirements',
+    arguments={'agent': 'senior-backend-engineer'}
+)
+```
+
+#### 3. `flexible-task-operations`
+**Purpose**: Multi-task workflow patterns and task switching guidance  
+**Context-Aware**: Shows current multi-task state and recommendations  
+**Use Case**: Managing multiple concurrent tasks
+
+```python
+# Get flexible operations guide
+prompt = mcp_call('prompts/get',
+    name='flexible-task-operations',
+    arguments={'agent': 'senior-system-architect'}
+)
+```
+
+#### 4. `troubleshooting-common-errors`
+**Purpose**: Error-specific troubleshooting guides with solutions  
+**Context-Aware**: Recent errors and agent-specific issues  
+**Use Case**: Debugging specific error conditions
+
+```python
+# General troubleshooting
+prompt = mcp_call('prompts/get',
+    name='troubleshooting-common-errors',
+    arguments={'agent': 'senior-frontend-engineer'}
+)
+
+# Error-specific guidance
+prompt = mcp_call('prompts/get',
+    name='troubleshooting-common-errors',
+    arguments={'agent': 'senior-frontend-engineer', 'errorType': 'ownership-validation'}
+)
+```
+
+**Supported Error Types:**
+- `default-agent` - "default-agent" usage errors
+- `ownership-validation` - Agent ownership validation failures  
+- `task-not-found` - Task reference errors
+
+#### 5. `protocol-compliance-checklist`
+**Purpose**: Comprehensive compliance checklist with scoring  
+**Context-Aware**: Agent-specific compliance metrics and recommendations  
+**Use Case**: Ensuring proper protocol usage and identifying issues
+
+```python
+# Get compliance checklist with agent scoring
+prompt = mcp_call('prompts/get',
+    name='protocol-compliance-checklist',
+    arguments={'agent': 'qa-test-automation-engineer'}
+)
+```
+
+### Prompts API Reference
+
+#### `prompts/list`
+List all available prompts with metadata.
+
+```python
+# List all prompts
+prompts = mcp_call('prompts/list')
+# Returns: {'prompts': [{'name': '...', 'description': '...', 'arguments': [...]}]}
+```
+
+#### `prompts/get`
+Get specific prompt content with dynamic generation.
+
+**Parameters:**
+- `name` (required): Prompt name from the available list
+- `arguments` (optional): Context arguments for dynamic content
+
+**Supported Arguments:**
+- `agent` (string): Agent name for context-aware content
+- `taskId` (string): Specific task ID for task-specific guidance  
+- `errorType` (string): Error type for troubleshooting prompts
+
+**Response Format:**
+```typescript
+{
+  messages: [
+    {
+      role: 'user',
+      content: {
+        type: 'text' | 'resource',
+        text?: string,
+        resource?: {
+          uri: string,
+          mimeType: string,
+          text?: string,
+          blob?: string
+        }
+      }
+    }
+  ]
+}
+```
+
+### Multi-Modal Prompt Content
+
+Prompts support **embedded resources** for rich content delivery:
+
+- **Text Content**: Markdown-formatted guidance and instructions
+- **Resource Content**: Code examples, workflow diagrams, and templates
+- **Context Integration**: Real-time agent status and task information
+
+### Dynamic Content Generation
+
+The prompt system generates **context-aware content** based on:
+
+- **Current agent state** (active tasks, progress, errors)
+- **Task-specific information** (plans, progress markers, completion status)
+- **Error context** (recent failures, validation issues)
+- **Multi-task coordination** (parallel workflows, dependencies)
+
+### Example Workflow Integration
+
+```python
+# 1. Get workflow guidance for new agent
+workflow_guide = mcp_call('prompts/get', 
+    name='task-workflow-guide',
+    arguments={'agent': 'senior-frontend-engineer'}
+)
+
+# 2. Check compliance before starting work
+compliance = mcp_call('prompts/get',
+    name='protocol-compliance-checklist', 
+    arguments={'agent': 'senior-frontend-engineer'}
+)
+
+# 3. Get troubleshooting help if errors occur
+if validation_error:
+    troubleshooting = mcp_call('prompts/get',
+        name='troubleshooting-common-errors',
+        arguments={'agent': 'senior-frontend-engineer', 'errorType': 'ownership-validation'}
+    )
+
+# 4. Learn multi-task patterns when needed
+multi_task_guide = mcp_call('prompts/get',
+    name='flexible-task-operations',
+    arguments={'agent': 'senior-frontend-engineer'}
+)
+```
+
+### Performance and Caching
+
+- **Fast Generation**: Context queries optimized for sub-second response times
+- **Error Resilience**: Graceful degradation when context unavailable
+- **Minimal Overhead**: Lightweight prompt generation with efficient context extraction
+
+---
+
 ## API Version & Compatibility
 
 - **Current Version**: 0.6.0
@@ -1308,4 +1908,166 @@ mcp_call('mark_complete',
 
 ---
 
-This restructured protocol provides a comprehensive, accurate, and logically organized reference for the Agent Communication MCP Server with all correct tool names, parameters, and working examples based on the actual implementation.
+## Migration Guide (v0.5.x → v0.6.0)
+
+### Breaking Changes
+
+#### 1. "default-agent" Elimination
+**Previous (v0.5.x):**
+```python
+# This used to work
+context = mcp_call('get_task_context', agent='default-agent')
+```
+
+**New (v0.6.0):**
+```python
+# Now required - specify actual agent
+context = mcp_call('get_task_context', agent='senior-frontend-engineer')
+```
+
+**Migration Steps:**
+1. Replace all `'default-agent'` usage with actual agent names
+2. Update agent configuration to specify proper agent identities
+3. Test ownership validation with new strict enforcement
+
+#### 2. Enhanced Error Handling
+**Previous (v0.5.x):**
+```python
+# Generic error handling
+try:
+    mcp_call('submit_plan', ...)
+except AgentCommError as e:
+    print(f"Error: {e.message}")
+```
+
+**New (v0.6.0):**
+```python
+# Specific ownership error handling
+try:
+    mcp_call('submit_plan', ...)
+except AgentOwnershipError as e:
+    print(f"Ownership Error: {e.message}")
+    print(f"Task {e.task_id} owned by {e.actual_owner}, not {e.agent}")
+    # Handle with correct agent
+except AgentCommError as e:
+    print(f"General Error: {e.message}")
+```
+
+### New Features
+
+#### 1. Optional taskId Parameters
+**Backward Compatible** - existing code continues to work:
+```python
+# Still works (uses current active task)
+mcp_call('submit_plan', agent='agent', content='...')
+
+# New capability (target specific task)
+mcp_call('submit_plan', agent='agent', taskId='specific-task', content='...')
+```
+
+#### 2. MCP Prompts System
+**New capability** - completely optional:
+```python
+# Get contextual guidance
+prompt = mcp_call('prompts/get', 
+    name='task-workflow-guide', 
+    arguments={'agent': 'senior-frontend-engineer'})
+```
+
+### Recommended Migration Approach
+
+#### Phase 1: Fix Breaking Changes (Required)
+1. **Identify "default-agent" usage**:
+   ```bash
+   grep -r "default-agent" your-codebase/
+   ```
+
+2. **Replace with actual agents**:
+   ```python
+   # Map your usage patterns
+   agent_mapping = {
+       'frontend': 'senior-frontend-engineer',
+       'backend': 'senior-backend-engineer',
+       'database': 'senior-dba-advisor'
+   }
+   ```
+
+3. **Add specific error handling**:
+   ```python
+   from agent_comm import AgentOwnershipError
+   
+   try:
+       # Your existing MCP calls
+       pass
+   except AgentOwnershipError as e:
+       # Handle ownership issues
+       pass
+   ```
+
+#### Phase 2: Adopt New Features (Optional)
+1. **Multi-task workflows**:
+   ```python
+   # Gradually adopt taskId parameters for complex workflows
+   if complex_workflow:
+       mcp_call('submit_plan', agent=agent, taskId=specific_task, content=plan)
+   ```
+
+2. **MCP Prompts integration**:
+   ```python
+   # Add prompts for user guidance
+   if user_needs_help:
+       guidance = mcp_call('prompts/get', name='troubleshooting-common-errors')
+   ```
+
+### Compatibility Matrix
+
+| Feature | v0.5.x | v0.6.0 | Migration Required |
+|---------|--------|--------|--------------------|
+| Context-based tools | ✅ | ✅ | No |
+| Agent ownership validation | Permissive | Strict | **Yes** |
+| "default-agent" usage | ✅ | ❌ | **Yes** |
+| taskId parameters | ❌ | ✅ | No (optional) |
+| MCP Prompts | ❌ | ✅ | No (optional) |
+| Multi-task workflows | Basic | Advanced | No (enhancement) |
+
+### Testing Your Migration
+
+#### 1. Validate Agent Names
+```python
+# Test agent validation
+def test_agent_validation():
+    valid_agents = ['senior-frontend-engineer', 'senior-backend-engineer']
+    
+    for agent in valid_agents:
+        try:
+            tasks = mcp_call('check_tasks', agent=agent)
+            print(f"✅ Agent '{agent}' validated")
+        except AgentOwnershipError:
+            print(f"❌ Agent '{agent}' validation failed")
+```
+
+#### 2. Test Ownership Scenarios
+```python
+# Test cross-agent access prevention
+def test_ownership_protection():
+    try:
+        # This should fail
+        mcp_call('submit_plan', 
+            agent='wrong-agent',
+            taskId='task-owned-by-other-agent',
+            content='...')
+        print("❌ Ownership validation not working")
+    except AgentOwnershipError:
+        print("✅ Ownership validation working correctly")
+```
+
+### Support and Resources
+
+- **Migration issues**: Use MCP prompts for troubleshooting guidance
+- **Complex workflows**: Reference the new multi-task workflow patterns
+- **Error debugging**: Enhanced error messages provide specific remediation steps
+- **Performance**: New features maintain backward compatibility performance
+
+---
+
+This comprehensive protocol documentation reflects all enhanced task management capabilities implemented in Issues #23-26, providing enterprise-grade security, flexibility, and user guidance through the MCP Prompts system.
