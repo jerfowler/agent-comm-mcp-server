@@ -1,6 +1,6 @@
 {
   "name": "@jerfowler/agent-comm-mcp-server",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "MCP server for AI agent task communication and delegation with diagnostic lifecycle visibility",
   "type": "module",
   "main": "./dist/index.js",
