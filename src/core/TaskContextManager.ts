@@ -372,7 +372,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir = '';
       
       // Check if taskId is provided in connection metadata
-      const taskId = connection.metadata?.taskId as string | undefined;
+      const taskId = connection.metadata?.['taskId'] as string | undefined;
       
       if (taskId) {
         // Use specified taskId
@@ -464,7 +464,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir: string | null = null;
       
       // Check if taskId is provided in connection metadata
-      const taskId = connection.metadata?.taskId as string | undefined;
+      const taskId = connection.metadata?.['taskId'] as string | undefined;
       
       if (taskId) {
         // Use specified taskId
@@ -603,7 +603,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir = '';
       
       // Check if taskId is provided in connection metadata
-      const taskId = connection.metadata?.taskId as string | undefined;
+      const taskId = connection.metadata?.['taskId'] as string | undefined;
       
       if (taskId) {
         // Use specified taskId

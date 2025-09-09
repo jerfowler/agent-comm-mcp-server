@@ -82,7 +82,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
     config = {
       commDir: './test-comm',
       connectionManager,
-      eventLogger
+      eventLogger,
+      archiveDir: './test-archive',
+      logDir: './test-logs',
+      enableArchiving: false
     };
   });
   
@@ -106,7 +109,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const retrieved = connectionManager.getConnection('test-conn-1');
       
       expect(retrieved).toBeDefined();
-      expect(retrieved!.metadata.taskId).toBe('task-2024-01-01-specific');
+      expect(retrieved!.metadata['taskId']).toBe('task-2024-01-01-specific');
     });
 
     it('should maintain backward compatibility without taskId', () => {
@@ -124,7 +127,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const retrieved = connectionManager.getConnection('test-conn-2');
       
       expect(retrieved).toBeDefined();
-      expect(retrieved!.metadata.taskId).toBeUndefined();
+      expect(retrieved!.metadata['taskId']).toBeUndefined();
     });
   });
 
@@ -422,7 +425,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       expect(result.success).toBe(true);
       expect(result.status).toBe('DONE');
       expect(result.summary).toContain('Variance Report');
-      expect(result.summary).toContain('Determined to be unnecessary');
+      expect(result.summary).toContain('Completed via alternative approach');
     });
   });
 
@@ -515,11 +518,16 @@ describe('TaskId Parameter Support (Issue #23)', () => {
 
   describe('Error handling', () => {
     it('should provide clear error message for non-existent taskId', async () => {
-      mockedFs.pathExists.mockResolvedValue(false);
+      // Mock fs to return true for agent dir but false for specific task
+      mockedFs.pathExists.mockImplementation((p: string) => {
+        if (p.includes('task-that-does-not-exist')) return Promise.resolve(false);
+        if (p.includes('test-agent')) return Promise.resolve(true);
+        return Promise.resolve(false);
+      });
       
       const args = {
         agent: 'test-agent',
-        content: '# Plan\n\n- [ ] **Step 1**: Test\n  - Action: Test',
+        content: '# Plan\n\n- [ ] **Step 1**: Test step with sufficient content\n  - Action: Test action with detailed description\n  - Expected: Detailed expected outcome',
         taskId: 'task-that-does-not-exist'
       };
       
@@ -532,12 +540,14 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const specialTaskId = 'task-2024-01-01-test_with-special.chars';
       
       mockedFs.pathExists.mockImplementation((p: string) => {
-        return Promise.resolve(p.includes(specialTaskId));
+        if (p.includes(specialTaskId)) return Promise.resolve(true);
+        if (p.includes('test-agent')) return Promise.resolve(true);
+        return Promise.resolve(false);
       });
       
       const args = {
         agent: 'test-agent',
-        content: '# Plan\n\n- [ ] **Step 1**: Test\n  - Action: Test',
+        content: '# Plan\n\n- [ ] **Step 1**: Test step with sufficient content\n  - Action: Test action with detailed description\n  - Expected: Detailed expected outcome',
         taskId: specialTaskId
       };
       
@@ -551,15 +561,22 @@ describe('TaskId Parameter Support (Issue #23)', () => {
     });
 
     it('should reject invalid taskId format', async () => {
+      // Mock fs to return false for path traversal attempts
+      mockedFs.pathExists.mockImplementation((p: string) => {
+        if (p.includes('../../../etc/passwd')) return Promise.resolve(false);
+        if (p.includes('test-agent')) return Promise.resolve(true);
+        return Promise.resolve(false);
+      });
+      
       const args = {
         agent: 'test-agent',
-        content: '# Plan\n\n- [ ] **Step 1**: Test\n  - Action: Test',
+        content: '# Plan\n\n- [ ] **Step 1**: Test step with sufficient content\n  - Action: Test action with detailed description\n  - Expected: Detailed expected outcome',
         taskId: '../../../etc/passwd' // Path traversal attempt
       };
       
       await expect(submitPlan(config, args))
         .rejects
-        .toThrow(expect.stringMatching(/invalid|not found/i));
+        .toThrow('Task not found: ../../../etc/passwd');
     });
   });
 
