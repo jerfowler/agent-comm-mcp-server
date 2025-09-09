@@ -185,7 +185,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
         taskId: 'non-existent-task'
       };
       
-      await expect(submitPlan(config, args)).rejects.toThrow('Task not found: non-existent-task');
+      await expect(submitPlan(config, args)).rejects.toThrow("Task 'non-existent-task' not found for agent 'test-agent'");
     });
 
     it('should handle empty taskId as no taskId', async () => {

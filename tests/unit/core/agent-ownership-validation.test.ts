@@ -68,13 +68,6 @@ describe('Agent Ownership Validation', () => {
         mtime: new Date()
       } as any);
 
-      const connection = { 
-        id: 'test-conn-1', 
-        agent, 
-        startTime: new Date(),
-        metadata: { taskId }
-      };
-
       // This should not throw
       await expect(
         taskContextManager.validateAgentOwnership(taskId, agent)
