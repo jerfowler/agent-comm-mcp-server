@@ -18,7 +18,7 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } fr
 import { getServerInfo } from '../../src/config.js';
 import { AgentCommError, ServerConfig } from '../../src/types.js';
 import { testUtils } from '../utils/testUtils.js';
-import fs from 'fs-extra';
+import fs from '../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import * as os from 'os';
 

@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { ConnectionManager } from '../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../src/logging/EventLogger.js';
 import { TaskContextManager } from '../../src/core/TaskContextManager.js';
-import fs from 'fs-extra';
+import fs from '../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import os from 'os';
 

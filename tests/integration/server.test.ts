@@ -2,7 +2,7 @@
  * Integration tests for the MCP server
  */
 
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import * as os from 'os';
 // jest utilities if needed

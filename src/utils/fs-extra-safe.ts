@@ -343,6 +343,67 @@ class SafeFileSystem implements SafeFsInterface {
     await nodeFs.copyFile(src, dest);
   }
 
+
+  async mkdtemp(prefix: string): Promise<string> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.mkdtemp) {
+      try {
+        return await this.fsExtra.mkdtemp(prefix);
+      } catch (error) {
+        console.warn(`fs-extra.mkdtemp failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    return await nodeFs.mkdtemp(prefix);
+  }
+
+  async mkdir(dirPath: string, options?: any): Promise<void> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.mkdir) {
+      try {
+        return await this.fsExtra.mkdir(dirPath, options);
+      } catch (error) {
+        console.warn(`fs-extra.mkdir failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    await nodeFs.mkdir(dirPath, { recursive: true, ...options });
+  }
+
+  async chmod(filePath: string, mode: string | number): Promise<void> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.chmod) {
+      try {
+        return await this.fsExtra.chmod(filePath, mode);
+      } catch (error) {
+        console.warn(`fs-extra.chmod failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    await nodeFs.chmod(filePath, mode);
+  }
+
+  async utimes(filePath: string, atime: Date | number, mtime: Date | number): Promise<void> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.utimes) {
+      try {
+        return await this.fsExtra.utimes(filePath, atime, mtime);
+      } catch (error) {
+        console.warn(`fs-extra.utimes failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    await nodeFs.utimes(filePath, atime, mtime);
+  }
+
   /**
    * Get diagnostic information about fs-extra availability
    */
@@ -383,6 +444,21 @@ export const ensureDir = (dirPath: string) => safeFs.ensureDir(dirPath);
 export const appendFile = (filePath: string, data: string) => safeFs.appendFile(filePath, data);
 export const move = (src: string, dest: string, options?: any) => safeFs.move(src, dest, options);
 export const copy = (src: string, dest: string, options?: any) => safeFs.copy(src, dest, options);
+// JSON utility functions - always use Node.js built-in JSON methods
+export const readJSON = async (filePath: string): Promise<any> => {
+  const content = await readFile(filePath, 'utf8');
+  return JSON.parse(content);
+};
+export const readJson = readJSON; // Alias
+export const writeJSON = async (filePath: string, data: any): Promise<void> => {
+  const jsonStr = JSON.stringify(data, null, 2);
+  await writeFile(filePath, jsonStr);
+};
+export const writeJson = writeJSON; // Alias
+export const mkdtemp = (prefix: string) => safeFs.mkdtemp(prefix);
+export const mkdir = (dirPath: string, options?: any) => safeFs.mkdir(dirPath, options);
+export const chmod = (filePath: string, mode: string | number) => safeFs.chmod(filePath, mode);
+export const utimes = (filePath: string, atime: Date | number, mtime: Date | number) => safeFs.utimes(filePath, atime, mtime);
 
 // Synchronous version for backwards compatibility (used in server initialization)
 export const ensureDirSync = (dirPath: string) => {

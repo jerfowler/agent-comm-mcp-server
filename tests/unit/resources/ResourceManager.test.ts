@@ -12,11 +12,11 @@ import type {
   ListResourcesResult, 
   ReadResourceResult
 } from '@modelcontextprotocol/sdk/types.js';
-import * as fs from 'fs-extra';
+import * as fs from '../../../src/utils/fs-extra-safe.js';
 import * as fileSystem from '../../../src/utils/file-system.js';
 
 // Mock dependencies
-jest.mock('fs-extra', () => ({
+jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
   readJSON: jest.fn(),
   pathExists: jest.fn(),
   readdir: jest.fn(),

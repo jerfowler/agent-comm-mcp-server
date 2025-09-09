@@ -12,7 +12,7 @@ import {
 } from './ResourceProvider.js';
 import { EventLogger } from '../../logging/EventLogger.js';
 import { AgentCommError } from '../../types.js';
-import * as fs from 'fs-extra';
+import * as fs from '../../utils/fs-extra-safe.js';
 import * as path from 'path';
 
 /**
