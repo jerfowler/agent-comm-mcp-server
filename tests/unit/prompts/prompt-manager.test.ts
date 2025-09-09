@@ -82,7 +82,7 @@ describe('PromptManager', () => {
     });
 
     it('should log operation to EventLogger', async () => {
-      const mockLogOperation = jest.fn().mockResolvedValue(undefined);
+      const mockLogOperation = jest.fn();
       (mockConfig.eventLogger.logOperation as any) = mockLogOperation;
       
       await promptManager.listPrompts();
@@ -157,7 +157,7 @@ describe('PromptManager', () => {
     });
 
     it('should log operation to EventLogger', async () => {
-      const mockLogOperation = jest.fn().mockResolvedValue(undefined);
+      const mockLogOperation = jest.fn();
       (mockConfig.eventLogger.logOperation as any) = mockLogOperation;
       
       const mockContent: PromptContent = {

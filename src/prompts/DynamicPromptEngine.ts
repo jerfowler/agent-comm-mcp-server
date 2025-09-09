@@ -28,12 +28,14 @@ export class DynamicPromptEngine {
   /**
    * Generate prompt content based on prompt name and arguments
    */
-  async generatePromptContent(promptName: PromptName, args: Record<string, any>): Promise<PromptContent> {
+  async generatePromptContent(promptName: PromptName, args: Record<string, unknown>): Promise<PromptContent> {
     // Validate arguments
     this.validateArguments(promptName, args);
 
     // Get task context if agent provided
-    const context = args['agent'] ? await this.getTaskContext(args['agent'], args['taskId']) : null;
+    const agent = args['agent'] as string | undefined;
+    const taskId = args['taskId'] as string | undefined;
+    const context = agent ? await this.getTaskContext(agent, taskId) : null;
 
     // Generate content based on prompt type
     switch (promptName) {
@@ -41,29 +43,31 @@ export class DynamicPromptEngine {
         return this.generateTaskWorkflowGuide(context, args);
       
       case 'agent-validation-requirements':
-        if (!args['agent']) {
+        if (!agent) {
           throw new Error('Required argument missing: agent');
         }
-        return this.generateAgentValidationGuide(args['agent']);
+        return this.generateAgentValidationGuide(agent);
       
       case 'flexible-task-operations':
         return this.generateFlexibleTaskGuide(context);
       
-      case 'troubleshooting-common-errors':
-        return this.generateTroubleshootingGuide(context, args['errorType']);
+      case 'troubleshooting-common-errors': {
+        const errorType = args['errorType'] as ErrorType | undefined;
+        return this.generateTroubleshootingGuide(context, errorType);
+      }
       
       case 'protocol-compliance-checklist':
         return this.generateComplianceChecklist(context);
       
       default:
-        throw new Error(`Unknown prompt: ${promptName}`);
+        throw new Error(`Unknown prompt: ${String(promptName)}`);
     }
   }
 
   /**
    * Validate arguments for the prompt
    */
-  private validateArguments(_promptName: PromptName, args: Record<string, any>): void {
+  private validateArguments(_promptName: PromptName, args: Record<string, unknown>): void {
     // Type validation
     if (args['agent'] !== undefined && typeof args['agent'] !== 'string') {
       throw new Error('Invalid argument type for agent: expected string');
@@ -104,7 +108,7 @@ export class DynamicPromptEngine {
       }));
 
       // Get current task details if taskId provided
-      let currentTask = undefined;
+      let currentTask: unknown = undefined;
       if (taskId) {
         const task = tasks.find(t => t.name === taskId);
         if (task) {
@@ -112,11 +116,16 @@ export class DynamicPromptEngine {
         }
       }
 
-      return {
+      const result: TaskContext = {
         agent,
-        tasks: taskContexts,
-        currentTask
+        tasks: taskContexts
       };
+      
+      if (currentTask) {
+        result.currentTask = currentTask as { id: string; content: string; planContent?: string; errorContent?: string; };
+      }
+      
+      return result;
     } catch (error) {
       // Return null context on error - prompt will use generic content
       return null;
@@ -167,8 +176,8 @@ export class DynamicPromptEngine {
   /**
    * Get detailed task information
    */
-  private async getTaskDetails(task: Task): Promise<any> {
-    const details: any = {
+  private async getTaskDetails(task: Task): Promise<Record<string, unknown>> {
+    const details: Record<string, unknown> = {
       id: task.name,
       content: ''
     };
@@ -177,19 +186,19 @@ export class DynamicPromptEngine {
       // Read INIT.md for task content
       if (task.hasInit) {
         const initPath = path.join(task.path, 'INIT.md');
-        details.content = await fs.readFile(initPath, 'utf-8');
+        details['content'] = await fs.readFile(initPath, 'utf-8');
       }
 
       // Read PLAN.md if exists
       if (task.hasPlan) {
         const planPath = path.join(task.path, 'PLAN.md');
-        details.planContent = await fs.readFile(planPath, 'utf-8');
+        details['planContent'] = await fs.readFile(planPath, 'utf-8');
       }
 
       // Read ERROR.md if exists
       if (task.hasError) {
         const errorPath = path.join(task.path, 'ERROR.md');
-        details.errorContent = await fs.readFile(errorPath, 'utf-8');
+        details['errorContent'] = await fs.readFile(errorPath, 'utf-8');
       }
     } catch {
       // Ignore read errors
@@ -201,7 +210,7 @@ export class DynamicPromptEngine {
   /**
    * Generate task workflow guide
    */
-  private async generateTaskWorkflowGuide(context: TaskContext | null, args: Record<string, any>): Promise<PromptContent> {
+  private generateTaskWorkflowGuide(context: TaskContext | null, args: Record<string, unknown>): PromptContent {
     const messages: PromptMessage[] = [];
 
     // Main guide content
@@ -258,10 +267,11 @@ Use \`mark_complete\` to finish the task:
 
       // Add current task details
       if (context.currentTask && args['taskId']) {
-        mainContent += `\n\n### Current Task Progress: ${args['taskId']}`;
+        const taskId = String(args['taskId']);
+        mainContent += `\n\n### Current Task Progress: ${taskId}`;
         
         if (context.tasks.length > 0) {
-          const task = context.tasks.find(t => t.name === args['taskId']);
+          const task = context.tasks.find(t => t.name === taskId);
           if (task?.progress && task.progress.length > 0) {
             mainContent += '\n\n**Steps:**';
             for (const step of task.progress) {
@@ -338,7 +348,7 @@ await mark_complete({
   /**
    * Generate agent validation guide
    */
-  private async generateAgentValidationGuide(agent: string): Promise<PromptContent> {
+  private generateAgentValidationGuide(agent: string): PromptContent {
     const messages: PromptMessage[] = [];
 
     const content = `# Agent Validation Requirements
@@ -417,7 +427,7 @@ await create_task({ agent: "${agent}", ... });
   /**
    * Generate flexible task operations guide
    */
-  private async generateFlexibleTaskGuide(context: TaskContext | null): Promise<PromptContent> {
+  private generateFlexibleTaskGuide(context: TaskContext | null): PromptContent {
     const messages: PromptMessage[] = [];
 
     let content = `# Flexible Task Operations Guide
@@ -536,7 +546,7 @@ await report_progress({ agent: "agent", updates: [{ step: 2, status: "IN_PROGRES
   /**
    * Generate troubleshooting guide
    */
-  private async generateTroubleshootingGuide(context: TaskContext | null, errorType?: string): Promise<PromptContent> {
+  private generateTroubleshootingGuide(context: TaskContext | null, errorType?: ErrorType): PromptContent {
     const messages: PromptMessage[] = [];
 
     let content = `# Troubleshooting Guide
@@ -646,7 +656,7 @@ await create_task({ agent: "senior-backend-engineer", ... });
   /**
    * Generate protocol compliance checklist
    */
-  private async generateComplianceChecklist(context: TaskContext | null): Promise<PromptContent> {
+  private generateComplianceChecklist(context: TaskContext | null): PromptContent {
     const messages: PromptMessage[] = [];
 
     let content = `# Protocol Compliance Checklist

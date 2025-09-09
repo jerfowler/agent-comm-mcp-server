@@ -50,7 +50,7 @@ export class PromptManager {
           required: false
         }
       ],
-      generateContent: async (args) => this.engine.generatePromptContent('task-workflow-guide', args)
+      generateContent: async (args: Record<string, unknown>) => this.engine.generatePromptContent('task-workflow-guide', args)
     });
 
     // Agent Validation Requirements
@@ -64,7 +64,7 @@ export class PromptManager {
           required: true
         }
       ],
-      generateContent: async (args) => this.engine.generatePromptContent('agent-validation-requirements', args)
+      generateContent: async (args: Record<string, unknown>) => this.engine.generatePromptContent('agent-validation-requirements', args)
     });
 
     // Flexible Task Operations
@@ -78,7 +78,7 @@ export class PromptManager {
           required: false
         }
       ],
-      generateContent: async (args) => this.engine.generatePromptContent('flexible-task-operations', args)
+      generateContent: async (args: Record<string, unknown>) => this.engine.generatePromptContent('flexible-task-operations', args)
     });
 
     // Troubleshooting Common Errors
@@ -97,7 +97,7 @@ export class PromptManager {
           required: false
         }
       ],
-      generateContent: async (args) => this.engine.generatePromptContent('troubleshooting-common-errors', args)
+      generateContent: async (args: Record<string, unknown>) => this.engine.generatePromptContent('troubleshooting-common-errors', args)
     });
 
     // Protocol Compliance Checklist
@@ -111,7 +111,7 @@ export class PromptManager {
           required: false
         }
       ],
-      generateContent: async (args) => this.engine.generatePromptContent('protocol-compliance-checklist', args)
+      generateContent: async (args: Record<string, unknown>) => this.engine.generatePromptContent('protocol-compliance-checklist', args)
     });
   }
 
@@ -137,7 +137,7 @@ export class PromptManager {
   /**
    * Get specific prompt content
    */
-  async getPrompt(name: string, args: Record<string, any> = {}): Promise<PromptGetResponse> {
+  async getPrompt(name: string, args: Record<string, unknown> = {}): Promise<PromptGetResponse> {
     const prompt = this.prompts.get(name as PromptName);
     
     if (!prompt) {
@@ -171,7 +171,7 @@ export class PromptManager {
   /**
    * Validate prompt arguments
    */
-  private validateArguments(prompt: PromptDefinition, args: Record<string, any>): void {
+  private validateArguments(prompt: PromptDefinition, args: Record<string, unknown>): void {
     // Check required arguments
     for (const arg of prompt.arguments) {
       if (arg.required && !(arg.name in args)) {

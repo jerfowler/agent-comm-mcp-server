@@ -738,7 +738,10 @@ function setupServerHandlers(server: Server, config: any): void {
   server.setRequestHandler(
     ListPromptsRequestSchema,
     async () => {
-      return await promptManager.listPrompts();
+      const result = await promptManager.listPrompts();
+      return {
+        prompts: result.prompts
+      };
     }
   );
 
@@ -748,7 +751,11 @@ function setupServerHandlers(server: Server, config: any): void {
     async (request: any) => {
       try {
         const { name, arguments: args } = request.params;
-        return await promptManager.getPrompt(name, args || {});
+        const result = await promptManager.getPrompt(name, args || {});
+        return {
+          description: result.description,
+          messages: result.messages
+        };
       } catch (error) {
         if (error instanceof Error) {
           throw new AgentCommError(error.message, 'PROMPT_ERROR');

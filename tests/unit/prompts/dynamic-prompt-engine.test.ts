@@ -90,7 +90,7 @@ describe('DynamicPromptEngine', () => {
           expect(messageContent.text).toContain('test-agent');
           expect(messageContent.text).toContain('Current Tasks');
           expect(messageContent.text).toContain('task-123-implement-feature');
-          expect(messageContent.text).toContain('Status: In Progress');
+          expect(messageContent.text).toContain('🔄 in-progress');
         }
       });
 

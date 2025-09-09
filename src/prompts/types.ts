@@ -126,7 +126,7 @@ export interface PromptDefinition {
   name: PromptName;
   description: string;
   arguments: PromptArgument[];
-  generateContent: (args: any) => Promise<PromptContent>;
+  generateContent: (args: Record<string, unknown>) => Promise<PromptContent>;
 }
 
 /**
