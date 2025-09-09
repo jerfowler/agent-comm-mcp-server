@@ -176,6 +176,24 @@ export class ArchiveError extends AgentCommError {
   }
 }
 
+export class AgentOwnershipError extends AgentCommError {
+  constructor(
+    message: string, 
+    public attemptingAgent: string, 
+    public taskId: string,
+    public actualOwner?: string
+  ) {
+    const details = {
+      attemptingAgent,
+      taskId,
+      actualOwner,
+      securityFlag: 'ownership_violation'
+    };
+    super(message, 'AGENT_OWNERSHIP_ERROR', details);
+    this.name = 'AgentOwnershipError';
+  }
+}
+
 // ========================
 // Diagnostic Tools Types (v0.4.0)
 // ========================
@@ -223,6 +241,36 @@ export interface TrackTaskProgressResult {
     current_step?: string;
   };
   last_updated: string;
+}
+
+// ========================
+// Multi-Task Workflow Types (Issue #25)
+// ========================
+
+export interface TaskState {
+  taskId: string;
+  status: 'new' | 'in_progress' | 'completed' | 'error';
+  title?: string;
+  lastModified: Date;
+  progress?: {
+    completed: number;
+    inProgress: number;
+    pending: number;
+  };
+}
+
+export interface MultiTaskState {
+  agent: string;
+  tasks: TaskState[];
+  activeTasks: TaskState[]; // Tasks with plans but not completed
+  currentTask: string | null;
+  taskCount: {
+    total: number;
+    new: number;
+    inProgress: number;
+    completed: number;
+    error: number;
+  };
 }
 
 // ========================

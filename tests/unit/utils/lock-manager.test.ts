@@ -4,12 +4,12 @@
  */
 
 import { jest } from '@jest/globals';
-import * as fs from 'fs-extra';
+import * as fs from '../../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import { LockManager } from '../../../src/utils/lock-manager.js';
 
 // Mock dependencies
-jest.mock('fs-extra');
+jest.mock('../../../src/utils/fs-extra-safe.js');
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('LockManager (TDD)', () => {

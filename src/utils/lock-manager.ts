@@ -42,7 +42,7 @@ export class LockManager {
   private readonly lockTimeout: number; // in milliseconds
   private static readonly LOCK_FILE_NAME = '.sync.lock';
 
-  constructor(timeoutMs: number = 30000) {
+  constructor(timeoutMs = 30000) {
     this.lockTimeout = timeoutMs;
   }
 
@@ -68,12 +68,12 @@ export class LockManager {
         if (status.isStale) {
           // Cleanup stale lock first
           await this.cleanupStaleLocks(taskDir);
-        } else {
+        } else if (status.lockInfo) {
           // Active lock exists
           return {
             acquired: false,
-            reason: `Task is currently locked by ${status.lockInfo?.tool} (PID: ${status.lockInfo?.pid}, Lock ID: ${status.lockInfo?.lockId})`,
-            existingLock: status.lockInfo!
+            reason: `Task is currently locked by ${status.lockInfo.tool} (PID: ${status.lockInfo.pid}, Lock ID: ${status.lockInfo.lockId})`,
+            existingLock: status.lockInfo
           };
         }
       } else if (await fs.pathExists(lockFile)) {

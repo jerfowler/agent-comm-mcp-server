@@ -189,7 +189,7 @@ function extractCleanTaskName(taskName: string): string {
   // Keep extracting until no more timestamps found (handles double timestamps)
   while (timestampPattern.test(cleanName)) {
     const match = cleanName.match(timestampPattern);
-    if (match && match[1]) {
+    if (match?.[1]) {
       cleanName = match[1];
     } else {
       break;
@@ -234,7 +234,7 @@ async function findExistingTask(config: ServerConfig, agent: string, taskName: s
  * Generate enhanced content with protocol context and task-specific information
  */
 function generateEnhancedContent(options: CreateTaskOptions, sourceAgent?: string): string {
-  let content = options.content || '';
+  let content = options.content ?? '';
   
   // Add delegation metadata for delegation tasks
   if (options.taskType === 'delegation') {
@@ -285,7 +285,7 @@ export async function createTask(
   const agent = validateRequiredString(options.agent, 'agent');
   const rawTaskName = validateRequiredString(options.taskName, 'taskName');
   const content = options.content;
-  const taskType = options.taskType || 'delegation';
+  const taskType = options.taskType ?? 'delegation';
   const parentTask = options.parentTask;
   
   // Validate content if provided
@@ -374,7 +374,7 @@ export async function createTaskTool(
   const agent = validateRequiredString(args['agent'], 'agent');
   const taskName = validateRequiredString(args['taskName'], 'taskName');
   const content = validateOptionalString(args['content'], 'content');
-  const taskType = args['taskType'] as 'delegation' | 'self' | 'subtask' || 'delegation';
+  const taskType = (args['taskType'] as 'delegation' | 'self' | 'subtask' | undefined) ?? 'delegation';
   const parentTask = validateOptionalString(args['parentTask'], 'parentTask');
   const sourceAgent = validateOptionalString(args['sourceAgent'], 'sourceAgent');
   

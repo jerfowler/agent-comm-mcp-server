@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { markComplete } from '../../../src/tools/mark-complete.js';
 import { ServerConfig } from '../../../src/types.js';
-import fs from 'fs-extra';
+import fs from '../../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import { tmpdir } from 'os';
 import { ConnectionManager } from '../../../src/core/ConnectionManager.js';

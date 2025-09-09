@@ -141,7 +141,7 @@ export function getTodosProgress(todos: TodoItem[]): {
  */
 export function createEnhancedTaskTodos(
   requirements: string[], 
-  includeMcpOps: boolean = true
+  includeMcpOps = true
 ): TodoItem[] {
   const todos: TodoItem[] = [
     { content: "Parse task context and requirements", status: "pending", activeForm: "Parsing task context" },

@@ -46,6 +46,218 @@ INIT → PLAN → PROGRESS → DONE/ERROR
 Context-based workflow with diagnostic visibility
 ```
 
+## Comprehensive TypeScript Strict Mode Enforcement System
+
+This project implements a **multi-layered enforcement system** to permanently eliminate TypeScript strict mode violations, 'any' types, and direct fs-extra imports. This system prevents the "never ending cycle of fix, break, repeat" through comprehensive validation at multiple checkpoints.
+
+### Enforcement Architecture
+
+The system uses **four complementary layers** that work together:
+
+```
+Layer 1: Real-time Write Validation (Claude Code hooks)
+         ↓
+Layer 2: Pre-commit Git Validation (Git hooks)
+         ↓  
+Layer 3: ESLint Strict Configuration (Build-time)
+         ↓
+Layer 4: TypeScript Strict Mode (Compile-time)
+```
+
+### Layer 1: Real-time Write Validation
+
+**File**: `.claude/hooks/write-tool-validator.py`  
+**Trigger**: Claude Code Write tool operations  
+**Purpose**: Catch violations immediately as files are being written
+
+**Features**:
+- Blocks Write operations for TypeScript/JavaScript files with violations
+- Pattern-based detection: `any` types, direct fs-extra imports, unsafe operations
+- Runs TypeScript compiler check on content before write
+- Runs ESLint validation on content before write
+- Provides immediate feedback with fix suggestions
+
+**Exit Codes**:
+- `0` = Allow write (no violations)
+- `1` = Block write (violations detected)
+- `2` = Allow with warning
+
+### Layer 2: Pre-commit Git Validation  
+
+**File**: `.git/hooks/pre-commit`  
+**Trigger**: Git commit operations  
+**Purpose**: Comprehensive validation before code enters version control
+
+**Six-Phase Validation**:
+1. **TypeScript Strict Mode**: `npm run type-check` with `exactOptionalPropertyTypes`
+2. **ESLint Strict Enforcement**: Zero tolerance for warnings/errors
+3. **Critical File Validation**: Pattern scanning in staged files
+4. **Test Coverage**: Maintain 95%+ coverage requirement
+5. **Build Validation**: Ensure successful TypeScript compilation
+6. **Documentation Consistency**: Check for API change documentation
+
+**Cannot Be Bypassed**: All phases must pass for commit to succeed
+
+### Layer 3: Hardened ESLint Configuration
+
+**File**: `.eslintrc.cjs`  
+**Updated Configuration**: Strict type checking with complete 'any' ban
+
+**Key Rules**:
+```javascript
+extends: [
+  'eslint:recommended',
+  'plugin:@typescript-eslint/strict-type-checked',
+  'plugin:@typescript-eslint/stylistic-type-checked'
+],
+rules: {
+  // STRICT ENFORCEMENT: Ban 'any' types completely
+  '@typescript-eslint/no-explicit-any': 'error',
+  '@typescript-eslint/no-unsafe-argument': 'error',
+  '@typescript-eslint/no-unsafe-assignment': 'error',
+  '@typescript-eslint/no-unsafe-call': 'error',
+  '@typescript-eslint/no-unsafe-member-access': 'error',
+  '@typescript-eslint/no-unsafe-return': 'error',
+  
+  // Ban direct fs-extra imports
+  'no-restricted-imports': ['error', {
+    patterns: [{
+      group: ['fs-extra'],
+      message: 'Import from ../utils/fs-extra-safe.js instead'
+    }]
+  }],
+  
+  // Ban 'any' in all contexts using AST selectors
+  'no-restricted-syntax': ['error', {
+    selector: 'TSTypeAnnotation > TSAnyKeyword',
+    message: 'The "any" type is banned. Use specific types or unknown instead.'
+  }]
+}
+```
+
+### Layer 4: fs-extra-safe Utility Architecture
+
+**File**: `src/utils/fs-extra-safe.ts`  
+**Purpose**: Centralized, fully-tested fs-extra wrapper  
+**Proven Solution**: Cherry-picked from commit `55c379a` with 82.4% coverage
+
+**Benefits**:
+- Eliminates fs-extra import inconsistencies across codebase
+- Provides fallback mechanisms for edge cases
+- Comprehensive test coverage eliminates repeated test failures
+- Single source of truth for file system operations
+
+### Session Continuity System
+
+**Problem**: Context compaction can lose critical session state  
+**Solution**: Automatic state capture and recovery hooks
+
+#### Pre-Compact State Capture
+**File**: `.claude/hooks/pre-compact-state-capture.py`  
+**Trigger**: Before Claude Code context compaction  
+**Captures**:
+- Git context (branch, recent commits, status)
+- Project context (package.json, version)
+- Agent communication state (active tasks, progress)
+- Todo lists and working directory context
+- Environment variables and tool states
+
+#### Session Recovery
+**File**: `.claude/hooks/session-stats-recovery.py`  
+**Trigger**: Session start/stats events  
+**Features**:
+- Finds and loads recent state captures
+- Displays context recovery information
+- Shows agent task status and git state
+- Auto-cleanup of old state files
+
+### Validation Commands
+
+**Complete CI Pipeline**: 
+```bash
+npm run ci              # type-check + lint + all tests (must pass 100%)
+```
+
+**Individual Validation**:
+```bash
+npm run type-check      # TypeScript strict mode validation
+npm run lint            # ESLint strict enforcement  
+npm run test:unit       # Unit tests with 95%+ coverage requirement
+npm run build           # TypeScript compilation verification
+```
+
+### Hook Installation
+
+**Automatic Setup**: Hooks are stored in `.claude/hooks/` and automatically discovered by Claude Code
+
+**Manual Verification**:
+```bash
+# Check hook permissions
+ls -la .claude/hooks/
+# Should show executable permissions (755) on all .py files
+
+# Test Write validator (if needed)
+echo '{"tool":{"name":"Write","parameters":{"file_path":"test.ts","content":"const x: any = 1;"}}}' | \
+  .claude/hooks/write-tool-validator.py
+
+# Test state capture (creates sample state file)
+echo '{}' | .claude/hooks/pre-compact-state-capture.py
+```
+
+### Enforcement Metrics
+
+**Before Enforcement**:
+- 78.12% branch coverage (below 80% threshold)
+- Recurring TypeScript strict mode violations  
+- 192+ ESLint violations detected
+- Repeated fs-extra import issues
+
+**After Enforcement**:
+- 84.08% branch coverage (above 80% threshold)
+- Zero TypeScript strict mode violations allowed
+- Zero ESLint violations allowed
+- Centralized fs-extra-safe usage
+
+### Critical Success Factors
+
+1. **Never Lower Thresholds**: Test coverage and quality standards are never compromised
+2. **Fix Forward**: Always fix code to match tests/standards, never vice versa  
+3. **Multi-Layer Defense**: No single point of failure in enforcement
+4. **Immediate Feedback**: Catch violations as early as possible in workflow
+5. **Session Continuity**: Preserve context across compaction events
+6. **Zero Tolerance**: All violations must be fixed before proceeding
+
+### Troubleshooting
+
+**Common Violations**:
+```typescript
+// ❌ BANNED - Direct any type
+const data: any = response;
+
+// ✅ ALLOWED - Specific type  
+const data: ResponseData = response;
+
+// ❌ BANNED - Direct fs-extra import
+import * as fs from 'fs-extra';
+
+// ✅ ALLOWED - fs-extra-safe utility
+import * as fs from '../utils/fs-extra-safe.js';
+
+// ❌ BANNED - Type assertion to any
+const result = (data as any).property;
+
+// ✅ ALLOWED - Proper type assertion
+const result = (data as ResponseData).property;
+```
+
+**If Enforcement Fails**:
+1. Check hook permissions: `ls -la .claude/hooks/`
+2. Verify ESLint config: `cat .eslintrc.cjs`
+3. Test TypeScript config: `npx tsc --showConfig`
+4. Run individual validation: `npm run type-check && npm run lint`
+
+This enforcement system ensures **100% clean pull requests** and eliminates the recurring TypeScript strict mode issues permanently.
+
 ## Development Workflow
 
 ### Building
@@ -547,5 +759,52 @@ gh run list --limit 5                          # Recent workflow runs
 gh workflow run release.yml --ref main          # Create release PR
 # After PR merge, publish.yml automatically publishes to NPM
 ```
+
+## **🚨 CRITICAL: Test Error Prevention System**
+
+**MANDATORY FOR ALL AGENTS**: This project implements a comprehensive test error prevention system to eliminate recurring patterns that cause CI/CD failures.
+
+### **Required Reading Before Any Test Work**
+
+1. **`TEST-ERROR-PATTERNS.md`** - Database of all banned error patterns with examples
+2. **`TEST-GUIDELINES.md`** - Comprehensive mandatory requirements and enforcement
+
+### **Zero Tolerance Violations**
+
+The following patterns will cause **immediate pre-commit hook failure** and must be avoided:
+
+- **❌ 'any' types in test files** - Use `as unknown as SpecificType` instead
+- **❌ Logical OR (`||`) for defaults** - Use nullish coalescing (`??`) instead  
+- **❌ Missing configuration validation** - Tests expecting errors must have runtime validation
+- **❌ Invalid test plans** - Must be >50 chars with proper structure and checkboxes
+- **❌ Incomplete mock setup** - Must mock ALL required files (INIT.md, PLAN.md, etc.)
+
+### **Enforcement Mechanisms**
+
+1. **Real-time Validation**: Claude Code hooks prevent violations during write
+2. **Pre-commit Hook**: Comprehensive validation including all test suites
+3. **Agent Constraints**: Backend engineers automatically receive prevention guidelines
+4. **CI/CD Pipeline**: Branch protection with strict quality gates
+
+### **Pre-Work Checklist**
+
+Before ANY test-related work, agents must:
+- [ ] Review `TEST-ERROR-PATTERNS.md` for current banned patterns
+- [ ] Follow all requirements in `TEST-GUIDELINES.md`
+- [ ] Verify no 'any' types will be used in test files
+- [ ] Confirm proper TypeScript patterns and ESLint compliance
+- [ ] Ensure complete mock setup for all dependencies
+
+### **Escalation Process**
+
+If a new error pattern is discovered:
+1. **STOP** all work immediately
+2. **Document** in `TEST-ERROR-PATTERNS.md`
+3. **Update** prevention guidelines and agent constraints
+4. **Only then** fix the specific instance
+
+**Success Metric**: Zero repeated patterns from the error database - once documented, never repeated.
+
+---
 
 This MCP server is designed to make AI agent coordination simple, transparent, and powerful. Focus on the context-based tools for the best user experience.

@@ -18,7 +18,7 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } fr
 import { getServerInfo } from '../../src/config.js';
 import { AgentCommError, ServerConfig } from '../../src/types.js';
 import { testUtils } from '../utils/testUtils.js';
-import fs from 'fs-extra';
+import fs from '../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import * as os from 'os';
 
@@ -571,7 +571,10 @@ describe('MCP Protocol Compliance Tests', () => {
       const agentsResult = await listAgents(config);
       const testAgent = agentsResult.agents.find(a => a.name === agentName);
       expect(testAgent).toBeDefined();
-      expect(testAgent!.taskCount).toBe(1);
+      if (!testAgent) {
+        throw new Error('Test agent not found');
+      }
+      expect(testAgent.taskCount).toBe(1);
     });
 
     test('should validate delegation workflow', async () => {
@@ -610,7 +613,10 @@ describe('MCP Protocol Compliance Tests', () => {
       // Archive tasks
       const archiveResult = await archiveTasksTool(config, { mode: 'completed' });
       expect(archiveResult.archived).not.toBeNull();
-      expect(archiveResult.archived!.completed).toBe(1);
+      if (!archiveResult.archived) {
+        throw new Error('Archive result not found');
+      }
+      expect(archiveResult.archived.completed).toBe(1);
       
       // Restore tasks
       const restoreResult = await restoreTasksTool(config, {
