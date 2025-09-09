@@ -72,3 +72,11 @@ pnpm-lock.yaml
 .mcp.json
 .mcp.json.local
 .mcp.json.backup
+
+# Agent communication files (preserve archive and logs)
+comm/
+!comm/.archive/
+!comm/.logs/
+
+# Serena cache files
+.serena/cache/
