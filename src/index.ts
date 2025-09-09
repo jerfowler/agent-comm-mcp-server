@@ -7,7 +7,12 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { 
+  CallToolRequestSchema, 
+  ListToolsRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema
+} from '@modelcontextprotocol/sdk/types.js';
 import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
 import { AgentCommError, ServerConfig } from './types.js';
 import * as fs from './utils/fs-extra-safe.js';
@@ -15,6 +20,7 @@ import * as fs from './utils/fs-extra-safe.js';
 // Import core components
 import { ConnectionManager } from './core/ConnectionManager.js';
 import { EventLogger } from './logging/EventLogger.js';
+import { PromptManager } from './prompts/PromptManager.js';
 
 // Import tools
 import { checkTasks } from './tools/check-tasks.js';
@@ -81,7 +87,8 @@ export function createMCPServer(): Server {
     },
     {
       capabilities: {
-        tools: {}
+        tools: {},
+        prompts: {}
       }
     }
   );
@@ -721,6 +728,33 @@ function setupServerHandlers(server: Server, config: any): void {
           }
         ]
       };
+    }
+  );
+
+  // Initialize PromptManager
+  const promptManager = new PromptManager(config);
+
+  // Prompts list handler
+  server.setRequestHandler(
+    ListPromptsRequestSchema,
+    async () => {
+      return await promptManager.listPrompts();
+    }
+  );
+
+  // Prompts get handler
+  server.setRequestHandler(
+    GetPromptRequestSchema,
+    async (request: any) => {
+      try {
+        const { name, arguments: args } = request.params;
+        return await promptManager.getPrompt(name, args || {});
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new AgentCommError(error.message, 'PROMPT_ERROR');
+        }
+        throw new AgentCommError('Failed to get prompt', 'PROMPT_ERROR');
+      }
     }
   );
 }
