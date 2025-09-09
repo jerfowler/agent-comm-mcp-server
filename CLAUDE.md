@@ -760,4 +760,51 @@ gh workflow run release.yml --ref main          # Create release PR
 # After PR merge, publish.yml automatically publishes to NPM
 ```
 
+## **🚨 CRITICAL: Test Error Prevention System**
+
+**MANDATORY FOR ALL AGENTS**: This project implements a comprehensive test error prevention system to eliminate recurring patterns that cause CI/CD failures.
+
+### **Required Reading Before Any Test Work**
+
+1. **`TEST-ERROR-PATTERNS.md`** - Database of all banned error patterns with examples
+2. **`TEST-GUIDELINES.md`** - Comprehensive mandatory requirements and enforcement
+
+### **Zero Tolerance Violations**
+
+The following patterns will cause **immediate pre-commit hook failure** and must be avoided:
+
+- **❌ 'any' types in test files** - Use `as unknown as SpecificType` instead
+- **❌ Logical OR (`||`) for defaults** - Use nullish coalescing (`??`) instead  
+- **❌ Missing configuration validation** - Tests expecting errors must have runtime validation
+- **❌ Invalid test plans** - Must be >50 chars with proper structure and checkboxes
+- **❌ Incomplete mock setup** - Must mock ALL required files (INIT.md, PLAN.md, etc.)
+
+### **Enforcement Mechanisms**
+
+1. **Real-time Validation**: Claude Code hooks prevent violations during write
+2. **Pre-commit Hook**: Comprehensive validation including all test suites
+3. **Agent Constraints**: Backend engineers automatically receive prevention guidelines
+4. **CI/CD Pipeline**: Branch protection with strict quality gates
+
+### **Pre-Work Checklist**
+
+Before ANY test-related work, agents must:
+- [ ] Review `TEST-ERROR-PATTERNS.md` for current banned patterns
+- [ ] Follow all requirements in `TEST-GUIDELINES.md`
+- [ ] Verify no 'any' types will be used in test files
+- [ ] Confirm proper TypeScript patterns and ESLint compliance
+- [ ] Ensure complete mock setup for all dependencies
+
+### **Escalation Process**
+
+If a new error pattern is discovered:
+1. **STOP** all work immediately
+2. **Document** in `TEST-ERROR-PATTERNS.md`
+3. **Update** prevention guidelines and agent constraints
+4. **Only then** fix the specific instance
+
+**Success Metric**: Zero repeated patterns from the error database - once documented, never repeated.
+
+---
+
 This MCP server is designed to make AI agent coordination simple, transparent, and powerful. Focus on the context-based tools for the best user experience.
