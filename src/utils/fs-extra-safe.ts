@@ -8,6 +8,7 @@
  * ESLint disabled for 'any' types - required for dynamic module loading fallback
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-restricted-syntax */
 
 import { Stats } from 'fs';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -222,7 +223,7 @@ class SafeFileSystem implements SafeFsInterface {
     await nodeFs.writeFile(filePath, data, 'utf8');
   }
 
-  async readFile(filePath: string, encoding: string = 'utf8'): Promise<string> {
+  async readFile(filePath: string, encoding = 'utf8'): Promise<string> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.readFile) {

@@ -9,7 +9,7 @@ import { validateRequiredString } from '../utils/validation.js';
 import { validateAgentName } from '../utils/file-system.js';
 
 export interface CheckTasksResponse {
-  tasks: Array<{
+  tasks: {
     taskId: string;
     title: string;
     status: 'new' | 'in_progress' | 'completed' | 'error';
@@ -18,7 +18,7 @@ export interface CheckTasksResponse {
       inProgress: number;
       pending: number;
     };
-  }>;
+  }[];
   totalCount: number;
   newCount: number;
   activeCount: number;

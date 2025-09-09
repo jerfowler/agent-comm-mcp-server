@@ -103,7 +103,7 @@ export interface TaskContextManagerConfig {
  */
 export class TaskContextManager {
   private config: TaskContextManagerConfig;
-  private currentTaskMap: Map<string, string> = new Map(); // agent -> current taskId
+  private currentTaskMap = new Map<string, string>(); // agent -> current taskId
   private protocolInstructions = `## MCP Protocol
 
 Use these context-based operations for all task management:
@@ -556,7 +556,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir = '';
       
       // Check if taskId is provided in connection metadata
-      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      let taskId = connection.metadata['taskId'] as string | undefined;
       
       // If no taskId provided, check for current task
       if (!taskId) {
@@ -662,19 +662,14 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
         );
       }
 
-      // Validate updates
-      for (const update of updates) {
-        if (!update.step || !update.status || !update.description) {
-          throw new Error('Invalid step reference: Each update must have step, status, and description');
-        }
-      }
+      // Updates are already validated at the tool layer
 
       // Find task directory - either from taskId or use active task
       const agentDir = path.join(this.config.commDir, connection.agent);
       let activeTaskDir: string | null = null;
       
       // Check if taskId is provided in connection metadata
-      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      let taskId = connection.metadata['taskId'] as string | undefined;
       
       // If no taskId provided, check for current task
       if (!taskId) {
@@ -724,7 +719,9 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
           return await this.performProgressUpdate(updates, connection, agentDir, activeTaskDir, startTime);
         } finally {
           // Always release the lock, even if an error occurred
-          await lockManager.releaseLock(taskPath, lockResult.lockId!);
+          if (lockResult.lockId) {
+            await lockManager.releaseLock(taskPath, lockResult.lockId);
+          }
         }
       } else {
         // No active task found, proceed without lock
@@ -763,8 +760,8 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       blocked: updates.filter(u => u.status === 'BLOCKED').length
     };
 
-    const totalTimeSpent = updates.reduce((sum, u) => sum + (u.timeSpent || 0), 0);
-    const estimatedRemaining = updates.reduce((sum, u) => sum + (u.estimatedTimeRemaining || 0), 0);
+    const totalTimeSpent = updates.reduce((sum, u) => sum + (u.timeSpent ?? 0), 0);
+    const estimatedRemaining = updates.reduce((sum, u) => sum + (u.estimatedTimeRemaining ?? 0), 0);
 
     const result: ProgressReportResult = {
       success: true,
@@ -839,7 +836,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       let activeTaskDir = '';
       
       // Check if taskId is provided in connection metadata
-      let taskId = connection.metadata?.['taskId'] as string | undefined;
+      let taskId = connection.metadata['taskId'] as string | undefined;
       
       // If no taskId provided, check for current task
       if (!taskId) {
@@ -1045,13 +1042,13 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     const statusMatches = content.match(/\[(?:PENDING|✓ COMPLETE|→ IN PROGRESS|BLOCKED)\]/g);
     
     // Return checkbox matches if found, otherwise legacy status matches
-    return checkboxMatches || statusMatches || [];
+    return checkboxMatches ?? statusMatches ?? [];
   }
 
   private extractPhases(content: string): string[] {
     // Look for numbered phases or major plan sections
-    const phaseMatches = content.match(/^## (?:Phase|Step) \d+/gm) || [];
-    const sectionMatches = content.match(/^## [A-Z][^#\n]+/gm) || [];
+    const phaseMatches = content.match(/^## (?:Phase|Step) \d+/gm) ?? [];
+    const sectionMatches = content.match(/^## [A-Z][^#\n]+/gm) ?? [];
     
     // Return numbered phases if found, otherwise count major sections
     return phaseMatches.length > 0 ? phaseMatches : sectionMatches;
@@ -1059,8 +1056,8 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
 
   private analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number } {
     // Parse standard checkbox format: - [x] **Title** and - [ ] **Title**
-    const checkedBoxes = (content.match(/^- \[x\] /gm) || []).length;
-    const uncheckedBoxes = (content.match(/^- \[ \] /gm) || []).length;
+    const checkedBoxes = (content.match(/^- \[x\] /gm) ?? []).length;
+    const uncheckedBoxes = (content.match(/^- \[ \] /gm) ?? []).length;
     
     return { 
       completed: checkedBoxes, 
@@ -1111,7 +1108,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
         const mtime = stat.mtime || (stat.mtimeMs ? new Date(stat.mtimeMs) : new Date(0));
         const mtimeValue = typeof mtime.getTime === 'function' ? mtime.getTime() : 0;
         
-        if (isDirectory && mtimeValue > latestTime) {
+        if (mtimeValue > latestTime && isDirectory) {
           latestTime = mtimeValue;
           activeTaskDir = taskDir;
         }
@@ -1202,7 +1199,6 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
       this.currentTaskMap.set(connection.agent, taskId);
       
       // Store in connection metadata for persistence
-      connection.metadata = connection.metadata || {};
       connection.metadata['currentTask'] = taskId;
       
       await this.config.eventLogger.logOperation({
@@ -1243,7 +1239,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
    */
   getCurrentTask(connection: Connection): string | null {
     // Check connection metadata first (persistent across operations)
-    const metadataTask = connection.metadata?.['currentTask'] as string | undefined;
+    const metadataTask = connection.metadata['currentTask'] as string | undefined;
     if (metadataTask) {
       // Sync with internal map
       this.currentTaskMap.set(connection.agent, metadataTask);
@@ -1251,7 +1247,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
     }
     
     // Check internal map
-    return this.currentTaskMap.get(connection.agent) || null;
+    return this.currentTaskMap.get(connection.agent) ?? null;
   }
 
   /**
@@ -1356,10 +1352,9 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
    */
   async submitPlanWithCurrentTask(content: string, connection: Connection): Promise<PlanSubmissionResult> {
     // If taskId is not in metadata, check for current task
-    if (!connection.metadata?.['taskId']) {
+    if (!connection.metadata['taskId']) {
       const currentTask = this.getCurrentTask(connection);
       if (currentTask) {
-        connection.metadata = connection.metadata || {};
         connection.metadata['taskId'] = currentTask;
       }
     }
@@ -1373,10 +1368,9 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
    */
   async reportProgressWithCurrentTask(updates: ProgressUpdate[], connection: Connection): Promise<ProgressReportResult> {
     // If taskId is not in metadata, check for current task
-    if (!connection.metadata?.['taskId']) {
+    if (!connection.metadata['taskId']) {
       const currentTask = this.getCurrentTask(connection);
       if (currentTask) {
-        connection.metadata = connection.metadata || {};
         connection.metadata['taskId'] = currentTask;
       }
     }
@@ -1390,10 +1384,9 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
    */
   async markCompleteWithCurrentTask(status: 'DONE' | 'ERROR', summary: string, connection: Connection): Promise<CompletionResult> {
     // If taskId is not in metadata, check for current task
-    if (!connection.metadata?.['taskId']) {
+    if (!connection.metadata['taskId']) {
       const currentTask = this.getCurrentTask(connection);
       if (currentTask) {
-        connection.metadata = connection.metadata || {};
         connection.metadata['taskId'] = currentTask;
       }
     }

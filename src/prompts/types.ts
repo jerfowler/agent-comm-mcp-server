@@ -134,18 +134,18 @@ export interface PromptDefinition {
  */
 export interface TaskContext {
   agent: string;
-  tasks: Array<{
+  tasks: {
     name: string;
     status: 'pending' | 'in-progress' | 'completed' | 'error';
     hasInit: boolean;
     hasPlan: boolean;
     hasDone: boolean;
     hasError: boolean;
-    progress?: Array<{
+    progress?: {
       step: string;
       status: 'complete' | 'pending' | 'in-progress';
-    }>;
-  }>;
+    }[];
+  }[];
   currentTask?: {
     id: string;
     content: string;

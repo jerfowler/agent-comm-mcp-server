@@ -3,7 +3,7 @@
  * Utilities to handle file system race conditions in tests
  */
 
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 
 /**
@@ -15,8 +15,8 @@ export class FileSystemTestHelper {
    */
   static async waitForFileSystem<T>(
     operation: () => Promise<T>, 
-    maxRetries: number = 5,
-    baseDelay: number = 100
+    maxRetries = 5,
+    baseDelay = 100
   ): Promise<T> {
     let lastError: Error | undefined;
 
@@ -165,8 +165,8 @@ export class FileSystemTestHelper {
    */
   static async waitForCondition(
     condition: () => Promise<boolean> | boolean,
-    timeout: number = 5000,
-    checkInterval: number = 100
+    timeout = 5000,
+    checkInterval = 100
   ): Promise<void> {
     const startTime = Date.now();
 
@@ -231,7 +231,7 @@ export class FileSystemTestHelper {
  * Mock transport for MCP protocol testing
  */
 export class MockMCPTransport {
-  private responses: Map<number, any> = new Map();
+  private responses = new Map<number, unknown>();
   private requestId = 1;
 
   /**
@@ -313,13 +313,13 @@ export class TestTimeout {
  * Helper to create isolated test environments
  */
 export class TestEnvironment {
-  public tempDir: string = '';
+  public tempDir = '';
   private originalEnv: Record<string, string | undefined> = {};
 
   /**
    * Set up isolated test environment
    */
-  async setup(prefix: string = 'test-env-'): Promise<void> {
+  async setup(prefix = 'test-env-'): Promise<void> {
     // Create temp directory
     const os = await import('os');
     const path = await import('path');

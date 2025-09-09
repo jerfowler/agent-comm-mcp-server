@@ -14,7 +14,7 @@ export async function getTaskContext(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<TaskContext> {
-  const taskId = validateOptionalString(args['taskId'], 'taskId') || '';
+  const taskId = validateOptionalString(args['taskId'], 'taskId') ?? '';
   const agent = validateOptionalString(args['agent'], 'agent');
   
   // Require explicit agent specification - no default fallback

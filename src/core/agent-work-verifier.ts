@@ -223,8 +223,8 @@ async function collectMCPProgressEvidence(taskPath: string): Promise<MCPProgress
       const planContent = await fs.readFile(planPath);
       
       // Check for progress markers in the plan
-      const checkedItems = (planContent.match(/^\s*-\s*\[x\]/gmi) || []).length;
-      const totalItems = (planContent.match(/^\s*-\s*\[[x\s]\]/gmi) || []).length;
+      const checkedItems = (planContent.match(/^\s*-\s*\[x\]/gmi) ?? []).length;
+      const totalItems = (planContent.match(/^\s*-\s*\[[x\s]\]/gmi) ?? []).length;
       
       if (totalItems > 0) {
         completionPercentage = (checkedItems / totalItems) * 100;
@@ -258,7 +258,7 @@ async function collectTimeTrackingEvidence(taskPath: string): Promise<TimeTracki
       );
       
       const timestamps = stats
-        .map(stat => stat.mtime?.getTime())
+        .map(stat => stat.mtime.getTime())
         .filter((timestamp): timestamp is number => timestamp !== undefined)
         .sort();
 

@@ -242,7 +242,7 @@ describe('State Transition Regression Test', () => {
       const createResults = await Promise.all(createPromises);
       
       // Verify all tasks were created
-      createResults.forEach(result => expect(result.success).toBe(true));
+      createResults.forEach(result => { expect(result.success).toBe(true); });
       
       let allTasks = await checkTasks(config, { agent });
       expect(allTasks.tasks).toHaveLength(numTasks);

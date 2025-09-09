@@ -448,6 +448,8 @@ export async function syncTodoCheckboxes(
     };
   } finally {
     // Always release the lock, even if an error occurred
-    await lockManager.releaseLock(taskPath, lockResult.lockId!);
+    if (lockResult.lockId) {
+      await lockManager.releaseLock(taskPath, lockResult.lockId);
+    }
   }
 }

@@ -91,7 +91,7 @@ export class DynamicPromptEngine {
         const status = this.getTaskStatus(task);
         
         // Get progress if plan exists
-        let progress: Array<{ step: string; status: 'complete' | 'pending' | 'in-progress' }> = [];
+        let progress: { step: string; status: 'complete' | 'pending' | 'in-progress' }[] = [];
         if (task.hasPlan) {
           progress = await this.extractProgressFromPlan(task);
         }
@@ -145,7 +145,7 @@ export class DynamicPromptEngine {
   /**
    * Extract progress from PLAN.md checkboxes
    */
-  private async extractProgressFromPlan(task: Task): Promise<Array<{ step: string; status: 'complete' | 'pending' | 'in-progress' }>> {
+  private async extractProgressFromPlan(task: Task): Promise<{ step: string; status: 'complete' | 'pending' | 'in-progress' }[]> {
     try {
       const planPath = path.join(task.path, 'PLAN.md');
       if (!await fs.pathExists(planPath)) {
@@ -154,7 +154,7 @@ export class DynamicPromptEngine {
 
       const content = await fs.readFile(planPath, 'utf-8');
       const lines = content.split('\n');
-      const progress: Array<{ step: string; status: 'complete' | 'pending' | 'in-progress' }> = [];
+      const progress: { step: string; status: 'complete' | 'pending' | 'in-progress' }[] = [];
 
       for (const line of lines) {
         const checkedMatch = line.match(/^\s*-\s*\[x\]\s+(.+)/i);

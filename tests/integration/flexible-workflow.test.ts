@@ -66,11 +66,11 @@ describe('Flexible Workflow Integration', () => {
 
       // Phase 2: Submit plans in non-sequential order
       const planSubmissions = [
-        { agent: 'backend-engineer', task: 'database-migration', plan: '# Database Migration\n- [ ] **Schema changes**\n- [ ] **Data migration**\n- [ ] **Rollback plan**' },
-        { agent: 'frontend-engineer', task: 'ui-redesign', plan: '# UI Redesign\n- [ ] **Wireframes**\n- [ ] **Component implementation**' },
-        { agent: 'qa-engineer', task: 'test-automation', plan: '# Test Automation\n- [ ] **Framework setup**\n- [ ] **Test cases**' },
-        { agent: 'backend-engineer', task: 'api-refactor', plan: '# API Refactor\n- [ ] **Endpoint design**\n- [ ] **Implementation**' },
-        { agent: 'frontend-engineer', task: 'performance-optimization', plan: '# Performance\n- [ ] **Profiling**\n- [ ] **Optimization**' }
+        { agent: 'backend-engineer', task: 'database-migration', plan: '# Database Migration\n- [ ] Schema changes\n- [ ] Data migration\n- [ ] Rollback plan' },
+        { agent: 'frontend-engineer', task: 'ui-redesign', plan: '# UI Redesign\n- [ ] Wireframes\n- [ ] Component implementation' },
+        { agent: 'qa-engineer', task: 'test-automation', plan: '# Test Automation\n- [ ] Framework setup\n- [ ] Test cases' },
+        { agent: 'backend-engineer', task: 'api-refactor', plan: '# API Refactor\n- [ ] Endpoint design\n- [ ] Implementation' },
+        { agent: 'frontend-engineer', task: 'performance-optimization', plan: '# Performance\n- [ ] Profiling\n- [ ] Optimization' }
       ];
 
       for (const submission of planSubmissions) {
@@ -211,11 +211,11 @@ describe('Flexible Workflow Integration', () => {
       
       // Start with feature-A
       await contextManager.setCurrentTask('feature-A', connection);
-      await contextManager.submitPlan('# Feature A\n- [ ] **Design**\n- [ ] **Implement**', connection);
+      await contextManager.submitPlan('# Feature A\n- [ ] Design\n- [ ] Implement', connection);
       
       // Urgent bugfix comes in - switch to bugfix-B
       await contextManager.setCurrentTask('bugfix-B', connection);
-      await contextManager.submitPlan('# Bugfix B\n- [ ] **Diagnose**\n- [ ] **Fix**', connection);
+      await contextManager.submitPlan('# Bugfix B\n- [ ] Diagnose\n- [ ] Fix', connection);
       await contextManager.reportProgress(
         [{ step: 1, status: 'COMPLETE', description: 'Diagnosed issue' }],
         connection
@@ -238,7 +238,7 @@ describe('Flexible Workflow Integration', () => {
       
       // Start refactor-C while feature-A is still in progress
       await contextManager.setCurrentTask('refactor-C', connection);
-      await contextManager.submitPlan('# Refactor C\n- [ ] **Analysis**\n- [ ] **Refactor**', connection);
+      await contextManager.submitPlan('# Refactor C\n- [ ] Analysis\n- [ ] Refactor', connection);
       
       // Verify states
       const taskStates = await contextManager.checkAssignedTasks(connection);
@@ -309,7 +309,7 @@ describe('Flexible Workflow Integration', () => {
         // Frontend work
         (async () => {
           await contextManager.setCurrentTask('ui-components', frontendConn);
-          await contextManager.submitPlan('# UI Components\n- [ ] **Header**\n- [ ] **Footer**', frontendConn);
+          await contextManager.submitPlan('# UI Components\n- [ ] Header\n- [ ] Footer', frontendConn);
           await contextManager.reportProgress(
             [{ step: 1, status: 'IN_PROGRESS', description: 'Building header' }],
             frontendConn
@@ -319,7 +319,7 @@ describe('Flexible Workflow Integration', () => {
         // Backend work
         (async () => {
           await contextManager.setCurrentTask('api-endpoints', backendConn);
-          await contextManager.submitPlan('# API Endpoints\n- [ ] **GET /users**\n- [ ] **POST /users**', backendConn);
+          await contextManager.submitPlan('# API Endpoints\n- [ ] GET /users\n- [ ] POST /users', backendConn);
           await contextManager.reportProgress(
             [{ step: 1, status: 'COMPLETE', description: 'GET endpoint done' }],
             backendConn
@@ -329,11 +329,11 @@ describe('Flexible Workflow Integration', () => {
       
       // Frontend switches to state management
       await contextManager.setCurrentTask('state-management', frontendConn);
-      await contextManager.submitPlan('# State Management\n- [ ] **Redux setup**\n- [ ] **Actions**', frontendConn);
+      await contextManager.submitPlan('# State Management\n- [ ] Redux setup\n- [ ] Actions', frontendConn);
       
       // Backend switches to data models
       await contextManager.setCurrentTask('data-models', backendConn);
-      await contextManager.submitPlan('# Data Models\n- [ ] **User model**\n- [ ] **Product model**', backendConn);
+      await contextManager.submitPlan('# Data Models\n- [ ] User model\n- [ ] Product model', backendConn);
       
       // Verify each agent has their own tasks and states
       const frontendTaskList = await contextManager.checkAssignedTasks(frontendConn);
@@ -379,16 +379,16 @@ describe('Flexible Workflow Integration', () => {
       
       // Work on good task
       await contextManager.setCurrentTask('task-good', connection);
-      await contextManager.submitPlan('# Good Plan\n- [ ] **Step 1**', connection);
+      await contextManager.submitPlan('# Good Plan\n- [ ] Step 1', connection);
       
       // Switch to bad task and encounter error
       await contextManager.setCurrentTask('task-bad', connection);
-      await contextManager.submitPlan('# Bad Plan\n- [ ] **Problematic step**', connection);
+      await contextManager.submitPlan('# Bad Plan\n- [ ] Problematic step', connection);
       await contextManager.markComplete('ERROR', '# Error\nSomething went wrong', connection);
       
       // Should be able to switch to recovery task
       await contextManager.setCurrentTask('task-recovery', connection);
-      await contextManager.submitPlan('# Recovery Plan\n- [ ] **Fix issues**', connection);
+      await contextManager.submitPlan('# Recovery Plan\n- [ ] Fix issues', connection);
       
       // Can still go back to good task
       await contextManager.setCurrentTask('task-good', connection);

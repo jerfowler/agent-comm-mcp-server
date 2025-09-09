@@ -4,7 +4,7 @@
  * Target: <30 seconds total execution time
  */
 
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import * as os from 'os';
 import { getConfig } from '../../src/config.js';
@@ -206,7 +206,7 @@ describe('Smoke Tests - Basic Functionality', () => {
         const { getConfig, validateConfig } = require('../../src/config.js') as { getConfig: () => unknown; validateConfig: (config: unknown) => void };
         const config = getConfig();
         
-        expect(() => validateConfig(config)).not.toThrow();
+        expect(() => { validateConfig(config); }).not.toThrow();
       } finally {
         await fs.remove(tempDir);
       }
