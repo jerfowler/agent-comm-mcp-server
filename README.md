@@ -2,12 +2,13 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/jerfowler/agent-comm-mcp-server)](https://github.com/jerfowler/agent-comm-mcp-server)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![MCP Protocol](https://img.shields.io/badge/MCP-2025--06--18-green.svg)](https://modelcontextprotocol.io)
 
 **Make AI agents work together seamlessly.** This [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server enables Claude Code to coordinate multiple specialized agents, track their progress in real-time, and understand exactly how they approach and solve complex tasks.
 
-**Author:** Jeremy Fowler
+**🎯 Requirements:** Node.js 18+ | **📋 Protocol:** MCP 2025-06-18 Specification | **Author:** Jeremy Fowler
 
 ## 📦 Current Version
 
@@ -39,35 +40,29 @@ Think of this as a **mission control** for AI agents. Instead of trying to do ev
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### Installation
+**Ready in 2 minutes!** Here's the fastest way to get agent coordination working:
 
-Choose the method that works best for your setup:
+### 1. Install & Configure
 
+**Option A: Automatic Setup (Recommended)**
 ```bash
-# Option 1: Global installation (recommended for MCP)
+# Install globally and setup everything at once
 npm install -g @jerfowler/agent-comm-mcp-server
 
-# Option 2: Use directly without installation
+# If you have a project with the package installed, run setup from there:
+# cd your-project && npm run setup
+```
+
+**Option B: Use Without Installation**
+```bash
+# No installation needed - works immediately
 npx @jerfowler/agent-comm-mcp-server
-
-# Option 3: From source
-git clone https://github.com/jerfowler/agent-comm-mcp-server.git
-cd agent-comm-mcp-server
-npm install && npm run build
 ```
 
-### Setup with Claude
+### 2. Add to Claude Configuration
 
-**Quick Setup:**
-```bash
-# Install and setup in one step
-npm install -g @jerfowler/agent-comm-mcp-server
-npm run setup  # Creates .mcp.json with all configured servers
-```
-
-**Manual Setup:**
 Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_config.json`):
 
 ```json
@@ -84,52 +79,13 @@ Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_confi
 }
 ```
 
-**🔒 Security Note:** Never commit API keys to git. The `.mcp.json` file is gitignored to protect sensitive credentials. Use `.mcp.json.example` as a template and `npm run setup` for easy configuration.
+**🔒 Security Note:** The `.mcp.json` file is gitignored to protect sensitive credentials. Never commit API keys to version control.
 
-### Optional: TodoWrite Hook Integration
+### 3. Try It Out Immediately!
 
-Want your Claude Code todos to automatically sync with agent task checkboxes? This optional hook makes it seamless.
+Here are some conversational prompts you can use with Claude Code right away:
 
-**What it does:** When you update todos with TodoWrite, the hook reminds you to sync those changes to your active agent task's PLAN.md checkboxes. No more manual checkbox updates!
-
-**Quick Setup (3 steps):**
-
-1. **Copy the hook file** to your Claude Code hooks directory:
-```bash
-# The hook is already in your agent-comm-mcp-server installation
-cp node_modules/@jerfowler/agent-comm-mcp-server/.claude/hooks/sync-todos-to-checkboxes.py ~/.claude/hooks/
-```
-
-2. **Make it executable:**
-```bash
-chmod +x ~/.claude/hooks/sync-todos-to-checkboxes.py
-```
-
-3. **Test it works:**
-```bash
-echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","status":"completed","activeForm":"Testing"}]}}' | python3 ~/.claude/hooks/sync-todos-to-checkboxes.py
-# Should output: "TodoWrite updated 1 todo: 1 completed, 0 in-progress, 0 pending"
-# Remember to sync to your task checkboxes using the agent-comm MCP if you have an active task
-```
-
-**Need help?** Run our verification script to check everything:
-```bash
-# Download and run the verification script
-curl -s https://raw.githubusercontent.com/jerfowler/agent-comm-mcp-server/main/scripts/verify-hook-installation.sh | bash
-
-# Or if you have the project locally
-./scripts/verify-hook-installation.sh
-```
-
-**That's it!** Now when you use TodoWrite, you'll get helpful reminders to sync your todo changes to agent task checkboxes using the `sync_todo_checkboxes` tool.
-
-**Skip this if:** You don't use TodoWrite or prefer manual checkbox management. The agent communication works perfectly without this hook.
-
-### Try It Out
-
-Here are some conversational prompts you can use with Claude right away:
-
-**Delegate a task:**
+**Create your first task:**
 ```
 Using the agent-comm tools, create a task for senior-frontend-engineer to implement a responsive dashboard with dark mode support and real-time updates. Include proper TypeScript interfaces.
 ```
@@ -139,7 +95,7 @@ Using the agent-comm tools, create a task for senior-frontend-engineer to implem
 Can you use the agent-comm server to check how the dashboard task is going for the frontend engineer?
 ```
 
-**Get the full story:**
+**Get the complete story:**
 ```
 Use agent-comm tools to show me the complete lifecycle of that dashboard task - what did the agent understand, how did they plan it, and what was the final result?
 ```
@@ -148,6 +104,39 @@ Use agent-comm tools to show me the complete lifecycle of that dashboard task - 
 ```
 Please use the agent-comm server to archive all completed tasks.
 ```
+
+### Optional: TodoWrite Hook Integration
+
+Want your Claude Code todos to automatically sync with agent task checkboxes? This optional hook makes it seamless.
+
+**What it does:** When you update todos with TodoWrite, the hook reminds you to sync those changes to your active agent task's PLAN.md checkboxes. No more manual checkbox updates!
+
+**Installation:**
+
+**Option 1: From GitHub (always up-to-date)**
+```bash
+# Download directly from GitHub
+curl -s https://raw.githubusercontent.com/jerfowler/agent-comm-mcp-server/main/.claude/hooks/sync-todos-to-checkboxes.py -o ~/.claude/hooks/sync-todos-to-checkboxes.py
+chmod +x ~/.claude/hooks/sync-todos-to-checkboxes.py
+```
+
+**Option 2: Copy from local/global installation** 
+```bash
+# If you installed the package locally in a project:
+cp node_modules/@jerfowler/agent-comm-mcp-server/.claude/hooks/sync-todos-to-checkboxes.py ~/.claude/hooks/
+
+# If you installed globally, find the package location:
+npm list -g @jerfowler/agent-comm-mcp-server
+# Then copy from that location + /.claude/hooks/sync-todos-to-checkboxes.py
+```
+
+**Test it works:**
+```bash
+echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","status":"completed","activeForm":"Testing"}]}}' | python3 ~/.claude/hooks/sync-todos-to-checkboxes.py
+# Should output: "TodoWrite updated 1 todo: 1 completed, 0 in-progress, 0 pending"
+```
+
+**Skip this if:** You don't use TodoWrite or prefer manual checkbox management. The agent communication works perfectly without this hook.
 
 ---
 
@@ -174,6 +163,49 @@ Agents get clean task descriptions automatically. You never deal with file paths
 
 **Traditional (Advanced - Full Control):**
 Direct access to all task files and management. Perfect if you need granular control over the process.
+
+### How the Smart Response System Works (NEW)
+
+The **Smart Response System** learns from your agent interactions to provide progressively better guidance over time. It automatically detects common patterns and helps agents complete tasks more effectively.
+
+**What it does for you:**
+
+1. **Detects Incomplete Delegations**: When you create a task for another agent, the system notices if you forget to follow up and provides the exact command to check on it.
+
+2. **Progressive Guidance**: As agents work together more, the system learns their patterns and provides increasingly specific help:
+   - **New agents** get friendly reminders about the workflow
+   - **Experienced agents** get concise, targeted guidance
+   - **Struggling agents** receive more detailed assistance
+
+3. **Automatic Compliance Tracking**: The system quietly tracks how well agents follow the task workflow and adjusts its guidance accordingly—no manual intervention needed.
+
+**Example: Before and After**
+
+**Before Smart Response System:**
+```json
+{
+  "success": true,
+  "taskId": "2025-01-10T10-30-00-implement-feature",
+  "message": "Task created successfully"
+}
+```
+
+**After Smart Response System:**
+```json
+{
+  "success": true,
+  "taskId": "2025-01-10T10-30-00-implement-feature",
+  "message": "Task created successfully",
+  "guidance": {
+    "next_steps": "You've delegated to frontend-engineer. Check their progress with:",
+    "actionable_command": "mcp__agent_comm__track_task_progress(agent=\"frontend-engineer\", taskId=\"2025-01-10T10-30-00-implement-feature\")",
+    "contextual_reminder": "Remember to review their plan before they start implementation",
+    "compliance_level": 85
+  }
+}
+```
+
+The system is **completely automatic**—it's enabled by default and works silently in the background. You'll only notice it when it helps you avoid mistakes or complete tasks more efficiently.
 
 ---
 
@@ -298,11 +330,42 @@ For most users, the defaults work perfectly. The system creates directories auto
 
 ---
 
-## Filesystem Architecture
+## Development & Building
+
+Ready to contribute or customize? Here are the essential commands:
+
+```bash
+npm run build          # Build everything
+npm run dev            # Development mode with auto-reload
+npm test               # Run all tests
+npm run test:coverage  # Test with coverage report
+npm run lint           # Check code style
+npm run type-check     # TypeScript validation
+npm run ci             # Complete CI pipeline (type + lint + test)
+```
+
+The project uses **build-time version injection** - version info is automatically pulled from `package.json` and compiled into the server, so there's no runtime file access needed.
+
+**More details:** See [Contributing & Git Workflow](#contributing--git-workflow) section below for complete development workflow.
+
+---
+
+## Get Started Today
+
+1. **Install**: `npm install -g @jerfowler/agent-comm-mcp-server`
+2. **Configure**: Add the MCP server to your Claude configuration
+3. **Try it**: Ask Claude to "create a task for senior-frontend-engineer using agent-comm tools"
+4. **Explore**: Check out the **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** for everything else
+
+---
+
+## Technical Architecture
+
+### Filesystem Architecture
 
 The server implements a **robust dual-layer filesystem architecture** designed for reliable file operations with comprehensive error handling and cross-platform compatibility.
 
-### Architecture Overview
+**Architecture Overview:**
 
 ```
 High-Level Operations (file-system.ts)
@@ -314,73 +377,23 @@ Node.js Built-in Modules (fs, path)
 Operating System Filesystem
 ```
 
-### Layer Responsibilities
+**Layer Responsibilities:**
 
 **🎯 High-Level Layer (`src/utils/file-system.ts`)**
 - Task-focused operations with domain validation
 - Automatic directory creation for write operations
 - Meaningful error messages with context (FileNotFoundError, InvalidTaskError)
 - Task metadata parsing and validation utilities
-- Agent Communication Server specific functionality
 
 **⚙️ Low-Level Layer (`src/utils/fs-extra-safe.ts`)**
 - Direct filesystem operations with Node.js built-in fallbacks  
 - Handles fs-extra import issues and module resolution conflicts
-- Diagnostic capabilities and performance monitoring
 - Cross-platform reliability with multiple import strategies
 - Basic operations: pathExists, readdir, writeFile, readFile, stat, remove, ensureDir
 
-### Usage Guidelines
-
-**Use High-Level Layer when:**
-- Creating or managing agent tasks
-- Need validation (task names, agent names)
-- Want automatic directory creation
-- Need domain-specific error handling
-
-**Use Low-Level Layer when:**
-- Need direct filesystem control
-- Bulk operations like directory scanning
-- Require specific fs-extra features
-- Building custom filesystem utilities
-
-### Key Benefits
-
-**🛡️ Reliability**: Multi-strategy imports with Node.js fallbacks ensure operations work regardless of fs-extra installation status
-
-**🔒 Validation**: Comprehensive input validation prevents path traversal attacks and invalid task creation
-
-**🚀 Performance**: Optimized imports and caching reduce overhead while maintaining flexibility
-
-**🔧 Maintainability**: Clear separation of concerns makes the codebase easier to understand and extend
-
-**🌐 Cross-Platform**: Consistent behavior across Windows, macOS, and Linux environments
+**Key Benefits:** 🛡️ Reliability • 🔒 Validation • 🚀 Performance • 🔧 Maintainability • 🌐 Cross-Platform
 
 This architecture ensures reliable filesystem operations while providing the flexibility needed for both simple task management and complex agent coordination workflows.
-
----
-
-## Development & Building
-
-```bash
-npm run build          # Build everything
-npm run dev            # Development mode with auto-reload
-npm test               # Run all tests
-npm run test:coverage  # Test with coverage report
-npm run lint           # Check code style
-npm run type-check     # TypeScript validation
-```
-
-The project uses **build-time version injection** - version info is automatically pulled from `package.json` and compiled into the server, so there's no runtime file access needed.
-
----
-
-## Get Started Today
-
-1. **Install**: `npm install -g @jerfowler/agent-comm-mcp-server`
-2. **Configure**: Add the MCP server to your Claude configuration
-3. **Try it**: Ask Claude to "create a task for senior-frontend-engineer using agent-comm tools"
-4. **Explore**: Check out the **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** for everything else
 
 ---
 

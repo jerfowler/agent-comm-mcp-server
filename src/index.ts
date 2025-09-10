@@ -13,10 +13,19 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
   ListPromptsRequestSchema,
-  GetPromptRequestSchema
+  GetPromptRequestSchema,
+  type CallToolRequest,
+  type ListResourcesRequest,
+  type ReadResourceRequest,
+  type GetPromptRequest
 } from '@modelcontextprotocol/sdk/types.js';
 import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
-import { AgentCommError, ServerConfig } from './types.js';
+import { 
+  AgentCommError, 
+  ServerConfig,
+  GetFullLifecycleArgs,
+  TrackTaskProgressArgs
+} from './types.js';
 import * as fs from './utils/fs-extra-safe.js';
 
 // Import core components
@@ -25,6 +34,11 @@ import { EventLogger } from './logging/EventLogger.js';
 import { TaskContextManager } from './core/TaskContextManager.js';
 import { ResourceManager } from './resources/ResourceManager.js';
 import { PromptManager } from './prompts/PromptManager.js';
+
+// Import Smart Response System components (Issue #12)
+import { ResponseEnhancer } from './core/ResponseEnhancer.js';
+import { ComplianceTracker } from './core/ComplianceTracker.js';
+import { DelegationTracker } from './core/DelegationTracker.js';
 
 // Import tools
 import { checkTasks } from './tools/check-tasks.js';
@@ -57,7 +71,7 @@ import { syncTodoCheckboxes } from './tools/sync-todo-checkboxes.js';
 /**
  * Create MCP server instance (exported for testing)
  */
-export function createMCPServer(): Server {
+export async function createMCPServer(): Promise<Server> {
   // Validate environment first
   validateEnvironment();
   
@@ -75,11 +89,59 @@ export function createMCPServer(): Server {
   const connectionManager = new ConnectionManager();
   const eventLogger = new EventLogger(baseConfig.logDir);
   
+  // Initialize Smart Response System components (Issue #12)
+  let responseEnhancer: ResponseEnhancer | undefined;
+  let complianceTracker: ComplianceTracker | undefined;
+  let delegationTracker: DelegationTracker | undefined;
+  let promptManager: PromptManager | undefined;
+  
+  // Create basic server config first
   const config: ServerConfig = {
     ...baseConfig,
     connectionManager,
     eventLogger
   };
+  
+  // Initialize Smart Response System if enabled (defaults to enabled)
+  const smartResponseEnabled = process.env['SMART_RESPONSE_ENABLED'] !== 'false';
+  
+  if (smartResponseEnabled) {
+    try {
+      // Initialize trackers
+      complianceTracker = new ComplianceTracker(config);
+      delegationTracker = new DelegationTracker(config);
+      promptManager = new PromptManager(config);
+      
+      // Initialize both trackers synchronously if possible
+      // Note: These will create directories lazily on first use
+      void complianceTracker.initialize().catch(err => 
+        console.error('[Smart Response System] ComplianceTracker initialization error:', err)
+      );
+      void delegationTracker.initialize().catch(err => 
+        console.error('[Smart Response System] DelegationTracker initialization error:', err)
+      );
+      
+      // Initialize ResponseEnhancer with all components
+      responseEnhancer = new ResponseEnhancer(config);
+      
+      // Add Smart Response System to config
+      config.responseEnhancer = responseEnhancer;
+      config.complianceTracker = complianceTracker;
+      config.delegationTracker = delegationTracker;
+      config.promptManager = promptManager;
+      config.smartResponseConfig = {
+        enabled: true,
+        enhancementLevel: 'full',
+        complianceTracking: true,
+        delegationDetection: true
+      };
+      
+      console.error('[Smart Response System] Initialized successfully');
+    } catch (error) {
+      console.error('[Smart Response System] Initialization failed, continuing without enhancement:', error);
+      // Continue without Smart Response System
+    }
+  }
   
   // Validate the complete config
   validateConfig(config);
@@ -117,17 +179,17 @@ export function createMCPServer(): Server {
 /**
  * Set up server request handlers
  */
-function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager): void {
+function setupServerHandlers(server: Server, config: ServerConfig, resourceManager: ResourceManager): void {
   // Tool call handler
   server.setRequestHandler(
     CallToolRequestSchema,
-    async (request: any) => {
+    async (request: CallToolRequest) => {
       try {
         const { name, arguments: args } = request.params;
         
         switch (name) {
           case 'check_tasks': {
-            const result = await checkTasks(config, args || {});
+            const result = await checkTasks(config, args ?? {});
             return { 
               content: [
                 {
@@ -139,7 +201,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'read_task': {
-            const result = await readTask(config, args || {});
+            const result = await readTask(config, args ?? {});
             return { 
               content: [
                 {
@@ -151,7 +213,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'write_task': {
-            const result = await writeTask(config, args || {});
+            const result = await writeTask(config, args ?? {});
             return { 
               content: [
                 {
@@ -164,7 +226,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
             
             
           case 'create_task': {
-            const result = await createTaskTool(config, args || {});
+            const result = await createTaskTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -188,7 +250,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'archive_tasks': {
-            const result = await archiveTasksTool(config, args || {});
+            const result = await archiveTasksTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -200,7 +262,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'restore_tasks': {
-            const result = await restoreTasksTool(config, args || {});
+            const result = await restoreTasksTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -214,7 +276,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Context-based tools
           case 'get_task_context': {
-            const result = await getTaskContext(config, args || {});
+            const result = await getTaskContext(config, args ?? {});
             return { 
               content: [
                 {
@@ -226,7 +288,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'submit_plan': {
-            const result = await submitPlan(config, args || {});
+            const result = await submitPlan(config, args ?? {});
             return { 
               content: [
                 {
@@ -238,7 +300,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'report_progress': {
-            const result = await reportProgress(config, args || {});
+            const result = await reportProgress(config, args ?? {});
             return { 
               content: [
                 {
@@ -250,7 +312,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'mark_complete': {
-            const result = await markComplete(config, args || {});
+            const result = await markComplete(config, args ?? {});
             return { 
               content: [
                 {
@@ -262,7 +324,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'archive_completed_tasks': {
-            const result = await archiveCompletedTasks(config, args || {});
+            const result = await archiveCompletedTasks(config, args ?? {});
             return { 
               content: [
                 {
@@ -275,7 +337,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Diagnostic tools (v0.4.0)
           case 'get_full_lifecycle': {
-            const result = await getFullLifecycle(config, args || {});
+            const result = await getFullLifecycle(config, (args ?? {}) as unknown as GetFullLifecycleArgs);
             return { 
               content: [
                 {
@@ -287,7 +349,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'track_task_progress': {
-            const result = await trackTaskProgress(config, args || {});
+            const result = await trackTaskProgress(config, (args ?? {}) as unknown as TrackTaskProgressArgs);
             return { 
               content: [
                 {
@@ -300,7 +362,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Best practice tools
           case 'get_server_info': {
-            const result = await getServerInfoTool(config, args || {});
+            const result = await getServerInfoTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -312,7 +374,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'ping': {
-            const result = await ping(config, args || {});
+            const result = await ping(config, args ?? {});
             return { 
               content: [
                 {
@@ -324,7 +386,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'sync_todo_checkboxes': {
-            const result = await syncTodoCheckboxes(config, args || {});
+            const result = await syncTodoCheckboxes(config, args ?? {});
             return { 
               content: [
                 {
@@ -750,14 +812,17 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
   // Resource handlers
   server.setRequestHandler(
     ListResourcesRequestSchema,
-    async (request: any) => {
-      return resourceManager.listResources(request.params);
+    async (request: ListResourcesRequest) => {
+      const params = request.params?.cursor !== undefined ? {
+        cursor: request.params.cursor
+      } : undefined;
+      return resourceManager.listResources(params);
     }
   );
   
   server.setRequestHandler(
     ReadResourceRequestSchema,
-    async (request: any) => {
+    async (request: ReadResourceRequest) => {
       if (!request.params?.uri) {
         throw new AgentCommError('URI parameter is required', 'INVALID_PARAMS');
       }
@@ -782,10 +847,10 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
   // Prompts get handler
   server.setRequestHandler(
     GetPromptRequestSchema,
-    async (request: any) => {
+    async (request: GetPromptRequest) => {
       try {
         const { name, arguments: args } = request.params;
-        const result = await promptManager.getPrompt(name, args || {});
+        const result = await promptManager.getPrompt(name, args ?? {});
         return {
           description: result.description,
           messages: result.messages
@@ -802,7 +867,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
 async function main(): Promise<void> {
   // Create MCP server
-  const server = createMCPServer();
+  const server = await createMCPServer();
   const config = getConfig();
   const serverInfo = getServerInfo();
 

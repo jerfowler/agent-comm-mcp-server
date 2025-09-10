@@ -19,14 +19,14 @@ describe('E2E - Complete Workflow Tests', () => {
   }, 30000);
 
   describe('Server Integration', () => {
-    it('should create and initialize server successfully', () => {
+    it('should create and initialize server successfully', async () => {
       // Test complete server creation - this catches startup issues
-      const server = createMCPServer();
+      const server = await createMCPServer();
       expect(server).toBeDefined();
     });
 
-    it('should handle server lifecycle without errors', () => {
-      const server = createMCPServer();
+    it('should handle server lifecycle without errors', async () => {
+      const server = await createMCPServer();
       
       // Test basic lifecycle
       expect(server).toBeDefined();
@@ -39,10 +39,10 @@ describe('E2E - Complete Workflow Tests', () => {
   });
 
   describe('Real-World Scenario', () => {
-    it('should handle multiple server instances', () => {
+    it('should handle multiple server instances', async () => {
       // Test that multiple servers can be created (common in testing)
-      const server1 = createMCPServer();
-      const server2 = createMCPServer();
+      const server1 = await createMCPServer();
+      const server2 = await createMCPServer();
       
       expect(server1).toBeDefined();
       expect(server2).toBeDefined();
@@ -52,9 +52,9 @@ describe('E2E - Complete Workflow Tests', () => {
       void server2.close();
     });
 
-    it('should maintain functionality after errors', () => {
+    it('should maintain functionality after errors', async () => {
       // Test error recovery
-      const server = createMCPServer();
+      const server = await createMCPServer();
       expect(server).toBeDefined();
       
       // Simulate error conditions and recovery
@@ -63,7 +63,7 @@ describe('E2E - Complete Workflow Tests', () => {
         void server.close();
         
         // Create new server after error
-        const newServer = createMCPServer();
+        const newServer = await createMCPServer();
         expect(newServer).toBeDefined();
         
         void newServer.close();
@@ -75,12 +75,12 @@ describe('E2E - Complete Workflow Tests', () => {
   });
 
   describe('Performance and Scale', () => {
-    it('should handle rapid server creation/destruction', () => {
+    it('should handle rapid server creation/destruction', async () => {
       const servers = [];
       
       // Create multiple servers quickly
       for (let i = 0; i < 5; i++) {
-        const server = createMCPServer();
+        const server = await createMCPServer();
         expect(server).toBeDefined();
         servers.push(server);
       }

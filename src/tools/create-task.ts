@@ -4,7 +4,7 @@
  * that prevents duplicate folder bugs and provides consistent PROTOCOL_CONTEXT
  */
 
-import { ServerConfig, CreateTaskResponse } from '../types.js';
+import { ServerConfig, CreateTaskResponse, EnhancementContext } from '../types.js';
 import { initializeTask } from '../utils/task-manager.js';
 import { validateRequiredString, validateOptionalString, validateContent } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
@@ -376,7 +376,7 @@ export async function createTaskTool(
   const content = validateOptionalString(args['content'], 'content');
   const taskType = (args['taskType'] as 'delegation' | 'self' | 'subtask' | undefined) ?? 'delegation';
   const parentTask = validateOptionalString(args['parentTask'], 'parentTask');
-  const sourceAgent = validateOptionalString(args['sourceAgent'], 'sourceAgent');
+  const sourceAgent = validateOptionalString(args['sourceAgent'], 'sourceAgent') ?? 'default-agent';
   
   const options: CreateTaskOptions = {
     agent,
@@ -387,5 +387,53 @@ export async function createTaskTool(
     ...(sourceAgent && { sourceAgent })
   };
   
-  return await createTask(config, options);
+  // Create the task
+  const response = await createTask(config, options);
+  
+  // Apply Smart Response System enhancement if available
+  if (config.responseEnhancer && config.smartResponseConfig?.enabled) {
+    try {
+      // Track compliance if this is a task creation
+      if (config.complianceTracker && response.taskCreated) {
+        await config.complianceTracker.recordActivity(sourceAgent, {
+          type: 'task_created',
+          taskId: response.taskId,
+          taskType: taskType,
+          timestamp: new Date()
+        });
+      }
+      
+      // Track delegation if this is a delegation task
+      if (config.delegationTracker && taskType === 'delegation' && response.taskCreated) {
+        await config.delegationTracker.recordDelegationCreated(
+          response.taskId,
+          agent
+        );
+      }
+      
+      // Create enhancement context
+      const context: EnhancementContext = {
+        toolName: 'create_task',
+        agent: sourceAgent,
+        toolResponse: response,
+        ...(config.complianceTracker && { complianceTracker: config.complianceTracker }),
+        ...(config.delegationTracker && { delegationTracker: config.delegationTracker }),
+        ...(config.promptManager && { promptManager: config.promptManager })
+      };
+      
+      // Enhance the response
+      const enhanced = await config.responseEnhancer.enhance(context);
+      
+      // Merge enhanced guidance into response
+      if (enhanced.guidance) {
+        const enhancedResponse = response as unknown as Record<string, unknown>;
+        enhancedResponse['guidance'] = enhanced.guidance;
+      }
+    } catch (error) {
+      // Enhancement error but don't fail the operation
+      void error; // Acknowledge but don't log
+    }
+  }
+  
+  return response;
 }

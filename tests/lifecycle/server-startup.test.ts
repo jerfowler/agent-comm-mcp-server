@@ -43,14 +43,14 @@ describe('Server Startup Lifecycle', () => {
       expect(() => createMCPServer()).not.toThrow();
     });
 
-    it('should return valid Server instance', () => {
-      const server = createMCPServer();
+    it('should return valid Server instance', async () => {
+      const server = await createMCPServer();
       expect(server).toBeInstanceOf(Server);
       expect(server).toBeDefined();
     });
 
-    it('should initialize with valid configuration', () => {
-      const server = createMCPServer();
+    it('should initialize with valid configuration', async () => {
+      const server = await createMCPServer();
       
       // Server should be created successfully
       expect(server).toBeDefined();
@@ -84,7 +84,7 @@ describe('Server Startup Lifecycle', () => {
       process.env['AGENT_COMM_ENABLE_ARCHIVING'] = 'true';
       process.env['AGENT_COMM_ARCHIVE_DIR'] = path.join(tempDir, 'archive');
       
-      const server = createMCPServer();
+      const server = await createMCPServer();
       expect(server).toBeDefined();
       
       // Archive directory should be created
@@ -93,8 +93,8 @@ describe('Server Startup Lifecycle', () => {
   });
 
   describe('Dependency Validation', () => {
-    it('should have all required tools available', () => {
-      const server = createMCPServer();
+    it('should have all required tools available', async () => {
+      const server = await createMCPServer();
       
       // Server should be created with tools registered
       // Note: Tool registration happens during server creation
@@ -180,8 +180,8 @@ describe('Server Startup Lifecycle', () => {
   });
 
   describe('Component Initialization', () => {
-    it('should initialize ConnectionManager', () => {
-      const server = createMCPServer();
+    it('should initialize ConnectionManager', async () => {
+      const server = await createMCPServer();
       
       // Verify that ConnectionManager is properly initialized
       // Note: This tests the actual initialization path
@@ -191,7 +191,7 @@ describe('Server Startup Lifecycle', () => {
     });
 
     it('should initialize EventLogger with correct path', async () => {
-      const server = createMCPServer();
+      const server = await createMCPServer();
       
       // Event logger should be initialized with .logs directory (default)
       const logsPath = path.join(tempDir, '.logs');
@@ -200,8 +200,8 @@ describe('Server Startup Lifecycle', () => {
       void server.close();
     });
 
-    it('should set up all request handlers', () => {
-      const server = createMCPServer();
+    it('should set up all request handlers', async () => {
+      const server = await createMCPServer();
       
       // Server should have completed initialization
       expect(server).toBeDefined();
@@ -209,8 +209,8 @@ describe('Server Startup Lifecycle', () => {
   });
 
   describe('Server Info Validation', () => {
-    it('should initialize without throwing errors', () => {
-      const server = createMCPServer();
+    it('should initialize without throwing errors', async () => {
+      const server = await createMCPServer();
       expect(server).toBeDefined();
     });
   });
@@ -223,7 +223,7 @@ describe('Server Shutdown Lifecycle', () => {
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'server-shutdown-test-'));
     process.env['AGENT_COMM_DIR'] = tempDir;
-    server = createMCPServer();
+    server = await createMCPServer();
   });
 
   afterEach(async () => {

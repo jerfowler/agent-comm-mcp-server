@@ -212,7 +212,7 @@ describe('MCP Protocol Compliance Tests', () => {
       const { createMCPServer } = await import('../../src/index.js');
       
       // Create server and get handler
-      createMCPServer();
+      void createMCPServer();
       
       // We need to test that the response format is Claude Code compatible
       // The content should be an array of content blocks, each with type and content

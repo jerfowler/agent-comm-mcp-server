@@ -25,14 +25,14 @@ interface ServerWithPrivates {
 describe('MCP Protocol Compliance - Prompts', () => {
   let server: Server;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     process.env['AGENT_COMM_DIR'] = '/tmp/test-comm';
     process.env['AGENT_COMM_ARCHIVE_DIR'] = '/tmp/test-archive';
     process.env['AGENT_COMM_LOG_DIR'] = '/tmp/test-logs';
     
     // Create server but don't start transport
-    server = createMCPServer();
+    server = await createMCPServer();
   });
 
   afterEach(() => {

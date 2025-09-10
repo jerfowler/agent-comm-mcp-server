@@ -20,7 +20,7 @@ describe('MCP Protocol Integration', () => {
 
   describe('Server Initialization', () => {
     it('should create MCP server with proper structure', async () => {
-      const server = createMCPServer();
+      const server = await createMCPServer();
       
       expect(server).toBeDefined();
       expect(typeof server.setRequestHandler).toBe('function');
@@ -30,7 +30,7 @@ describe('MCP Protocol Integration', () => {
     });
 
     it('should configure request handlers during setup', async () => {
-      const server = createMCPServer();
+      const server = await createMCPServer();
       
       // Server should be properly configured with handlers
       expect(server).toBeDefined();
@@ -45,8 +45,8 @@ describe('MCP Protocol Integration', () => {
       expect(() => createMCPServer()).not.toThrow();
     });
 
-    it('should handle server lifecycle properly', () => {
-      const server = createMCPServer();
+    it('should handle server lifecycle properly', async () => {
+      const server = await createMCPServer();
       
       expect(server).toBeDefined();
       
@@ -60,7 +60,7 @@ describe('MCP Protocol Integration', () => {
       // Set test environment
       process.env['AGENT_COMM_DIR'] = testEnv.tempDir;
       
-      const server = createMCPServer();
+      const server = await createMCPServer();
       expect(server).toBeDefined();
       
       await server.close();
@@ -82,7 +82,7 @@ describe('MCP Protocol Integration', () => {
         const result = () => createMCPServer();
         
         try {
-          const server = result();
+          const server = await result();
           expect(server).toBeDefined();
           await server.close();
         } catch (error) {
