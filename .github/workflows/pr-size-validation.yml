@@ -1,0 +1,250 @@
+name: PR Size Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, test]
+
+jobs:
+  validate-pr-size:
+    name: Validate PR Size and Quality
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze PR size and complexity
+        id: analysis
+        run: |
+          # Get PR statistics
+          git fetch origin ${{ github.base_ref }}
+          
+          # Calculate diff statistics
+          ADDITIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum += $1} END {print sum}' || echo "0")
+          DELETIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum += $2} END {print sum}' || echo "0")
+          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l || echo "0")
+          
+          echo "ADDITIONS=$ADDITIONS" >> $GITHUB_OUTPUT
+          echo "DELETIONS=$DELETIONS" >> $GITHUB_OUTPUT
+          echo "FILES_CHANGED=$FILES_CHANGED" >> $GITHUB_OUTPUT
+          
+          # Calculate complexity score
+          TOTAL_CHANGES=$((ADDITIONS + DELETIONS))
+          echo "TOTAL_CHANGES=$TOTAL_CHANGES" >> $GITHUB_OUTPUT
+          
+          # Define thresholds based on the PR #34 failure (22,558 additions)
+          LARGE_PR_THRESHOLD=5000
+          MASSIVE_PR_THRESHOLD=15000
+          CRITICAL_FILES_THRESHOLD=50
+          
+          # Classification
+          if [ $TOTAL_CHANGES -gt $MASSIVE_PR_THRESHOLD ]; then
+            echo "PR_SIZE=massive" >> $GITHUB_OUTPUT
+            echo "REQUIRES_BREAKDOWN=true" >> $GITHUB_OUTPUT
+          elif [ $TOTAL_CHANGES -gt $LARGE_PR_THRESHOLD ]; then
+            echo "PR_SIZE=large" >> $GITHUB_OUTPUT
+            echo "REQUIRES_EXTRA_REVIEW=true" >> $GITHUB_OUTPUT
+          elif [ $FILES_CHANGED -gt $CRITICAL_FILES_THRESHOLD ]; then
+            echo "PR_SIZE=wide" >> $GITHUB_OUTPUT
+            echo "REQUIRES_EXTRA_REVIEW=true" >> $GITHUB_OUTPUT
+          else
+            echo "PR_SIZE=acceptable" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Analyzed PR: $TOTAL_CHANGES total changes across $FILES_CHANGED files"
+
+      - name: Setup Node.js for validation
+        if: steps.analysis.outputs.PR_SIZE != 'massive'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.analysis.outputs.PR_SIZE != 'massive'
+        run: npm ci
+
+      - name: Critical validation checks
+        id: validation
+        if: steps.analysis.outputs.PR_SIZE != 'massive'
+        run: |
+          echo "Running critical validation checks..."
+          
+          # Check for 'any' types in changed files
+          CHANGED_TS_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '\.ts$' || echo "")
+          ANY_VIOLATIONS=0
+          
+          if [ -n "$CHANGED_TS_FILES" ]; then
+            for file in $CHANGED_TS_FILES; do
+              if [ -f "$file" ]; then
+                ANY_COUNT=$(grep -n "\bany\b" "$file" | grep -v "// @ts-ignore" | wc -l || echo "0")
+                ANY_VIOLATIONS=$((ANY_VIOLATIONS + ANY_COUNT))
+              fi
+            done
+          fi
+          
+          echo "ANY_VIOLATIONS=$ANY_VIOLATIONS" >> $GITHUB_OUTPUT
+          
+          # Run TypeScript check
+          if npm run type-check; then
+            echo "TYPE_CHECK=passed" >> $GITHUB_OUTPUT
+          else
+            echo "TYPE_CHECK=failed" >> $GITHUB_OUTPUT
+          fi
+          
+          # Run ESLint on changed files
+          if [ -n "$CHANGED_TS_FILES" ]; then
+            if npm run lint; then
+              echo "LINT_CHECK=passed" >> $GITHUB_OUTPUT
+            else
+              echo "LINT_CHECK=failed" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "LINT_CHECK=skipped" >> $GITHUB_OUTPUT
+          fi
+          
+          # Quick smoke test
+          if npm run test:smoke; then
+            echo "SMOKE_TEST=passed" >> $GITHUB_OUTPUT
+          else
+            echo "SMOKE_TEST=failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Block massive PR
+        if: steps.analysis.outputs.REQUIRES_BREAKDOWN == 'true'
+        run: |
+          echo "❌ PR is too large and must be broken down"
+          
+          # Comment on PR with breakdown guidance
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat <<'EOF'
+          ## 🚨 PR Too Large - Breakdown Required
+          
+          This PR has **${{ steps.analysis.outputs.TOTAL_CHANGES }} total changes** across **${{ steps.analysis.outputs.FILES_CHANGED }} files**, which exceeds our review capacity and increases merge conflict risk.
+          
+          **Based on PR #34 failure analysis, PRs above 15,000 changes are prohibited.**
+          
+          ### Required Actions:
+          1. **Split this PR** into smaller, focused changes (< 5,000 changes each)
+          2. **Create feature branch** for incremental development
+          3. **Submit smaller PRs** with clear scope and purpose
+          4. **Ensure validation** passes for each smaller PR
+          
+          ### Suggested Breakdown Strategy:
+          - [ ] Database/schema changes (if any)
+          - [ ] Core functionality changes
+          - [ ] Test updates and additions
+          - [ ] Documentation updates
+          - [ ] Configuration/tooling changes
+          
+          ### Why This Matters:
+          - Large PRs are difficult to review thoroughly
+          - Higher risk of introducing bugs
+          - Merge conflicts become more likely
+          - CI/CD validation takes longer
+          - Harder to isolate issues if problems arise
+          
+          **This check will fail until the PR is appropriately sized.**
+          EOF
+          )"
+          
+          exit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Warning for large PR
+        if: steps.analysis.outputs.REQUIRES_EXTRA_REVIEW == 'true' && steps.analysis.outputs.REQUIRES_BREAKDOWN != 'true'
+        run: |
+          echo "⚠️ Large PR detected - extra review required"
+          
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat <<'EOF'
+          ## ⚠️ Large PR Detected - Extra Review Required
+          
+          This PR has **${{ steps.analysis.outputs.TOTAL_CHANGES }} total changes** across **${{ steps.analysis.outputs.FILES_CHANGED }} files**.
+          
+          ### Additional Requirements:
+          - [ ] **Extra reviewer required** (minimum 2 approvals)
+          - [ ] **Validation must pass** (TypeScript, ESLint, tests)
+          - [ ] **Consider breaking down** for easier review
+          - [ ] **Test thoroughly** before merging
+          
+          ### Quality Checks:
+          - **'any' type violations**: ${{ steps.validation.outputs.ANY_VIOLATIONS || 'Not checked' }}
+          - **TypeScript check**: ${{ steps.validation.outputs.TYPE_CHECK || 'Not run' }}
+          - **ESLint status**: ${{ steps.validation.outputs.LINT_CHECK || 'Not run' }}
+          - **Smoke tests**: ${{ steps.validation.outputs.SMOKE_TEST || 'Not run' }}
+          
+          Please ensure all validation passes before requesting review.
+          EOF
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Quality gate enforcement
+        if: steps.validation.outputs.ANY_VIOLATIONS > 0 || steps.validation.outputs.TYPE_CHECK == 'failed' || steps.validation.outputs.LINT_CHECK == 'failed' || steps.validation.outputs.SMOKE_TEST == 'failed'
+        run: |
+          echo "❌ Quality gates failed - PR cannot be merged"
+          
+          # Create detailed failure report
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat <<'EOF'
+          ## ❌ Quality Gates Failed
+          
+          This PR has validation failures that must be resolved before merging:
+          
+          ### Failures Detected:
+          ${{ steps.validation.outputs.ANY_VIOLATIONS > 0 && format('- **{0} ''any'' type violations** - Use specific types or ''unknown''', steps.validation.outputs.ANY_VIOLATIONS) || '' }}
+          ${{ steps.validation.outputs.TYPE_CHECK == 'failed' && '- **TypeScript compilation failed** - Fix type errors' || '' }}
+          ${{ steps.validation.outputs.LINT_CHECK == 'failed' && '- **ESLint violations** - Fix code style issues' || '' }}
+          ${{ steps.validation.outputs.SMOKE_TEST == 'failed' && '- **Smoke tests failed** - Critical functionality broken' || '' }}
+          
+          ### Required Commands:
+          \`\`\`bash
+          npm run type-check     # Fix TypeScript errors
+          npm run lint:fix       # Auto-fix style issues
+          npm run test:smoke     # Validate critical paths
+          npm run ci             # Complete validation
+          \`\`\`
+          
+          **This PR cannot be merged until all quality gates pass.**
+          
+          Re-push your changes after fixing these issues to re-trigger validation.
+          EOF
+          )"
+          
+          exit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Success summary
+        if: steps.analysis.outputs.PR_SIZE == 'acceptable' && steps.validation.outputs.ANY_VIOLATIONS == 0
+        run: |
+          echo "✅ PR size and quality validation passed"
+          
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat <<'EOF'
+          ## ✅ PR Validation Passed
+          
+          This PR meets our size and quality requirements:
+          
+          ### Statistics:
+          - **Total changes**: ${{ steps.analysis.outputs.TOTAL_CHANGES }}
+          - **Files changed**: ${{ steps.analysis.outputs.FILES_CHANGED }}
+          - **Classification**: ${{ steps.analysis.outputs.PR_SIZE }}
+          
+          ### Quality Checks:
+          - **TypeScript**: ✅ Passed
+          - **ESLint**: ✅ Passed  
+          - **Smoke tests**: ✅ Passed
+          - **'any' types**: ✅ None detected
+          
+          Ready for review! 🚀
+          EOF
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

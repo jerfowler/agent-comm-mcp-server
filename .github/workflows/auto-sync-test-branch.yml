@@ -1,0 +1,212 @@
+name: Auto-Sync Test Branch
+
+on:
+  # Trigger after successful merge to main, after semver workflows complete
+  workflow_run:
+    workflows: ["Release Workflow"]
+    types:
+      - completed
+    branches: [main]
+  
+  # Manual trigger for testing and maintenance
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: 'Force sync even if validation fails'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  auto-sync:
+    name: Sync Test Branch with Main
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check main branch validation status
+        id: validation
+        run: |
+          echo "Checking main branch for validation issues..."
+          
+          # Run type check on main branch
+          git checkout main
+          npm run type-check 2>&1 | tee type-check.log || echo "TYPE_CHECK_FAILED=true" >> $GITHUB_OUTPUT
+          
+          # Check for 'any' types in source code (excluding tests)
+          ANY_COUNT=$(grep -r "\bany\b" src/ --include="*.ts" | grep -v "// @ts-ignore" | wc -l || echo "0")
+          echo "ANY_TYPES_COUNT=$ANY_COUNT" >> $GITHUB_OUTPUT
+          
+          # Check ESLint status
+          npm run lint 2>&1 | tee lint.log || echo "LINT_FAILED=true" >> $GITHUB_OUTPUT
+          
+          if [ "$ANY_COUNT" -gt 0 ]; then
+            echo "VALIDATION_ISSUES=true" >> $GITHUB_OUTPUT
+            echo "Found $ANY_COUNT 'any' types in source code"
+          fi
+
+      - name: Create validation issue if needed
+        if: steps.validation.outputs.VALIDATION_ISSUES == 'true'
+        run: |
+          # Check if validation issue already exists
+          EXISTING_ISSUE=$(gh issue list --label "validation-failure" --state open --json number --jq '.[0].number' || echo "")
+          
+          if [ -z "$EXISTING_ISSUE" ]; then
+            echo "Creating validation failure issue..."
+            gh issue create \
+              --title "🚨 Main Branch Validation Failures Block Auto-Sync" \
+              --label "priority:high,validation-failure" \
+              --body "$(cat <<'EOF'
+          ## Validation Failures Detected
+          
+          The auto-sync workflow detected validation failures in the main branch that prevent safe synchronization with the test branch.
+          
+          ### Issues Found:
+          - **'any' types detected**: ${{ steps.validation.outputs.ANY_TYPES_COUNT }} instances
+          - **TypeScript check**: ${{ steps.validation.outputs.TYPE_CHECK_FAILED == 'true' && 'FAILED' || 'PASSED' }}
+          - **ESLint check**: ${{ steps.validation.outputs.LINT_FAILED == 'true' && 'FAILED' || 'PASSED' }}
+          
+          ### Required Actions:
+          1. Fix all TypeScript strict mode violations
+          2. Eliminate 'any' types in source code
+          3. Resolve ESLint warnings/errors
+          4. Run comprehensive test suite validation
+          
+          ### Commands to Run:
+          \`\`\`bash
+          npm run type-check    # Fix TypeScript issues
+          npm run lint:fix      # Auto-fix ESLint issues  
+          npm run test:all      # Validate all tests pass
+          npm run ci            # Complete pipeline check
+          \`\`\`
+          
+          Once validation passes, the auto-sync will resume automatically.
+          
+          **Triggered by**: Auto-sync workflow run #${{ github.run_number }}
+          **Workflow**: ${{ github.workflow }}
+          **Ref**: ${{ github.ref }}
+          EOF
+          )"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attempt test branch sync
+        id: sync
+        if: steps.validation.outputs.VALIDATION_ISSUES != 'true' || github.event.inputs.force_sync == 'true'
+        run: |
+          echo "Proceeding with test branch synchronization..."
+          
+          # Switch to test branch
+          git checkout test
+          git pull origin test
+          
+          # Attempt merge with main
+          if git merge origin/main --no-edit; then
+            echo "MERGE_SUCCESS=true" >> $GITHUB_OUTPUT
+            echo "Merge completed successfully"
+          else
+            echo "MERGE_CONFLICT=true" >> $GITHUB_OUTPUT
+            echo "Merge conflicts detected"
+            
+            # Get conflict files for reporting
+            git status --porcelain | grep "^UU" | cut -c4- > conflict_files.txt || echo "No conflict files detected"
+            
+            # Abort the merge
+            git merge --abort
+          fi
+
+      - name: Push synchronized test branch
+        if: steps.sync.outputs.MERGE_SUCCESS == 'true'
+        run: |
+          echo "Pushing synchronized test branch..."
+          git push origin test
+          
+          # Close any existing sync failure issues
+          gh issue list --label "sync-failure" --state open --json number --jq '.[].number' | \
+            xargs -I {} gh issue close {} --comment "✅ Auto-sync completed successfully in run #${{ github.run_number }}"
+
+      - name: Create sync failure issue
+        if: steps.sync.outputs.MERGE_CONFLICT == 'true'
+        run: |
+          CONFLICT_FILES=$(cat conflict_files.txt | tr '\n' ' ' || echo "Unknown files")
+          
+          # Check if sync failure issue already exists
+          EXISTING_ISSUE=$(gh issue list --label "sync-failure" --state open --json number --jq '.[0].number' || echo "")
+          
+          if [ -z "$EXISTING_ISSUE" ]; then
+            echo "Creating sync failure issue..."
+            gh issue create \
+              --title "🔄 Auto-Sync Merge Conflicts Require Manual Resolution" \
+              --label "priority:medium,sync-failure" \
+              --body "$(cat <<'EOF'
+          ## Auto-Sync Merge Conflicts
+          
+          The auto-sync workflow encountered merge conflicts that require manual resolution.
+          
+          ### Conflict Details:
+          - **Conflicting files**: $CONFLICT_FILES
+          - **Source branch**: main (${{ github.sha }})
+          - **Target branch**: test
+          - **Workflow run**: #${{ github.run_number }}
+          
+          ### Manual Resolution Steps:
+          1. Check out test branch: \`git checkout test\`
+          2. Merge main branch: \`git merge origin/main\`
+          3. Resolve conflicts in the listed files
+          4. Commit resolved changes: \`git commit -m "resolve: merge conflicts from main"\`
+          5. Push updated test branch: \`git push origin test\`
+          
+          ### Files with Conflicts:
+          \`\`\`
+          $CONFLICT_FILES
+          \`\`\`
+          
+          Once conflicts are resolved and pushed, this issue will be automatically closed.
+          
+          **Triggered by**: Auto-sync after successful release workflow
+          EOF
+          )"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary report
+        run: |
+          echo "## Auto-Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Main branch validation**: ${{ steps.validation.outputs.VALIDATION_ISSUES == 'true' && '❌ Failed' || '✅ Passed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sync attempt**: ${{ steps.sync.outputs.MERGE_SUCCESS == 'true' && '✅ Success' || steps.sync.outputs.MERGE_CONFLICT == 'true' && '⚠️ Conflicts' || '⏭️ Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.validation.outputs.ANY_TYPES_COUNT }}" -gt 0 ]; then
+            echo "- **'any' types detected**: ${{ steps.validation.outputs.ANY_TYPES_COUNT }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.sync.outputs.MERGE_CONFLICT }}" == "true" ]; then
+            echo "- **Manual intervention required**: Merge conflicts need resolution" >> $GITHUB_STEP_SUMMARY
+          fi
