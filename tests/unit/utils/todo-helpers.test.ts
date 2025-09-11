@@ -746,7 +746,7 @@ describe('Todo Helpers', () => {
         { content: 123, status: "pending", activeForm: "Working" } // Non-string content
       ] as unknown;
 
-      const result = validateTodoStructure(invalidTodos);
+      const result = validateTodoStructure(invalidTodos as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain("Todo 0: content must be a non-empty string");
@@ -761,7 +761,7 @@ describe('Todo Helpers', () => {
         { content: "Valid", status: "pending", activeForm: 123 } // Non-string activeForm
       ] as unknown;
 
-      const result = validateTodoStructure(invalidTodos);
+      const result = validateTodoStructure(invalidTodos as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain("Todo 0: activeForm must be a non-empty string");
@@ -776,7 +776,7 @@ describe('Todo Helpers', () => {
         { content: "Valid", status: 123, activeForm: "Working" } // Non-string status
       ] as unknown;
 
-      const result = validateTodoStructure(invalidTodos);
+      const result = validateTodoStructure(invalidTodos as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain("Todo 0: status must be pending, in_progress, or completed");
@@ -791,7 +791,7 @@ describe('Todo Helpers', () => {
         { content: "Third", status: "pending", activeForm: "Working on third" }
       ];
 
-      const result = validateTodoStructure(invalidTodos);
+      const result = validateTodoStructure(invalidTodos as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain("Only one todo can be 'in_progress' at a time");
@@ -830,7 +830,7 @@ describe('Todo Helpers', () => {
         { content: "Valid", status: "in_progress", activeForm: "Valid" } // Duplicate in_progress
       ] as unknown;
 
-      const result = validateTodoStructure(invalidTodos);
+      const result = validateTodoStructure(invalidTodos as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(1);
@@ -845,7 +845,7 @@ describe('Todo Helpers', () => {
         { content: "   ", status: "pending", activeForm: "   " }
       ] as unknown;
 
-      const result = validateTodoStructure(invalidTodos);
+      const result = validateTodoStructure(invalidTodos as unknown as TodoItem[]);
 
       // The validation function treats whitespace strings as valid strings
       // because it only checks if (!todo.content) not if (todo.content.trim())
@@ -918,7 +918,7 @@ describe('Todo Helpers', () => {
         { content: "Invalid", status: "in_progress", activeForm: "Working" }
       ] as unknown;
 
-      const validation = validateTodoStructure(invalidTodos);
+      const validation = validateTodoStructure(invalidTodos as unknown as TodoItem[]);
       expect(validation.isValid).toBe(false);
       expect(validation.errors).toContain("Only one todo can be 'in_progress' at a time");
     });

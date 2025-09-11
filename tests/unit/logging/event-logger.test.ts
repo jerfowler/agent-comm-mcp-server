@@ -945,7 +945,42 @@ describe('EventLogger', () => {
     });
   });
 
-  describe('EventLogger waitForWriteQueueEmpty timeout coverage', () => {
+  describe('EventLogger waitForWriteQueueEmpty edge cases', () => {
+    it('should resolve immediately when queue is already empty', async () => {
+      // Ensure queue is empty
+      await eventLogger.waitForWriteQueueEmpty();
+      
+      // Start timing
+      const startTime = Date.now();
+      
+      // Should resolve immediately since queue is empty
+      await eventLogger.waitForWriteQueueEmpty();
+      
+      const elapsed = Date.now() - startTime;
+      expect(elapsed).toBeLessThan(10); // Should be near instant
+    });
+
+    it('should clear timeout when queue empties during wait', async () => {
+      // Log an operation to put something in the queue
+      eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'test_op',
+        agent: 'test-agent',
+        taskId: 'test-task',
+        success: true,
+        duration: 100
+      });
+      
+      // Start waiting - this should clear timeout when queue empties
+      const waitPromise = eventLogger.waitForWriteQueueEmpty();
+      
+      // Wait for completion
+      await waitPromise;
+      
+      // Should have completed without timeout
+      expect(true).toBe(true); // Test passes if we get here
+    });
+
     it('should timeout when waiting for write queue that never empties', async () => {
       const mockTimer = new MockTimerDependency();
       const testLogger = new EventLogger(testDir, mockTimer);

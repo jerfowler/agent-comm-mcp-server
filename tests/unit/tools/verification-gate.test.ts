@@ -81,7 +81,7 @@ describe('Agent Work Verification Gate', () => {
     // Setup TaskContextManager mock
     mockContextManager = {
       markComplete: jest.fn<() => Promise<CompletionResult>>().mockResolvedValue(mockCompletionResult)
-    } as unknown;
+    } as unknown as jest.Mocked<TaskContextManager>;
     
     MockTaskContextManager.mockImplementation(() => mockContextManager);
     
@@ -269,7 +269,12 @@ describe('Agent Work Verification Gate', () => {
         success: true,
         confidence: NaN, // INVALID CONFIDENCE
         warnings: [],
-        evidence: {} as unknown as ServerConfig,
+        evidence: {
+          filesModified: 0,
+          testsRun: false,
+          mcpProgress: false,
+          timeSpent: 0
+        },
         recommendation: ''
       });
 

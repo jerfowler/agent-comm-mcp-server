@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
+import { TaskContextManager, TaskContext, TaskSummary } from '../../../src/core/TaskContextManager.js';
 import { ConnectionManager, Connection } from '../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
 import { AgentOwnershipError } from '../../../src/types.js';
@@ -704,6 +704,159 @@ Test complete end-to-end checkbox progress workflow
       expect(task!.status).toBe('new');
       // Progress should be undefined when no PROGRESS.md exists
       expect(task!.progress).toBeUndefined();
+    });
+  });
+
+  describe('Additional Branch Coverage', () => {
+    it('should handle task with PLAN.md but no PROGRESS.md', async () => {
+      const taskId = 'task-with-plan';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      // Create INIT.md and PLAN.md but no PROGRESS.md
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Task With Plan\n## Objective\nTest task with plan\n## Requirements\n- Test requirement'
+      );
+      await fs.writeFile(
+        path.join(taskPath, 'PLAN.md'),
+        '# Implementation Plan\n\n- [ ] Step 1\n- [ ] Step 2'
+      );
+
+      const context = await contextManager.startTask(taskId, mockConnection);
+      
+      expect(context.title).toBe('Task With Plan');
+      expect(context.objective).toBe('Test task with plan');
+      // Progress should be undefined when there's no PROGRESS.md
+      expect(context.currentProgress).toBeUndefined();
+    });
+
+    it('should handle getTaskContext with empty taskId', async () => {
+      // Test with empty taskId - should return empty context
+      const context = await contextManager.getTaskContext('', mockConnection);
+      
+      expect(context.title).toBe('No Active Task');
+      expect(context.objective).toBe('');
+      expect(context.requirements).toEqual([]);
+      expect(context.currentAgent).toBe(mockConnection.agent);
+    });
+
+    it('should handle error in checkAssignedTasks when readdir fails', async () => {
+      // First create the agent directory so readdir will be called
+      const agentDir = path.join(testDir, 'comm', mockConnection.agent);
+      await fs.ensureDir(agentDir);
+      
+      // Create a spy for fs.readdir
+      const readdirSpy = jest.spyOn(fs, 'readdir');
+      readdirSpy.mockRejectedValueOnce(new Error('Read error'));
+      
+      await expect(contextManager.checkAssignedTasks(mockConnection))
+        .rejects.toThrow('Read error');
+      
+      // Restore spy
+      readdirSpy.mockRestore();
+    });
+
+    it('should handle task with DONE.md file', async () => {
+      const taskId = 'completed-task';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Completed Task\n\nThis task is done.'
+      );
+      await fs.writeFile(
+        path.join(taskPath, 'DONE.md'),
+        '# Task Complete\n\nSuccessfully completed.'
+      );
+
+      const result = await contextManager.checkAssignedTasks(mockConnection);
+      const task = result.find(t => t.taskId === taskId);
+      
+      expect(task).toBeDefined();
+      expect(task!.status).toBe('completed');
+    });
+
+    it('should handle task with ERROR.md file', async () => {
+      const taskId = 'error-task';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Error Task\n\nThis task failed.'
+      );
+      await fs.writeFile(
+        path.join(taskPath, 'ERROR.md'),
+        '# Task Failed\n\nError occurred during execution.'
+      );
+
+      const result = await contextManager.checkAssignedTasks(mockConnection);
+      const task = result.find(t => t.taskId === taskId);
+      
+      expect(task).toBeDefined();
+      expect(task!.status).toBe('error');
+    });
+
+    // Removed test for syncTodoCheckboxes - this is a separate tool, not a TaskContextManager method
+
+    // Removed test for progress extraction - startTask doesn't include progress field from PROGRESS.md
+
+    it('should handle malformed task directory names', async () => {
+      const commDir = path.join(testDir, 'comm');
+      const agentDir = path.join(commDir, mockConnection.agent);
+      await fs.ensureDir(agentDir);
+      
+      // Create a malformed directory name
+      const malformedPath = path.join(agentDir, 'not-a-task');
+      await fs.ensureDir(malformedPath);
+      await fs.writeFile(
+        path.join(malformedPath, 'INIT.md'),
+        '# Malformed Task\n\nThis directory name is not valid.'
+      );
+
+      const result = await contextManager.checkAssignedTasks(mockConnection);
+      
+      // Actually, 'not-a-task' is a valid directory name and has INIT.md, so it should be included
+      const malformedTask = result.find(t => t.taskId === 'not-a-task');
+      expect(malformedTask).toBeDefined();
+      expect(malformedTask?.title).toBe('Malformed Task');
+      expect(malformedTask?.status).toBe('new');
+    });
+
+    it('should handle concurrent task operations', async () => {
+      const taskId = 'concurrent-task';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Concurrent Task\n\nTesting concurrent operations.'
+      );
+
+      // Start multiple operations concurrently
+      const operations = [
+        contextManager.startTask(taskId, mockConnection),
+        contextManager.getTaskContext(taskId, mockConnection), // Fixed: taskId first, then connection
+        contextManager.checkAssignedTasks(mockConnection)
+      ];
+
+      const results = await Promise.all(operations);
+      
+      // Type-safe assertions following TEST-GUIDELINES.md patterns
+      const startTaskResult = results[0] as unknown as TaskContext;
+      const getContextResult = results[1] as unknown as TaskContext;
+      const checkTasksResult = results[2] as unknown as TaskSummary[];
+      
+      // TaskContext doesn't have taskId field - check title instead
+      expect(startTaskResult.title).toBe('Concurrent Task');
+      expect(getContextResult.title).toBe('Concurrent Task');
+      expect(checkTasksResult.length).toBeGreaterThan(0);
     });
   });
 });

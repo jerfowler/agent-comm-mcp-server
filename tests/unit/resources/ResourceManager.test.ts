@@ -489,6 +489,107 @@ describe('ResourceManager', () => {
     });
   });
 
+  describe('Edge Cases and Error Handling', () => {
+    it('should handle provider listing errors gracefully', async () => {
+      // Arrange
+      const errorProvider = {
+        getScheme: () => 'error',
+        canHandle: (uri: string) => uri.startsWith('error://'),
+        listResources: jest.fn().mockRejectedValue(new Error('Provider error')),
+        readResource: jest.fn()
+      };
+      
+      resourceManager.registerProvider(errorProvider);
+      
+      // Act - should not throw, but should log error
+      const result = await resourceManager.listResources();
+      
+      // Assert - other resources should still be listed
+      expect(result.resources.length).toBeGreaterThan(0);
+      expect(errorProvider.listResources).toHaveBeenCalled();
+    });
+
+    it('should handle readResource with no matching provider', async () => {
+      // Act & Assert
+      await expect(resourceManager.readResource('unknown://resource'))
+        .rejects.toThrow('Resource not found');
+    });
+
+    it('should handle provider readResource errors', async () => {
+      // Arrange
+      const errorProvider = {
+        getScheme: () => 'error',
+        canHandle: (uri: string) => uri.startsWith('error://'),
+        listResources: jest.fn().mockResolvedValue([]),
+        readResource: jest.fn().mockRejectedValue(new Error('Read error'))
+      };
+      
+      resourceManager.registerProvider(errorProvider);
+      
+      // Act & Assert
+      await expect(resourceManager.readResource('error://resource'))
+        .rejects.toThrow('Resource not found');
+    });
+
+    it('should handle listResources with empty providers', async () => {
+      // Arrange - Create new ResourceManager with no providers
+      const emptyManager = new ResourceManager({
+        taskContextManager: mockTaskContextManager,
+        connectionManager: mockConnectionManager,
+        eventLogger: mockEventLogger
+      });
+      
+      // Act
+      const result = await emptyManager.listResources();
+      
+      // Assert - should return built-in resources only
+      expect(result.resources.length).toBeGreaterThan(0);
+      expect(result.resources.some(r => r.uri.startsWith('server://'))).toBe(true);
+    });
+
+    it('should handle concurrent provider operations', async () => {
+      // Arrange
+      const slowProvider = {
+        getScheme: () => 'slow',
+        canHandle: (uri: string) => uri.startsWith('slow://'),
+        listResources: jest.fn().mockImplementation(() => 
+          new Promise(resolve => setTimeout(() => 
+            resolve([{ uri: 'slow://res1', name: 'Slow Resource', mimeType: 'text/plain' }]), 
+            100
+          ))
+        ),
+        readResource: jest.fn()
+      };
+      
+      const fastProvider = {
+        getScheme: () => 'fast',
+        canHandle: (uri: string) => uri.startsWith('fast://'),
+        listResources: jest.fn().mockResolvedValue([
+          { uri: 'fast://res1', name: 'Fast Resource', mimeType: 'text/plain' }
+        ]),
+        readResource: jest.fn()
+      };
+      
+      resourceManager.registerProvider(slowProvider);
+      resourceManager.registerProvider(fastProvider);
+      
+      // Act - List resources concurrently
+      const [result1, result2] = await Promise.all([
+        resourceManager.listResources(),
+        resourceManager.listResources()
+      ]);
+      
+      // Assert - Both should complete successfully
+      expect(result1.resources).toContainEqual(
+        expect.objectContaining({ uri: 'slow://res1' })
+      );
+      expect(result1.resources).toContainEqual(
+        expect.objectContaining({ uri: 'fast://res1' })
+      );
+      expect(result2.resources).toEqual(result1.resources);
+    });
+  });
+
   describe('getResourceMetadata', () => {
     it('should return metadata for a resource', async () => {
       // Arrange

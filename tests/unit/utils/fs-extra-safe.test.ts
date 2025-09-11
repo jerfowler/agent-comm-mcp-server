@@ -5,20 +5,24 @@
 
 import { jest } from '@jest/globals';
 import { pathExists, readdir, writeFile, readFile, stat, remove, ensureDir, appendFile, move, copy, getFsExtraDiagnostics, safeFs, ensureDirSync } from '../../../src/utils/fs-extra-safe.js';
-import { promises as nodeFs } from 'fs';
+
+// Interface for Node.js errors with code property
+interface NodeError extends Error {
+  code?: string;
+}
 
 // Interface for testing private properties
 interface SafeFsWithPrivates {
   importer: {
-    tryImportFsExtra: () => Promise<any>;
+    tryImportFsExtra: () => Promise<unknown>;
     getImportMethod: () => string;
     getImportError: () => string | null;
-    validateFsExtraModule: (module: any) => boolean;
+    validateFsExtraModule: (module: unknown) => boolean;
     importError: string | null;
     importMethod: string;
-    importedFs: any;
+    importedFs: unknown;
   };
-  fsExtra: any;
+  fsExtra: unknown;
   fallbackMode: boolean;
   initializeFsExtra: () => Promise<void>;
   ensureInitialized: () => Promise<void>;
@@ -40,24 +44,46 @@ jest.mock('fs', () => ({
     mkdir: jest.fn(),
     appendFile: jest.fn(),
     rename: jest.fn(),
-    copyFile: jest.fn()
+    copyFile: jest.fn(),
+    mkdtemp: jest.fn(),
+    chmod: jest.fn(),
+    utimes: jest.fn()
   },
-  mkdirSync: jest.fn()
+  mkdirSync: jest.fn(),
+  statSync: jest.fn(),
+  readdirSync: jest.fn(),
+  unlinkSync: jest.fn(),
+  rmdirSync: jest.fn(),
+  mkdtempSync: jest.fn()
 }));
 
-const mockFs = (nodeFs as any).promises as jest.Mocked<{
-  access: jest.MockedFunction<(path: string) => Promise<void>>;
-  readdir: jest.MockedFunction<(path: string) => Promise<string[]>>;
-  writeFile: jest.MockedFunction<(path: string, data: string, options?: unknown) => Promise<void>>;
-  readFile: jest.MockedFunction<(path: string, options?: unknown) => Promise<string>>;
-  stat: jest.MockedFunction<(path: string) => Promise<unknown>>;
-  rmdir: jest.MockedFunction<(path: string, options?: unknown) => Promise<void>>;
-  unlink: jest.MockedFunction<(path: string) => Promise<void>>;
-  mkdir: jest.MockedFunction<(path: string, options?: unknown) => Promise<void>>;
-  appendFile: jest.MockedFunction<(path: string, data: string, options?: unknown) => Promise<void>>;
-  rename: jest.MockedFunction<(src: string, dest: string) => Promise<void>>;
-  copyFile: jest.MockedFunction<(src: string, dest: string) => Promise<void>>;
-}>;
+// Get the mocked fs module correctly
+const mockFsModule = jest.requireMock('fs') as {
+  promises: {
+    access: jest.MockedFunction<(path: string) => Promise<void>>;
+    readdir: jest.MockedFunction<(path: string) => Promise<string[]>>;
+    writeFile: jest.MockedFunction<(path: string, data: string, options?: unknown) => Promise<void>>;
+    readFile: jest.MockedFunction<(path: string, options?: unknown) => Promise<string>>;
+    stat: jest.MockedFunction<(path: string) => Promise<unknown>>;
+    rmdir: jest.MockedFunction<(path: string, options?: unknown) => Promise<void>>;
+    unlink: jest.MockedFunction<(path: string) => Promise<void>>;
+    mkdir: jest.MockedFunction<(path: string, options?: unknown) => Promise<void>>;
+    appendFile: jest.MockedFunction<(path: string, data: string, options?: unknown) => Promise<void>>;
+    rename: jest.MockedFunction<(src: string, dest: string) => Promise<void>>;
+    copyFile: jest.MockedFunction<(src: string, dest: string) => Promise<void>>;
+    mkdtemp: jest.MockedFunction<(prefix: string) => Promise<string>>;
+    chmod: jest.MockedFunction<(path: string, mode: string | number) => Promise<void>>;
+    utimes: jest.MockedFunction<(path: string, atime: Date | number, mtime: Date | number) => Promise<void>>;
+  };
+  mkdirSync: jest.MockedFunction<(path: string, options?: { recursive?: boolean; mode?: number }) => void>;
+  statSync: jest.MockedFunction<(path: string) => { isFile: () => boolean; isDirectory: () => boolean; size: number }>;
+  readdirSync: jest.MockedFunction<(path: string) => string[]>;
+  unlinkSync: jest.MockedFunction<(path: string) => void>;
+  rmdirSync: jest.MockedFunction<(path: string, options?: { recursive?: boolean }) => void>;
+  mkdtempSync: jest.MockedFunction<(prefix: string) => string>;
+};
+
+const mockFs = mockFsModule.promises;
 
 describe('fs-extra-safe', () => {
   beforeEach(() => {
@@ -182,7 +208,8 @@ describe('fs-extra-safe', () => {
     it('should handle initialization error and set fallback mode', async () => {
       // Test the initializeFsExtra error handling
       const originalTryImport = (safeFs as unknown as SafeFsWithPrivates).importer.tryImportFsExtra;
-      (safeFs as unknown as SafeFsWithPrivates).importer.tryImportFsExtra = jest.fn().mockRejectedValue(new Error('Import failed') as never);
+      const mockTryImport = jest.fn().mockRejectedValue(new Error('Import failed') as never);
+      (safeFs as unknown as SafeFsWithPrivates).importer.tryImportFsExtra = mockTryImport as unknown as typeof originalTryImport;
       
       await (safeFs as unknown as SafeFsWithPrivates).initializeFsExtra();
       
@@ -197,7 +224,7 @@ describe('fs-extra-safe', () => {
       (safeFs as unknown as SafeFsWithPrivates).fsExtra = null;
       (safeFs as unknown as SafeFsWithPrivates).fallbackMode = false;
       
-      const initSpy = jest.spyOn(safeFs as unknown, 'initializeFsExtra').mockResolvedValue(undefined);
+      const initSpy = jest.spyOn(safeFs as unknown as SafeFsWithPrivates, 'initializeFsExtra').mockResolvedValue(undefined as never);
       
       await (safeFs as unknown as SafeFsWithPrivates).ensureInitialized();
       
@@ -377,8 +404,8 @@ describe('fs-extra-safe', () => {
         remove: jest.fn().mockRejectedValue(new Error('fs-extra failed') as never)
       };
       
-      const enoentError = new Error('ENOENT: no such file or directory');
-      (enoentError as unknown).code = 'ENOENT';
+      const enoentError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
       
       mockFs.stat.mockRejectedValue(enoentError);
       
@@ -392,8 +419,8 @@ describe('fs-extra-safe', () => {
         remove: jest.fn().mockRejectedValue(new Error('fs-extra failed') as never)
       };
       
-      const permissionError = new Error('EACCES: permission denied');
-      (permissionError as unknown).code = 'EACCES';
+      const permissionError = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
+      permissionError.code = 'EACCES';
       
       mockFs.stat.mockRejectedValue(permissionError);
       
@@ -529,8 +556,8 @@ describe('fs-extra-safe', () => {
       };
       
       // First attempt with rename fails with EXDEV (cross-device link)
-      const exdevError = new Error('EXDEV: cross-device link not permitted');
-      (exdevError as any).code = 'EXDEV';
+      const exdevError = new Error('EXDEV: cross-device link not permitted') as NodeError;
+      exdevError.code = 'EXDEV';
       mockFs.rename.mockRejectedValueOnce(exdevError);
       
       // Then copy and remove should succeed
@@ -550,8 +577,8 @@ describe('fs-extra-safe', () => {
       };
       
       // copyFile fails with EISDIR for directories
-      const isdirError = new Error('EISDIR: illegal operation on a directory');
-      (isdirError as any).code = 'EISDIR';
+      const isdirError = new Error('EISDIR: illegal operation on a directory') as NodeError;
+      isdirError.code = 'EISDIR';
       mockFs.copyFile.mockRejectedValue(isdirError);
       
       await expect(copy('/test/source-dir', '/test/dest-dir')).rejects.toThrow('EISDIR');
@@ -603,8 +630,8 @@ describe('fs-extra-safe', () => {
         ensureDir: jest.fn().mockRejectedValue(new Error('fs-extra failed') as never)
       };
       
-      const eexistError = new Error('EEXIST: file already exists');
-      (eexistError as any).code = 'EEXIST';
+      const eexistError = new Error('EEXIST: file already exists') as NodeError;
+      eexistError.code = 'EEXIST';
       mockFs.mkdir.mockRejectedValue(eexistError);
       
       // Should silently succeed for EEXIST
@@ -618,8 +645,8 @@ describe('fs-extra-safe', () => {
         ensureDir: jest.fn().mockRejectedValue(new Error('fs-extra failed') as never)
       };
       
-      const permissionError = new Error('EACCES: permission denied');
-      (permissionError as any).code = 'EACCES';
+      const permissionError = new Error('EACCES: permission denied') as NodeError;
+      permissionError.code = 'EACCES';
       mockFs.mkdir.mockRejectedValue(permissionError);
       
       await expect(ensureDir('/protected/dir')).rejects.toThrow('EACCES: permission denied');
@@ -631,8 +658,8 @@ describe('fs-extra-safe', () => {
         move: jest.fn().mockRejectedValue(new Error('fs-extra failed') as never)
       };
       
-      const permissionError = new Error('EACCES: permission denied');
-      (permissionError as any).code = 'EACCES';
+      const permissionError = new Error('EACCES: permission denied') as NodeError;
+      permissionError.code = 'EACCES';
       mockFs.rename.mockRejectedValue(permissionError);
       
       await expect(move('/protected/source.txt', '/protected/dest.txt')).rejects.toThrow('EACCES: permission denied');
@@ -644,8 +671,8 @@ describe('fs-extra-safe', () => {
         copy: jest.fn().mockRejectedValue(new Error('fs-extra failed') as never)
       };
       
-      const permissionError = new Error('EACCES: permission denied');
-      (permissionError as any).code = 'EACCES';
+      const permissionError = new Error('EACCES: permission denied') as NodeError;
+      permissionError.code = 'EACCES';
       mockFs.copyFile.mockRejectedValue(permissionError);
       
       await expect(copy('/protected/source.txt', '/protected/dest.txt')).rejects.toThrow('EACCES: permission denied');
@@ -659,23 +686,23 @@ describe('fs-extra-safe', () => {
       
       mockFs.readFile.mockResolvedValue('content');
       
-      const result = await readFile('/test/file.txt', { encoding: 'utf8' } as any);
+      const result = await readFile('/test/file.txt', 'utf8');
       expect(result).toBe('content');
-      expect(mockFs.readFile).toHaveBeenCalledWith('/test/file.txt', { encoding: { encoding: 'utf8' } });
+      expect(mockFs.readFile).toHaveBeenCalledWith('/test/file.txt', { encoding: 'utf8' });
     });
 
     it('should handle successful fs-extra operations without fallback', async () => {
       const mockFsExtra = {
-        pathExists: jest.fn().mockResolvedValue(true),
-        readdir: jest.fn().mockResolvedValue(['file.txt']),
-        writeFile: jest.fn().mockResolvedValue(undefined),
-        readFile: jest.fn().mockResolvedValue('content'),
-        stat: jest.fn().mockResolvedValue({ isFile: () => true }),
-        remove: jest.fn().mockResolvedValue(undefined),
-        ensureDir: jest.fn().mockResolvedValue(undefined),
-        appendFile: jest.fn().mockResolvedValue(undefined),
-        move: jest.fn().mockResolvedValue(undefined),
-        copy: jest.fn().mockResolvedValue(undefined)
+        pathExists: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+        readdir: jest.fn<() => Promise<string[]>>().mockResolvedValue(['file.txt']),
+        writeFile: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        readFile: jest.fn<() => Promise<string>>().mockResolvedValue('content'),
+        stat: jest.fn<() => Promise<{ isFile: () => boolean; isDirectory: () => boolean; size: number }>>().mockResolvedValue({ isFile: () => true, isDirectory: () => false, size: 0 }),
+        remove: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        ensureDir: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        appendFile: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        move: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        copy: jest.fn<() => Promise<void>>().mockResolvedValue(undefined)
       };
       
       (safeFs as unknown as SafeFsWithPrivates).fallbackMode = false;
@@ -709,8 +736,7 @@ describe('fs-extra-safe', () => {
 
   describe('ensureDirSync', () => {
     it('should create directory synchronously', () => {
-      const mockFs = jest.requireMock('fs') as { mkdirSync: jest.Mock };
-      const mkdirSyncMock = mockFs.mkdirSync;
+      const mkdirSyncMock = mockFsModule.mkdirSync;
       mkdirSyncMock.mockImplementation(() => {});
       
       expect(() => ensureDirSync('/test/directory')).not.toThrow();
@@ -718,10 +744,9 @@ describe('fs-extra-safe', () => {
     });
 
     it('should handle EEXIST error gracefully', () => {
-      const mockFs = jest.requireMock('fs') as { mkdirSync: jest.Mock };
-      const mkdirSyncMock = mockFs.mkdirSync;
-      const existsError = new Error('EEXIST: file already exists');
-      (existsError as unknown).code = 'EEXIST';
+      const mkdirSyncMock = mockFsModule.mkdirSync;
+      const existsError = new Error('EEXIST: file already exists') as NodeJS.ErrnoException;
+      existsError.code = 'EEXIST';
       mkdirSyncMock.mockImplementation(() => {
         throw existsError;
       });
@@ -730,15 +755,81 @@ describe('fs-extra-safe', () => {
     });
 
     it('should throw non-EEXIST errors', () => {
-      const mockFs = jest.requireMock('fs') as { mkdirSync: jest.Mock };
-      const mkdirSyncMock = mockFs.mkdirSync;
-      const permissionError = new Error('EACCES: permission denied');
-      (permissionError as unknown).code = 'EACCES';
+      const mkdirSyncMock = mockFsModule.mkdirSync;
+      const permissionError = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
+      permissionError.code = 'EACCES';
       mkdirSyncMock.mockImplementation(() => {
         throw permissionError;
       });
       
       expect(() => ensureDirSync('/protected/directory')).toThrow('EACCES: permission denied');
     });
+  });
+
+  describe('Additional Branch Coverage', () => {
+    it('should handle pathExists with ENOENT error', async () => {
+      // Force fallback mode to use Node.js access
+      (safeFs as unknown as SafeFsWithPrivates).fallbackMode = true;
+      
+      const accessMock = mockFsModule.promises.access;
+      const noentError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      noentError.code = 'ENOENT';
+      accessMock.mockRejectedValueOnce(noentError);
+      
+      const exists = await pathExists('/nonexistent/file');
+      expect(exists).toBe(false);
+    });
+
+    it('should handle pathExists returning true when file exists', async () => {
+      // Force fallback mode to use Node.js access
+      (safeFs as unknown as SafeFsWithPrivates).fallbackMode = true;
+      
+      const accessMock = mockFsModule.promises.access;
+      accessMock.mockResolvedValueOnce(undefined);
+      
+      const exists = await pathExists('/existing/file');
+      expect(exists).toBe(true);
+    });
+
+
+    it('should handle copy with source not existing', async () => {
+      // Force fallback mode to use Node.js copyFile
+      (safeFs as unknown as SafeFsWithPrivates).fallbackMode = true;
+      
+      const copyFileMock = mockFsModule.promises.copyFile;
+      const noentError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      noentError.code = 'ENOENT';
+      copyFileMock.mockRejectedValueOnce(noentError);
+      
+      await expect(copy('/nonexistent/source', '/dest'))
+        .rejects.toThrow('ENOENT: no such file or directory');
+    });
+
+
+    it('should handle move with source not existing', async () => {
+      // Force fallback mode to use Node.js rename
+      (safeFs as unknown as SafeFsWithPrivates).fallbackMode = true;
+      
+      const renameMock = mockFsModule.promises.rename;
+      const noentError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      noentError.code = 'ENOENT';
+      renameMock.mockRejectedValueOnce(noentError);
+      
+      await expect(move('/nonexistent/source', '/dest'))
+        .rejects.toThrow('ENOENT: no such file or directory');
+    });
+
+
+    it('should handle remove with path not existing', async () => {
+      const statMock = mockFsModule.promises.stat;
+      const noentError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      noentError.code = 'ENOENT';
+      statMock.mockRejectedValueOnce(noentError);
+      
+      // Should not throw when removing non-existent path
+      await expect(remove('/nonexistent/path')).resolves.toBeUndefined();
+    });
+
+
   });
 });

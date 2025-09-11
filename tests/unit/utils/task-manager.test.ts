@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { Stats } from 'fs';
 import {
   getAgentTasks,
   getAllAgents,
@@ -104,7 +105,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:30:00Z'),
         mtime: new Date('2025-01-01T12:35:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as unknown);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'test-agent');
 
@@ -183,7 +184,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as unknown);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'test-agent');
 
@@ -526,7 +527,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as unknown);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'special-chars-agent');
 
@@ -564,7 +565,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as unknown);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'symlink-agent');
 
@@ -616,7 +617,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as unknown);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'memory-pressure-agent');
 

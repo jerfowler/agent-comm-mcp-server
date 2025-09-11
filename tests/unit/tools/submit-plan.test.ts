@@ -5,7 +5,7 @@
 import { jest } from '@jest/globals';
 import { submitPlan } from '../../../src/tools/submit-plan.js';
 import { TaskContextManager, PlanSubmissionResult } from '../../../src/core/TaskContextManager.js';
-import { AgentCommError } from '../../../src/types.js';
+import { AgentCommError, ServerConfig } from '../../../src/types.js';
 import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
 
@@ -58,9 +58,9 @@ describe('submit-plan tool', () => {
     };
 
     const mockInstance = {
-      submitPlan: jest.fn<() => Promise<PlanSubmissionResult>>().mockResolvedValue(mockResult)
+      submitPlan: jest.fn().mockResolvedValue(mockResult as never)
     };
-    MockedTaskContextManager.mockImplementation(() => mockInstance as unknown as TaskContextManager);
+    (MockedTaskContextManager as unknown as jest.Mock).mockImplementation(() => mockInstance);
 
     const args = {
       content: `# Test Plan

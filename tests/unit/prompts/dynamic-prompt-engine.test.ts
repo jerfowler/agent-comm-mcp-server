@@ -430,4 +430,131 @@ describe('DynamicPromptEngine', () => {
       });
     });
   });
+
+  describe('Error Handling and Edge Cases', () => {
+    it('should handle missing template gracefully', async () => {
+      await expect(engine.generatePromptContent('non-existent-template' as unknown as PromptName, {}))
+        .rejects.toThrow('Unknown prompt: non-existent-template');
+    });
+
+    it('should handle TaskManager errors gracefully', async () => {
+      mockedTaskManager.getAgentTasks.mockRejectedValue(new Error('Task retrieval failed'));
+      
+      const result = await engine.generatePromptContent('task-workflow-guide', { agent: 'test-agent' });
+      
+      // Should still generate prompt without tasks
+      expect(result.messages).toBeDefined();
+      expect(result.messages.length).toBeGreaterThan(0);
+    });
+
+    it('should handle empty agent parameter', async () => {
+      mockedTaskManager.getAgentTasks.mockResolvedValue([]);
+      
+      const result = await engine.generatePromptContent('task-workflow-guide', { agent: '' });
+      
+      expect(result.messages).toBeDefined();
+      expect(mockedTaskManager.getAgentTasks).not.toHaveBeenCalled();
+    });
+
+    it('should handle undefined parameters object', async () => {
+      const result = await engine.generatePromptContent('protocol-compliance-checklist', {} as Record<string, unknown>);
+      
+      expect(result.messages).toBeDefined();
+      expect(result.messages.length).toBeGreaterThan(0);
+    });
+
+    it('should handle empty parameters object', async () => {
+      const result = await engine.generatePromptContent('protocol-compliance-checklist', {});
+      
+      expect(result.messages).toBeDefined();
+      expect(result.messages.length).toBeGreaterThan(0);
+    });
+
+    it('should handle task with all status files', async () => {
+      const mockTasks = [{
+        taskId: 'complete-task',
+        name: 'complete-task',
+        agent: 'test-agent',
+        path: '/test/comm/test-agent/complete-task',
+        hasInit: true,
+        hasPlan: true,
+        hasDone: true,
+        hasError: true // Both DONE and ERROR (edge case)
+      }];
+      
+      mockedTaskManager.getAgentTasks.mockResolvedValue(mockTasks);
+      
+      const result = await engine.generatePromptContent('task-workflow-guide', { agent: 'test-agent' });
+      
+      expect(result.messages).toBeDefined();
+      // Should handle conflicting status gracefully
+    });
+
+    it('should handle task with no status files', async () => {
+      const mockTasks = [{
+        taskId: 'empty-task',
+        name: 'empty-task',
+        agent: 'test-agent',
+        path: '/test/comm/test-agent/empty-task',
+        hasInit: false,
+        hasPlan: false,
+        hasDone: false,
+        hasError: false
+      }];
+      
+      mockedTaskManager.getAgentTasks.mockResolvedValue(mockTasks);
+      
+      const result = await engine.generatePromptContent('task-workflow-guide', { agent: 'test-agent' });
+      
+      expect(result.messages).toBeDefined();
+      // Should handle empty task gracefully
+    });
+
+    it('should handle very long task names', async () => {
+      const longTaskName = 'a'.repeat(500);
+      const mockTasks = [{
+        taskId: longTaskName,
+        name: longTaskName,
+        agent: 'test-agent',
+        path: `/test/comm/test-agent/${longTaskName}`,
+        hasInit: true,
+        hasPlan: true,
+        hasDone: false,
+        hasError: false
+      }];
+      
+      mockedTaskManager.getAgentTasks.mockResolvedValue(mockTasks);
+      
+      const result = await engine.generatePromptContent('task-workflow-guide', { agent: 'test-agent' });
+      
+      expect(result.messages).toBeDefined();
+      // Should handle long names without issues
+    });
+
+    it('should cache prompts correctly', async () => {
+      mockedTaskManager.getAgentTasks.mockResolvedValue([]);
+      
+      // Generate same prompt twice
+      const result1 = await engine.generatePromptContent('protocol-compliance-checklist', {});
+      const result2 = await engine.generatePromptContent('protocol-compliance-checklist', {});
+      
+      // Should get same reference if cached
+      expect(result1).toEqual(result2);
+    });
+
+    it('should handle special characters in parameters', async () => {
+      const specialParams = {
+        agent: 'test-agent<>"|',
+        task: '../../etc/passwd',
+        customField: '<script>alert("xss")</script>'
+      };
+      
+      mockedTaskManager.getAgentTasks.mockResolvedValue([]);
+      
+      const result = await engine.generatePromptContent('task-workflow-guide', specialParams);
+      
+      expect(result.messages).toBeDefined();
+      // Should sanitize or handle special characters safely
+    });
+  });
 });

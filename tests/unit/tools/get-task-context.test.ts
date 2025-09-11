@@ -7,6 +7,7 @@ import { getTaskContext } from '../../../src/tools/get-task-context.js';
 import { TaskContextManager, TaskContext } from '../../../src/core/TaskContextManager.js';
 import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
+import { ServerConfig } from '../../../src/types.js';
 
 // Mock dependencies
 jest.mock('../../../src/core/TaskContextManager.js');
@@ -54,9 +55,9 @@ describe('get-task-context tool', () => {
     };
 
     const mockInstance = {
-      getTaskContext: jest.fn<() => Promise<TaskContext>>().mockResolvedValue(mockContext)
+      getTaskContext: jest.fn().mockResolvedValue(mockContext as never)
     };
-    MockedTaskContextManager.mockImplementation(() => mockInstance as unknown as TaskContextManager);
+    (MockedTaskContextManager as unknown as jest.Mock).mockImplementation(() => mockInstance);
 
     const args = {
       taskId: 'test-task-id',
