@@ -72,7 +72,7 @@ describe('Check Tasks Tool', () => {
     // Setup TaskContextManager mock
     mockContextManager = {
       checkAssignedTasks: jest.fn<() => Promise<TaskSummary[]>>().mockResolvedValue(mockTaskSummaries)
-    } as any;
+    } as unknown as jest.Mocked<TaskContextManager>;
     
     MockTaskContextManager.mockImplementation(() => mockContextManager);
   });
@@ -292,7 +292,7 @@ describe('Check Tasks Tool', () => {
         taskId: `task-${index}`,
         title: `Task ${index}`,
         status: index % 4 === 0 ? 'new' : index % 4 === 1 ? 'in_progress' : index % 4 === 2 ? 'completed' : 'error'
-      })) as any;
+      })) as TaskSummary[];
       
       const args = { agent: 'large-agent' };
       mockContextManager.checkAssignedTasks.mockResolvedValue(largeTasks);

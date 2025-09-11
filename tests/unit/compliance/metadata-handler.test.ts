@@ -207,11 +207,11 @@ describe('MCP Metadata Handler Compliance', () => {
     });
 
     it('should handle metadata with circular references safely', () => {
-      const obj: any = { 'custom.field': 'value' };
-      obj.circular = obj;
+      const obj = { 'custom.field': 'value' } as Record<string, unknown>;
+      obj['circular'] = obj;
 
       // Should not throw, should handle gracefully
-      expect(() => validateMCPMeta(obj)).not.toThrow();
+      expect(() => validateMCPMeta(obj as Record<string, unknown>)).not.toThrow();
     });
 
     it('should handle very large metadata objects', () => {

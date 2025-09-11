@@ -12,6 +12,8 @@ import {
   cleanupArchives
 } from '../../../src/utils/task-manager.js';
 import { ServerConfig, ArchiveOptions } from '../../../src/types.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 describe('Task Manager Coverage Tests', () => {
   let testDir: string;
@@ -41,12 +43,12 @@ describe('Task Manager Coverage Tests', () => {
         getStatistics: jest.fn(),
         getConnectionCount: jest.fn(),
         hasConnection: jest.fn()
-      } as any,
+      } as unknown as ConnectionManager,
       eventLogger: {
         logOperation: jest.fn(),
         logError: jest.fn(),
         getOperationStatistics: jest.fn()
-      } as any
+      } as unknown as EventLogger
     };
 
     configDisabled = {

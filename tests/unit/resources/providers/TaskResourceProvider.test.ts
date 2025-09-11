@@ -4,10 +4,12 @@
  * Following MCP 2025-06-18 specification
  */
 
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { TaskResourceProvider } from '../../../../src/resources/providers/TaskResourceProvider.js';
 import { TaskContextManager } from '../../../../src/core/TaskContextManager.js';
+import { ConnectionManager } from '../../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../../src/logging/EventLogger.js';
-import type { Resource } from '@modelcontextprotocol/sdk/types.js';
+// Resource type is used for type checking in tests
 
 // Mock dependencies
 jest.mock('../../../../src/utils/fs-extra-safe.js', () => ({
@@ -34,8 +36,14 @@ describe('TaskResourceProvider', () => {
     mockEventLogger = new EventLogger('/test/logs') as jest.Mocked<EventLogger>;
     mockEventLogger.logOperation = jest.fn().mockResolvedValue(undefined);
     
+    const mockConnectionManager = new ConnectionManager() as jest.Mocked<ConnectionManager>;
+    
     mockTaskContextManager = new TaskContextManager(
-      { eventLogger: mockEventLogger } as any
+      { 
+        eventLogger: mockEventLogger, 
+        connectionManager: mockConnectionManager,
+        commDir: "./test-comm" 
+      }
     ) as jest.Mocked<TaskContextManager>;
     
     // Create provider instance
@@ -76,7 +84,7 @@ describe('TaskResourceProvider', () => {
       // Assert
       expect(resources).toHaveLength(3);
       expect(resources).toContainEqual(
-        expect.objectContaining<Resource>({
+        expect.objectContaining({
           uri: 'agent://senior-backend-engineer/tasks/2025-01-09T10-00-00-implement-feature',
           name: 'Task: implement-feature (PLAN)',
           mimeType: 'application/json',
@@ -84,7 +92,7 @@ describe('TaskResourceProvider', () => {
         })
       );
       expect(resources).toContainEqual(
-        expect.objectContaining<Resource>({
+        expect.objectContaining({
           uri: 'agent://senior-backend-engineer/tasks/2025-01-09T11-00-00-fix-bug',
           name: 'Task: fix-bug (DONE)',
           mimeType: 'application/json',
@@ -92,7 +100,7 @@ describe('TaskResourceProvider', () => {
         })
       );
       expect(resources).toContainEqual(
-        expect.objectContaining<Resource>({
+        expect.objectContaining({
           uri: 'agent://qa-test-automation-engineer/tasks/2025-01-09T12-00-00-write-tests',
           name: 'Task: write-tests (INIT)',
           mimeType: 'application/json',
@@ -169,7 +177,7 @@ describe('TaskResourceProvider', () => {
       };
       
       // Mock getTaskContext - it expects (taskId, connection) not (agent, taskId)
-      mockTaskContextManager.getTaskContext = jest.fn().mockImplementation((taskId: string, _connection: any) => {
+      mockTaskContextManager.getTaskContext = jest.fn().mockImplementation((taskId: string, _connection: unknown) => {
         if (taskId === '2025-01-09T10-00-00-implement-feature') {
           return Promise.resolve(mockTaskContext);
         }

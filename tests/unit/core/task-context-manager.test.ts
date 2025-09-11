@@ -350,8 +350,8 @@ Some additional notes here.
 `;
 
         // This test will FAIL initially because current implementation doesn't support checkbox format
-        // Interface for accessing private methods for testing
-        interface TaskContextManagerPrivate extends TaskContextManager {
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
           analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
         }
         const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
@@ -361,8 +361,8 @@ Some additional notes here.
 
       it('should handle empty or malformed content gracefully', () => {
         const emptyContent = '';
-        // Interface for accessing private methods for testing
-        interface TaskContextManagerPrivate extends TaskContextManager {
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
           analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
         }
         const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
@@ -388,8 +388,8 @@ Regular text line
 ## Section header
 - [x] **Final Valid**: Should count`;
 
-        // Interface for accessing private methods for testing
-        interface TaskContextManagerPrivate extends TaskContextManager {
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
           analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
         }
         const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
@@ -517,8 +517,8 @@ Test graceful handling of missing PLAN.md
 - [ ] **Documentation**: Write user documentation`;
 
         // This will FAIL initially because extractProgressMarkers doesn't exist
-        // Interface for accessing private methods for testing
-        interface TaskContextManagerPrivate extends TaskContextManager {
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
           extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
         }
         const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
@@ -531,8 +531,8 @@ Test graceful handling of missing PLAN.md
 
       it('should handle empty content', () => {
         const emptyContent = '';
-        // Interface for accessing private methods for testing
-        interface TaskContextManagerPrivate extends TaskContextManager {
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
           extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
         }
         const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
@@ -549,8 +549,8 @@ Test graceful handling of missing PLAN.md
 - [ ] Regular checkbox without bold: Should not be extracted
 - [x] **Another Valid Task**: Should be extracted`;
 
-        // Interface for accessing private methods for testing
-        interface TaskContextManagerPrivate extends TaskContextManager {
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
           extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
         }
         const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
@@ -634,8 +634,8 @@ Test complete end-to-end checkbox progress workflow
         expect(finalPlan).toContain('- [ ] **Phase 3**'); // Still pending
 
         // Step 6: Verify progress analysis still works
-        // Interface for accessing private methods for testing
-        interface TaskContextManagerPrivate extends TaskContextManager {
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
           analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
         }
         const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;

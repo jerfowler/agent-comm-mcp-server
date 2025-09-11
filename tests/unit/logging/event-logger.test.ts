@@ -462,8 +462,8 @@ describe('EventLogger', () => {
     it('should handle processWriteQueue early return when already writing', async () => {
       // Test coverage for line 272: early return in processWriteQueue
       
-      // Interface for accessing private properties for testing
-      interface EventLoggerPrivate extends EventLogger {
+      // Interface for accessing private properties for testing - don't extend, just define what we need
+      interface EventLoggerPrivate {
         isWriting: boolean;
         writeQueue: string[];
         processWriteQueue(): Promise<void>;
@@ -484,8 +484,8 @@ describe('EventLogger', () => {
     it('should handle empty write queue in processWriteQueue', async () => {
       // Test coverage for line 272: early return when queue is empty
       
-      // Interface for accessing private properties for testing
-      interface EventLoggerPrivate extends EventLogger {
+      // Interface for accessing private properties for testing - don't extend, just define what we need
+      interface EventLoggerPrivate {
         isWriting: boolean;
         writeQueue: string[];
         processWriteQueue(): Promise<void>;
@@ -950,8 +950,8 @@ describe('EventLogger', () => {
       const mockTimer = new MockTimerDependency();
       const testLogger = new EventLogger(testDir, mockTimer);
       
-      // Interface for accessing private properties for testing
-      interface EventLoggerPrivate extends EventLogger {
+      // Interface for accessing private properties for testing - don't extend, just define what we need
+      interface EventLoggerPrivate {
         writeQueue: string[];
         isWriting: boolean;
       }

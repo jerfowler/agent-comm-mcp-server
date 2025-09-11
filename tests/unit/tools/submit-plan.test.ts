@@ -6,6 +6,8 @@ import { jest } from '@jest/globals';
 import { submitPlan } from '../../../src/tools/submit-plan.js';
 import { TaskContextManager, PlanSubmissionResult } from '../../../src/core/TaskContextManager.js';
 import { AgentCommError } from '../../../src/types.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 // Mock dependencies
 jest.mock('../../../src/core/TaskContextManager.js');
@@ -28,13 +30,13 @@ describe('submit-plan tool', () => {
       cleanupStaleConnections: jest.fn(),
       getStatistics: jest.fn(),
       getConnectionCount: jest.fn(),
-      hasConnection: jest.fn()
-    } as any,
+        hasConnection: jest.fn()
+      } as unknown as ConnectionManager,
     eventLogger: {
       logOperation: jest.fn(),
       logError: jest.fn(),
-      getOperationStatistics: jest.fn()
-    } as any
+        getOperationStatistics: jest.fn()
+      } as unknown as EventLogger
   };
 
   beforeEach(() => {
@@ -58,7 +60,7 @@ describe('submit-plan tool', () => {
     const mockInstance = {
       submitPlan: jest.fn<() => Promise<PlanSubmissionResult>>().mockResolvedValue(mockResult)
     };
-    MockedTaskContextManager.mockImplementation(() => mockInstance as any);
+    MockedTaskContextManager.mockImplementation(() => mockInstance as unknown as TaskContextManager);
 
     const args = {
       content: `# Test Plan
@@ -176,7 +178,7 @@ Another paragraph that doesn't count as details.`,
       agent: 'test-agent'
     };
 
-    await expect(submitPlan(badConfig as any, args))
+    await expect(submitPlan(badConfig as unknown as ServerConfig, args))
       .rejects.toThrow('Configuration missing required components');
   });
 });

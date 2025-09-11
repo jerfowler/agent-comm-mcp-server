@@ -36,7 +36,7 @@ describe('Read Task Tool', () => {
 
     // Setup default validation mocks
     mockValidation.validateRequiredString.mockImplementation((value) => value as string);
-    mockValidation.validateTaskFileType.mockImplementation((value) => value as any);
+    mockValidation.validateTaskFileType.mockImplementation((value) => value as unknown as "INIT" | "PLAN" | "DONE" | "ERROR");
 
     // Setup default file system mocks
     mockFileSystem.readFile.mockResolvedValue(testUtils.sampleTaskContent);
@@ -293,7 +293,7 @@ describe('Read Task Tool', () => {
           if (value === null) {
             throw new InvalidTaskError('file must be one of: INIT, PLAN, DONE, ERROR', 'file');
           }
-          return value as any;
+          return value as unknown as "INIT" | "PLAN" | "DONE" | "ERROR";
         });
         
         await expect(readTask(mockConfig, testCase.args))
@@ -337,7 +337,7 @@ describe('Read Task Tool', () => {
           if (typeof value !== 'string') {
             throw new InvalidTaskError('file must be one of: INIT, PLAN, DONE, ERROR', 'file');
           }
-          return value as any;
+          return value as unknown as "INIT" | "PLAN" | "DONE" | "ERROR";
         });
         
         await expect(readTask(mockConfig, testCase.args))
@@ -535,7 +535,7 @@ describe('Read Task Tool', () => {
         file: 'INIT'
       };
       
-      mockFileSystem.parseTaskMetadata.mockReturnValue(undefined as any);
+      mockFileSystem.parseTaskMetadata.mockReturnValue(undefined as unknown as TaskMetadata | undefined);
       
       const result = await readTask(mockConfig, args);
 
@@ -596,7 +596,7 @@ describe('Read Task Tool', () => {
         source: 'extra-source',
         unknownField: 'unknown-value',
         anotherField: 123
-      } as any;
+      } as unknown as TaskMetadata;
       
       const args = {
         agent: 'test-agent',
@@ -754,7 +754,7 @@ describe('Read Task Tool', () => {
         resolveRead = resolve;
       });
       
-      const delayedStats = new Promise<any>((resolve) => {
+      const delayedStats = new Promise<Stats>((resolve) => {
         resolveStats = resolve;
       });
       

@@ -53,7 +53,7 @@ describe('ResourceManager', () => {
     mockConnectionManager = new ConnectionManager() as jest.Mocked<ConnectionManager>;
     
     mockTaskContextManager = new TaskContextManager(
-      { eventLogger: mockEventLogger, connectionManager: mockConnectionManager } as any
+      { eventLogger: mockEventLogger, connectionManager: mockConnectionManager, commDir: "./test-comm" } as ConstructorParameters<typeof TaskContextManager>[0]
     ) as jest.Mocked<TaskContextManager>;
     
     // Setup default methods
@@ -231,7 +231,7 @@ describe('ResourceManager', () => {
       
       // Mock getTaskContext to return the task context
       // Note: getTaskContext expects (taskId, connection) not (agent, taskId)
-      mockTaskContextManager.getTaskContext = jest.fn().mockImplementation((taskId: string, _connection: any) => {
+      mockTaskContextManager.getTaskContext = jest.fn().mockImplementation((taskId: string, _connection: unknown) => {
         if (taskId === 'task-123') {
           return Promise.resolve(mockTaskContent);
         }

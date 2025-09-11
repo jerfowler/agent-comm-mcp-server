@@ -712,21 +712,21 @@ describe('Todo Helpers', () => {
     });
 
     it('should reject non-array input', () => {
-      const result = validateTodoStructure("not an array" as any);
+      const result = validateTodoStructure("not an array" as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toEqual(["Todos must be an array"]);
     });
 
     it('should reject null input', () => {
-      const result = validateTodoStructure(null as any);
+      const result = validateTodoStructure(null as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toEqual(["Todos must be an array"]);
     });
 
     it('should reject undefined input', () => {
-      const result = validateTodoStructure(undefined as any);
+      const result = validateTodoStructure(undefined as unknown as TodoItem[]);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toEqual(["Todos must be an array"]);
@@ -744,7 +744,7 @@ describe('Todo Helpers', () => {
         { status: "pending", activeForm: "Working" }, // Missing content
         { content: "", status: "pending", activeForm: "Working" }, // Empty content
         { content: 123, status: "pending", activeForm: "Working" } // Non-string content
-      ] as any;
+      ] as unknown;
 
       const result = validateTodoStructure(invalidTodos);
 
@@ -759,7 +759,7 @@ describe('Todo Helpers', () => {
         { content: "Valid", status: "pending" }, // Missing activeForm
         { content: "Valid", status: "pending", activeForm: "" }, // Empty activeForm
         { content: "Valid", status: "pending", activeForm: 123 } // Non-string activeForm
-      ] as any;
+      ] as unknown;
 
       const result = validateTodoStructure(invalidTodos);
 
@@ -774,7 +774,7 @@ describe('Todo Helpers', () => {
         { content: "Valid", activeForm: "Working" }, // Missing status
         { content: "Valid", status: "invalid_status", activeForm: "Working" }, // Invalid status
         { content: "Valid", status: 123, activeForm: "Working" } // Non-string status
-      ] as any;
+      ] as unknown;
 
       const result = validateTodoStructure(invalidTodos);
 
@@ -828,7 +828,7 @@ describe('Todo Helpers', () => {
         { content: "", activeForm: "", status: "invalid" }, // Multiple errors
         { content: "Valid", status: "in_progress", activeForm: "Valid" }, // Valid
         { content: "Valid", status: "in_progress", activeForm: "Valid" } // Duplicate in_progress
-      ] as any;
+      ] as unknown;
 
       const result = validateTodoStructure(invalidTodos);
 
@@ -843,7 +843,7 @@ describe('Todo Helpers', () => {
     it('should handle edge case with whitespace-only strings', () => {
       const invalidTodos = [
         { content: "   ", status: "pending", activeForm: "   " }
-      ] as any;
+      ] as unknown;
 
       const result = validateTodoStructure(invalidTodos);
 
@@ -916,7 +916,7 @@ describe('Todo Helpers', () => {
       const invalidTodos = [
         { content: "Valid", status: "in_progress", activeForm: "Working" },
         { content: "Invalid", status: "in_progress", activeForm: "Working" }
-      ] as any;
+      ] as unknown;
 
       const validation = validateTodoStructure(invalidTodos);
       expect(validation.isValid).toBe(false);

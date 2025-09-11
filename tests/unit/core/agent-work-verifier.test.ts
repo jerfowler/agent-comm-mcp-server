@@ -11,6 +11,7 @@ import {
 import { ServerConfig } from '../../../src/types.js';
 import * as fs from '../../../src/utils/file-system.js';
 import { testUtils } from '../../utils/testUtils.js';
+import type { Stats } from 'fs';
 
 // Mock the file-system module
 jest.mock('../../../src/utils/file-system.js', () => ({
@@ -77,7 +78,7 @@ describe('Agent Work Verifier', () => {
       mockFs.getStats.mockImplementation((_path: string) => {
         return Promise.resolve(testUtils.createMockStats({
           mtime: recentTime
-        }) as any);
+        }) as fs.Stats);
       });
 
       mockFs.readFile.mockResolvedValue('- [x] Task completed\n- [x] Another task\n- [ ] Remaining task');
@@ -115,18 +116,18 @@ describe('Agent Work Verifier', () => {
               mtime: new Date(Date.now() - 60 * 60 * 1000),
               isDirectory: () => true,
               isFile: () => false
-            }) as any);
+            }) as Stats);
           }
           if (path.includes('task2')) {
             return Promise.resolve(testUtils.createMockStats({
               mtime: recentTime,
               isDirectory: () => true,
               isFile: () => false
-            }) as any);
+            }) as Stats);
           }
           return Promise.resolve(testUtils.createMockStats({
             mtime: recentTime
-          }) as any);
+          }) as Stats);
         });
 
       mockFs.readFile.mockResolvedValue('- [x] Task completed');
@@ -159,35 +160,35 @@ describe('Agent Work Verifier', () => {
             mtime: recentTime,
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for task files with different timestamps
         if (path.includes('PLAN.md')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(baseTime - 45 * 60 * 1000) // 45 min ago
-          }) as any);
+          }) as Stats);
         }
         if (path.includes('file1.js')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(baseTime - 30 * 60 * 1000) // 30 min ago
-          }) as any);
+          }) as Stats);
         }
         if (path.includes('file2.js')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(baseTime - 15 * 60 * 1000) // 15 min ago
-          }) as any);
+          }) as Stats);
         }
         if (path.includes('file3.js')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(baseTime - 5 * 60 * 1000) // 5 min ago
-          }) as any);
+          }) as Stats);
         }
         
         // Default file stats
         return Promise.resolve(testUtils.createMockStats({
           mtime: recentTime
-        }) as any);
+        }) as fs.Stats);
       });
 
       mockFs.readFile.mockResolvedValue(`
@@ -226,13 +227,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago, not recent
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for files
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date(Date.now() - 3 * 60 * 60 * 1000) // 3 hours ago, not recent
-        }) as any);
+        }) as Stats);
       });
 
       mockFs.readFile.mockResolvedValue('# Initial setup');
@@ -259,13 +260,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(),
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for files
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date()
-        }) as any);
+        }) as Stats);
       });
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
@@ -291,13 +292,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(),
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for other paths
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date()
-        }) as any);
+        }) as Stats);
       });
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
@@ -332,13 +333,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(),
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for files
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date()
-        }) as any);
+        }) as Stats);
       });
 
       mockFs.readFile.mockResolvedValue('# Plan without progress markers');
@@ -366,13 +367,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(),
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for files
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date()
-        }) as any);
+        }) as Stats);
       });
 
       mockFs.readFile.mockResolvedValue(`
@@ -414,30 +415,30 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(baseTime),
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats with specific timestamps for each file
         if (path.includes('file1.js')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(baseTime - 45 * 60 * 1000) // 45 min ago
-          }) as any);
+          }) as Stats);
         }
         if (path.includes('file2.js')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(baseTime - 30 * 60 * 1000) // 30 min ago
-          }) as any);
+          }) as Stats);
         }
         if (path.includes('file3.js')) {
           return Promise.resolve(testUtils.createMockStats({
             mtime: new Date(baseTime - 5 * 60 * 1000) // 5 min ago
-          }) as any);
+          }) as Stats);
         }
         
         // Default file stats
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date(baseTime)
-        }) as any);
+        }) as Stats);
       });
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
@@ -465,7 +466,7 @@ describe('Agent Work Verifier', () => {
         
         return Promise.resolve(testUtils.createMockStats({
           mtime: times[fileCounter - 1]
-        }) as any);
+        }) as fs.Stats);
       });
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
@@ -491,7 +492,7 @@ describe('Agent Work Verifier', () => {
           mtime: new Date(),
           isDirectory: () => true,
           isFile: () => false
-        }) as any);
+        }) as Stats);
       });
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
@@ -524,13 +525,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(), // NEED valid mtime to pass findActiveTaskPath condition
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for files - these can have undefined mtime for time tracking test
         return Promise.resolve(testUtils.createMockStats({
-          mtime: undefined as any // No modification time for files only
-        }) as any);
+          mtime: undefined as unknown // No modification time for files only
+        }) as fs.Stats);
       });
 
       const result = await verifyAgentWork(mockConfig, 'test-agent');
@@ -565,7 +566,7 @@ describe('Agent Work Verifier', () => {
           mtime: new Date(),
           isDirectory: () => isDirectory,
           isFile: () => !isDirectory
-        }) as any);
+        }) as Stats);
       });
 
       mockFs.readFile.mockResolvedValue('- [x] Some work');
@@ -601,13 +602,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(),
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for files
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date()
-        }) as any);
+        }) as Stats);
       });
 
       mockFs.readFile.mockResolvedValue('# Plan exists');
@@ -641,13 +642,13 @@ describe('Agent Work Verifier', () => {
             mtime: new Date(),
             isDirectory: () => true,
             isFile: () => false
-          }) as any);
+          }) as Stats);
         }
         
         // Return file stats for files
         return Promise.resolve(testUtils.createMockStats({
           mtime: new Date()
-        }) as any);
+        }) as Stats);
       });
 
       mockFs.readFile.mockResolvedValue('- [x] Step 1\n- [x] Step 2\n- [ ] Step 3');

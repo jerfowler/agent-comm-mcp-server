@@ -6,6 +6,8 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { getServerInfo } from '../../../src/tools/get-server-info.js';
 import { ServerConfig } from '../../../src/types.js';
 import { PACKAGE_INFO } from '../../../src/generated/version.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 // Mock process for environment variables
 const mockProcess = {
@@ -38,12 +40,12 @@ describe('get-server-info tool', () => {
         getStatistics: jest.fn(),
         getConnectionCount: jest.fn(),
         hasConnection: jest.fn()
-      } as any,
+      } as unknown as ConnectionManager,
       eventLogger: {
         logOperation: jest.fn(),
         logError: jest.fn(),
         getOperationStatistics: jest.fn()
-      } as any
+      } as unknown as EventLogger
     };
 
     // Mock process.uptime

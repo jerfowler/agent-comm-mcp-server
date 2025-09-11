@@ -320,6 +320,62 @@ describe('LockManager (TDD)', () => {
   });
 
   describe('Error Handling and Edge Cases', () => {
+    it('should handle missing directory when checking lock', async () => {
+      mockedFs.pathExists.mockResolvedValue(false as never);
+
+      const status = await lockManager.checkLock(testBaseDir);
+      expect(status.isLocked).toBe(false);
+      expect(status.lockInfo).toBeNull();
+    });
+
+    it('should handle error when reading lock file', async () => {
+      mockedFs.pathExists.mockResolvedValue(true as never);
+      mockedFs.stat.mockResolvedValue({ mtime: new Date() } as never);
+      mockedFs.readFile.mockRejectedValue(new Error('EACCES: permission denied') as never);
+
+      // When readFile fails, the implementation treats it as a malformed lock file
+      // and returns a result indicating no lock
+      const result = await lockManager.checkLock(testBaseDir);
+      expect(result.isLocked).toBe(false);
+      expect(result.lockInfo).toBeNull();
+      expect(result.isStale).toBe(false);
+    });
+
+    it('should handle stat error for lock file', async () => {
+      mockedFs.pathExists.mockResolvedValue(true as never);
+      mockedFs.stat.mockRejectedValue(new Error('EACCES: permission denied') as never);
+
+      await expect(lockManager.checkLock(testBaseDir)).rejects.toThrow('Failed to check lock');
+    });
+
+    it('should handle cleanup with no directory', async () => {
+      mockedFs.readdir.mockRejectedValue(new Error('ENOENT: no such file or directory') as never);
+
+      const result = await lockManager.cleanupStaleLocks(testBaseDir);
+
+      expect(result.cleaned).toBe(false);
+      expect(result.removedFiles).toHaveLength(0);
+    });
+
+    it('should handle cleanup with permission error', async () => {
+      mockedFs.readdir.mockRejectedValue(new Error('EACCES: permission denied') as never);
+
+      const result = await lockManager.cleanupStaleLocks(testBaseDir);
+
+      expect(result.cleaned).toBe(false);
+      expect(result.removedFiles).toHaveLength(0);
+    });
+
+    it('should handle stat error during cleanup', async () => {
+      mockedFs.readdir.mockResolvedValue(['.sync.lock'] as never);
+      mockedFs.pathExists.mockResolvedValue(true as never);
+      mockedFs.stat.mockRejectedValue(new Error('EACCES: permission denied') as never);
+
+      const result = await lockManager.cleanupStaleLocks(testBaseDir);
+
+      expect(result.cleaned).toBe(false);
+      expect(result.removedFiles).toHaveLength(0);
+    });
 
     it('should handle permission errors', async () => {
       mockedFs.pathExists.mockResolvedValue(false as never);
@@ -396,6 +452,69 @@ describe('LockManager (TDD)', () => {
       mockedFs.stat.mockResolvedValueOnce({ mtime: staleTime } as never);
       status = await defaultLockManager.checkLock(testBaseDir);
       expect(status.isStale).toBe(true);
+    });
+
+    it('should handle lock file with empty content', async () => {
+      mockedFs.pathExists.mockResolvedValue(true as never);
+      mockedFs.stat.mockResolvedValue({ mtime: new Date() } as never);
+      mockedFs.readFile.mockResolvedValue('{}' as never);
+
+      const status = await lockManager.checkLock(testBaseDir);
+
+      expect(status.isLocked).toBe(true);
+      expect(status.lockInfo).toEqual({});
+    });
+
+    it('should handle lock file with partial data', async () => {
+      mockedFs.pathExists.mockResolvedValue(true as never);
+      mockedFs.stat.mockResolvedValue({ mtime: new Date() } as never);
+      mockedFs.readFile.mockResolvedValue(JSON.stringify({ tool: 'test' }) as never);
+
+      const status = await lockManager.checkLock(testBaseDir);
+
+      expect(status.isLocked).toBe(true);
+      expect(status.lockInfo).toEqual({ tool: 'test' });
+    });
+
+    it('should handle cleanup with mixed stale and fresh locks', async () => {
+      const lockFiles = ['.sync.lock', '.progress.lock', '.other.lock'];
+      const staleTime = new Date(Date.now() - 35000);
+      const freshTime = new Date();
+
+      mockedFs.readdir.mockResolvedValue(lockFiles as never);
+      mockedFs.pathExists.mockResolvedValue(true as never);
+      
+      // First lock is stale, second is fresh, third is stale
+      mockedFs.stat
+        .mockResolvedValueOnce({ mtime: staleTime } as never)
+        .mockResolvedValueOnce({ mtime: freshTime } as never)
+        .mockResolvedValueOnce({ mtime: staleTime } as never);
+
+      const result = await lockManager.cleanupStaleLocks(testBaseDir);
+
+      expect(result.cleaned).toBe(true);
+      expect(result.removedFiles).toHaveLength(2);
+      expect(result.removedFiles).toContain(path.join(testBaseDir, '.sync.lock'));
+      expect(result.removedFiles).toContain(path.join(testBaseDir, '.other.lock'));
+      expect(result.removedFiles).not.toContain(path.join(testBaseDir, '.progress.lock'));
+      expect(mockedFs.remove).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle non-lock files in directory during cleanup', async () => {
+      const files = ['regular-file.txt', '.sync.lock', 'another-file.json'];
+      const staleTime = new Date(Date.now() - 35000);
+
+      mockedFs.readdir.mockResolvedValue(files as never);
+      mockedFs.pathExists.mockResolvedValue(true as never);
+      mockedFs.stat.mockResolvedValue({ mtime: staleTime } as never);
+
+      const result = await lockManager.cleanupStaleLocks(testBaseDir);
+
+      // Should only process .lock files
+      expect(result.cleaned).toBe(true);
+      expect(result.removedFiles).toHaveLength(1);
+      expect(result.removedFiles).toContain(path.join(testBaseDir, '.sync.lock'));
+      expect(mockedFs.remove).toHaveBeenCalledTimes(1);
     });
   });
 });

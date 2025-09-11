@@ -5,6 +5,8 @@
 import { jest } from '@jest/globals';
 import { getTaskContext } from '../../../src/tools/get-task-context.js';
 import { TaskContextManager, TaskContext } from '../../../src/core/TaskContextManager.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 // Mock dependencies
 jest.mock('../../../src/core/TaskContextManager.js');
@@ -27,13 +29,13 @@ describe('get-task-context tool', () => {
       cleanupStaleConnections: jest.fn(),
       getStatistics: jest.fn(),
       getConnectionCount: jest.fn(),
-      hasConnection: jest.fn()
-    } as any,
+        hasConnection: jest.fn()
+      } as unknown as ConnectionManager,
     eventLogger: {
       logOperation: jest.fn(),
       logError: jest.fn(),
-      getOperationStatistics: jest.fn()
-    } as any
+        getOperationStatistics: jest.fn()
+      } as unknown as EventLogger
   };
 
   beforeEach(() => {
@@ -54,7 +56,7 @@ describe('get-task-context tool', () => {
     const mockInstance = {
       getTaskContext: jest.fn<() => Promise<TaskContext>>().mockResolvedValue(mockContext)
     };
-    MockedTaskContextManager.mockImplementation(() => mockInstance as any);
+    MockedTaskContextManager.mockImplementation(() => mockInstance as unknown as TaskContextManager);
 
     const args = {
       taskId: 'test-task-id',
@@ -95,7 +97,7 @@ describe('get-task-context tool', () => {
       agent: 'test-agent'
     };
 
-    await expect(getTaskContext(badConfig as any, args))
+    await expect(getTaskContext(badConfig as unknown as ServerConfig, args))
       .rejects.toThrow('Configuration missing required components');
   });
 });

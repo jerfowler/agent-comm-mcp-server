@@ -9,6 +9,7 @@ import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
 import * as taskManager from '../../../src/utils/task-manager.js';
 import * as fs from '../../../src/utils/fs-extra-safe.js';
+import type { PromptName } from '../../../src/prompts/types.js';
 
 // Mock dependencies
 jest.mock('../../../src/utils/task-manager.js');
@@ -380,13 +381,13 @@ describe('DynamicPromptEngine', () => {
 
     it('should handle invalid prompt names', async () => {
       await expect(
-        engine.generatePromptContent('invalid-prompt' as any, {})
+        engine.generatePromptContent('invalid-prompt' as unknown as PromptName, {})
       ).rejects.toThrow('Unknown prompt: invalid-prompt');
     });
 
     it('should validate argument types', async () => {
       await expect(
-        engine.generatePromptContent('task-workflow-guide', { agent: 123 as any })
+        engine.generatePromptContent('task-workflow-guide', { agent: 123 as unknown })
       ).rejects.toThrow('Invalid argument type');
     });
   });
