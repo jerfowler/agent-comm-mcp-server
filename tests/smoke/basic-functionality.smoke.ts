@@ -4,7 +4,7 @@
  * Target: <30 seconds total execution time
  */
 
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import * as os from 'os';
 import { getConfig } from '../../src/config.js';
@@ -181,14 +181,15 @@ describe('Smoke Tests - Basic Functionality', () => {
     });
 
     it('should handle missing environment variables gracefully', () => {
-      delete process.env['AGENT_COMM_DIR'];
+      // Resetting to undefined is preferred over delete for dynamic keys
+      process.env['AGENT_COMM_DIR'] = undefined as unknown as string;
       
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { getConfig } = require('../../src/config.js');
+      const { getConfig } = require('../../src/config.js') as { getConfig: () => unknown };
       
       // Should either use defaults or throw meaningful error
       try {
-        const config = (getConfig as () => unknown)();
+        const config = getConfig();
         expect(config).toBeDefined();
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
@@ -206,7 +207,7 @@ describe('Smoke Tests - Basic Functionality', () => {
         const { getConfig, validateConfig } = require('../../src/config.js') as { getConfig: () => unknown; validateConfig: (config: unknown) => void };
         const config = getConfig();
         
-        expect(() => validateConfig(config)).not.toThrow();
+        expect(() => { validateConfig(config); }).not.toThrow();
       } finally {
         await fs.remove(tempDir);
       }

@@ -5,7 +5,7 @@
  */
 
 import * as path from 'path';
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import { tmpdir } from 'os';
 
 // Import the critical file-system utilities that use fs.readdir
@@ -159,8 +159,8 @@ describe('File System Operations Regression Test', () => {
   describe('Import pattern validation', () => {
     it('CRITICAL: Verify correct fs-extra import pattern is used', () => {
       // This test validates that the source code uses the correct import pattern
-      // The correct pattern is: import fs from 'fs-extra'
-      // The incorrect pattern is: import * as fs from 'fs-extra'
+      // The correct pattern is: import fs from '../../src/utils/fs-extra-safe.js'
+      // The incorrect pattern is: import * as fs from '../../src/utils/fs-extra-safe.js'
       
       // If this test passes along with the functional tests above,
       // it confirms that the correct import pattern is being used
@@ -190,8 +190,8 @@ describe('File System Operations Regression Test', () => {
         await fs.chmod(restrictedDir, 0o755);
         
         // The function should handle the error gracefully
-        // Either return empty array or throw a meaningful error
-        expect(Array.isArray(result) || result === undefined).toBe(true);
+        // Return empty array or undefined on permission error
+        expect(Array.isArray(result)).toBe(true);
         
       } catch (error) {
         // Restore permissions even if test fails  
@@ -331,7 +331,8 @@ describe('File System Operations Regression Test', () => {
         const testData = { name: 'test', version: '1.0.0', items: [1, 2, 3] };
         
         // This would fail with "fs.writeJson is not a function" if import is wrong
-        await fs.writeJson(jsonFile, testData, { spaces: 2 });
+        // Note: fs-extra-safe writeJson doesn't support options parameter
+        await fs.writeJson(jsonFile, testData);
         
         // This would fail with "fs.readJson is not a function" if import is wrong
         const readData = await fs.readJson(jsonFile);

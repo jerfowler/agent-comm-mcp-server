@@ -158,7 +158,7 @@ async function findActiveTaskPath(
       const doneExists = await fs.pathExists(path.join(taskPath, 'DONE.md'));
       const errorExists = await fs.pathExists(path.join(taskPath, 'ERROR.md'));
       
-      if (!doneExists && !errorExists && stat.mtime && stat.mtime.getTime() > latestTime) {
+      if (!doneExists && !errorExists && stat.mtime.getTime() > latestTime) {
         latestTime = stat.mtime.getTime();
         activeTaskPath = taskPath;
       }
@@ -190,7 +190,7 @@ async function collectFileSystemEvidence(taskPath: string): Promise<FileSystemEv
       const filePath = path.join(taskPath, file);
       const stat = await fs.getStats(filePath);
       
-      if (stat.mtime && stat.mtime.getTime() > recentTime) {
+      if (stat.mtime.getTime() > recentTime) {
         fileModificationCount++;
         recentFileActivity = true;
       }
@@ -223,8 +223,8 @@ async function collectMCPProgressEvidence(taskPath: string): Promise<MCPProgress
       const planContent = await fs.readFile(planPath);
       
       // Check for progress markers in the plan
-      const checkedItems = (planContent.match(/^\s*-\s*\[x\]/gmi) || []).length;
-      const totalItems = (planContent.match(/^\s*-\s*\[[x\s]\]/gmi) || []).length;
+      const checkedItems = (planContent.match(/^\s*-\s*\[x\]/gmi) ?? []).length;
+      const totalItems = (planContent.match(/^\s*-\s*\[[x\s]\]/gmi) ?? []).length;
       
       if (totalItems > 0) {
         completionPercentage = (checkedItems / totalItems) * 100;
@@ -258,8 +258,7 @@ async function collectTimeTrackingEvidence(taskPath: string): Promise<TimeTracki
       );
       
       const timestamps = stats
-        .map(stat => stat.mtime?.getTime())
-        .filter((timestamp): timestamp is number => timestamp !== undefined)
+        .map(stat => stat.mtime.getTime())
         .sort();
 
       if (timestamps.length >= 2) {

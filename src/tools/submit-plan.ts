@@ -5,7 +5,7 @@
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, PlanSubmissionResult } from '../core/TaskContextManager.js';
-import { validateRequiredString } from '../utils/validation.js';
+import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
 
 interface PlanValidationResult {
@@ -22,7 +22,7 @@ function validatePlanFormat(content: string): PlanValidationResult {
   
   // Check for checkbox format: - [ ] **Title**: Description
   const checkboxRegex = /^- \[ \] \*\*[^:]+\*\*:/gm;
-  const checkboxes = content.match(checkboxRegex) || [];
+  const checkboxes = content.match(checkboxRegex) ?? [];
   
   // Require at least one checkbox
   if (checkboxes.length === 0) {
@@ -47,7 +47,7 @@ function validatePlanFormat(content: string): PlanValidationResult {
         const hasDetails = nextLines.some(l => l.trim().startsWith('-') && !l.trim().startsWith('- [ ]'));
         
         if (!hasDetails) {
-          const checkboxTitle = checkbox.match(/\*\*([^:]+)\*\*/)?.[1] || 'Unknown';
+          const checkboxTitle = checkbox.match(/\*\*([^:]+)\*\*/)?.[1] ?? 'Unknown';
           errors.push(`Checkbox "${checkboxTitle}" missing required detail points. Each checkbox must have 2-5 detail bullets.`);
         }
       }
@@ -68,8 +68,12 @@ export async function submitPlan(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<PlanSubmissionResult> {
+  // Validate configuration has required components
+  validateRequiredConfig(config);
+  
   const content = validateRequiredString(args['content'], 'content');
   const agent = validateRequiredString(args['agent'], 'agent');
+  const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
   
   // Validate plan format before submission
   const validation = validatePlanFormat(content);
@@ -95,22 +99,18 @@ export async function submitPlan(
     throw new AgentCommError(errorMessage, 'PLAN_FORMAT_INVALID');
   }
   
-  // Create connection for the agent
+  // Create connection for the agent with optional taskId
   const connection = {
-    id: `submit-plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `submit-plan-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     agent,
     startTime: new Date(),
     metadata: { 
       operation: 'submit-plan', 
       contentSize: content.length,
-      checkboxCount: validation.checkboxCount
+      checkboxCount: validation.checkboxCount,
+      ...(taskId && { taskId }) // Include taskId if provided
     }
   };
-  
-  // Ensure required components exist
-  if (!config.connectionManager || !config.eventLogger) {
-    throw new Error('Configuration missing required components: connectionManager and eventLogger');
-  }
   
   const contextManager = new TaskContextManager({
     commDir: config.commDir,

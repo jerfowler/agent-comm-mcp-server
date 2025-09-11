@@ -8,6 +8,9 @@
  * ESLint disabled for 'any' types - required for dynamic module loading fallback
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-restricted-syntax */
+
+import { Stats, MakeDirectoryOptions, Mode } from 'fs';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -24,7 +27,7 @@ export interface SafeFsInterface {
   readdir(dirPath: string): Promise<string[]>;
   writeFile(filePath: string, data: string): Promise<void>;
   readFile(filePath: string, encoding?: string): Promise<string>;
-  stat(filePath: string): Promise<{ isDirectory: () => boolean; mtime?: Date }>;
+  stat(filePath: string): Promise<Stats>;
   remove(filePath: string): Promise<void>;
   ensureDir(dirPath: string): Promise<void>;
 }
@@ -48,18 +51,36 @@ export interface FsExtraDiagnostics {
   error: string | undefined;
 }
 
+// Type for fs-extra module interface
+interface FsExtraModule {
+  pathExists: (filePath: string) => Promise<boolean>;
+  readdir: (dirPath: string) => Promise<string[]>;
+  writeFile: (filePath: string, data: string) => Promise<void>;
+  readFile: (filePath: string, encoding?: string) => Promise<string>;
+  stat: (filePath: string) => Promise<Stats>;
+  remove: (filePath: string) => Promise<void>;
+  ensureDir: (dirPath: string) => Promise<void>;
+  appendFile?: (filePath: string, data: string) => Promise<void>;
+  move?: (src: string, dest: string, options?: Record<string, unknown>) => Promise<void>;
+  copy?: (src: string, dest: string, options?: Record<string, unknown>) => Promise<void>;
+  mkdtemp?: (prefix: string) => Promise<string>;
+  mkdir?: (dirPath: string, options?: Mode | MakeDirectoryOptions | null) => Promise<void>;
+  chmod?: (filePath: string, mode: string | number) => Promise<void>;
+  utimes?: (filePath: string, atime: Date | number, mtime: Date | number) => Promise<void>;
+}
+
 /**
  * Internal class to handle multiple import strategies for fs-extra
  */
 class FsExtraImporter {
-  private importedFs: any = null;
+  private importedFs: FsExtraModule | null = null;
   private importMethod: FsExtraDiagnostics['importMethod'] = 'node-builtin';
   private importError: string | undefined;
 
   /**
    * Try multiple import strategies to get fs-extra
    */
-  async tryImportFsExtra(): Promise<any> {
+  async tryImportFsExtra(): Promise<FsExtraModule | null> {
     // Strategy 1: Try ES module import (current approach)
     try {
       const fsExtra = await import('fs-extra');
@@ -75,7 +96,7 @@ class FsExtraImporter {
     // Strategy 2: Try dynamic import with default
     try {
       const fsExtra = await import('fs-extra');
-      const fsExtraDefault = (fsExtra as any).default || fsExtra;
+      const fsExtraDefault = (fsExtra as { default?: FsExtraModule }).default ?? fsExtra;
       if (this.validateFsExtraModule(fsExtraDefault)) {
         this.importedFs = fsExtraDefault;
         this.importMethod = 'dynamic-import';
@@ -107,7 +128,7 @@ class FsExtraImporter {
   /**
    * Validate that an fs-extra module has the required methods
    */
-  private validateFsExtraModule(fsModule: any): boolean {
+  private validateFsExtraModule(fsModule: unknown): fsModule is FsExtraModule {
     if (!fsModule || typeof fsModule !== 'object') {
       return false;
     }
@@ -115,7 +136,7 @@ class FsExtraImporter {
     const requiredMethods = ['pathExists', 'readdir', 'writeFile', 'readFile', 'stat', 'remove', 'ensureDir'];
     
     for (const method of requiredMethods) {
-      if (typeof fsModule[method] !== 'function') {
+      if (typeof (fsModule as Record<string, unknown>)[method] !== 'function') {
         return false;
       }
     }
@@ -131,7 +152,7 @@ class FsExtraImporter {
     return this.importError;
   }
 
-  getImportedFs(): any {
+  getImportedFs(): FsExtraModule | null {
     return this.importedFs;
   }
 }
@@ -140,7 +161,7 @@ class FsExtraImporter {
  * Safe filesystem implementation with Node.js built-in fallbacks
  */
 class SafeFileSystem implements SafeFsInterface {
-  private fsExtra: any = null;
+  private fsExtra: FsExtraModule | null = null;
   private fallbackMode = false;
   private importer = new FsExtraImporter();
 
@@ -209,7 +230,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.writeFile) {
       try {
-        return await this.fsExtra.writeFile(filePath, data);
+        await this.fsExtra.writeFile(filePath, data);
+        return;
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.writeFile failed, using Node.js fallback: ${(error as Error).message}`);
@@ -220,7 +242,7 @@ class SafeFileSystem implements SafeFsInterface {
     await nodeFs.writeFile(filePath, data, 'utf8');
   }
 
-  async readFile(filePath: string, encoding: string = 'utf8'): Promise<string> {
+  async readFile(filePath: string, encoding = 'utf8'): Promise<string> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.readFile) {
@@ -236,7 +258,7 @@ class SafeFileSystem implements SafeFsInterface {
     return await nodeFs.readFile(filePath, { encoding: encoding as BufferEncoding });
   }
 
-  async stat(filePath: string): Promise<{ isDirectory: () => boolean; isFile: () => boolean; mtime: Date; mode: number; mtimeMs: number; size: number; birthtime: Date }> {
+  async stat(filePath: string): Promise<Stats> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.stat) {
@@ -249,16 +271,7 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback
-    const stats = await nodeFs.stat(filePath);
-    return {
-      isDirectory: () => stats.isDirectory(),
-      isFile: () => stats.isFile(),
-      mtime: stats.mtime,
-      mode: stats.mode,
-      mtimeMs: stats.mtimeMs,
-      size: stats.size,
-      birthtime: stats.birthtime
-    };
+    return await nodeFs.stat(filePath);
   }
 
   async remove(filePath: string): Promise<void> {
@@ -266,7 +279,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.remove) {
       try {
-        return await this.fsExtra.remove(filePath);
+        await this.fsExtra.remove(filePath);
+        return;
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.remove failed, using Node.js fallback: ${(error as Error).message}`);
@@ -283,7 +297,7 @@ class SafeFileSystem implements SafeFsInterface {
       }
     } catch (error) {
       // If file doesn't exist, that's fine for remove operation
-      if ((error as any).code !== 'ENOENT') {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         throw error;
       }
     }
@@ -294,7 +308,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.ensureDir) {
       try {
-        return await this.fsExtra.ensureDir(dirPath);
+        await this.fsExtra.ensureDir(dirPath);
+        return;
       } catch (error) {
         // Fallback to Node.js implementation if fs-extra fails
         console.warn(`fs-extra.ensureDir failed, using Node.js fallback: ${(error as Error).message}`);
@@ -310,7 +325,8 @@ class SafeFileSystem implements SafeFsInterface {
     
     if (!this.fallbackMode && this.fsExtra?.appendFile) {
       try {
-        return await this.fsExtra.appendFile(filePath, data);
+        await this.fsExtra.appendFile(filePath, data);
+        return;
       } catch (error) {
         console.warn(`fs-extra.appendFile failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -320,12 +336,13 @@ class SafeFileSystem implements SafeFsInterface {
     await nodeFs.appendFile(filePath, data, 'utf8');
   }
 
-  async move(src: string, dest: string, options?: any): Promise<void> {
+  async move(src: string, dest: string, options?: Record<string, unknown>): Promise<void> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.move) {
       try {
-        return await this.fsExtra.move(src, dest, options);
+        await this.fsExtra.move(src, dest, options);
+        return;
       } catch (error) {
         console.warn(`fs-extra.move failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -335,12 +352,13 @@ class SafeFileSystem implements SafeFsInterface {
     await nodeFs.rename(src, dest);
   }
 
-  async copy(src: string, dest: string, options?: any): Promise<void> {
+  async copy(src: string, dest: string, options?: Record<string, unknown>): Promise<void> {
     await this.ensureInitialized();
     
     if (!this.fallbackMode && this.fsExtra?.copy) {
       try {
-        return await this.fsExtra.copy(src, dest, options);
+        await this.fsExtra.copy(src, dest, options);
+        return;
       } catch (error) {
         console.warn(`fs-extra.copy failed, using Node.js fallback: ${(error as Error).message}`);
       }
@@ -348,6 +366,79 @@ class SafeFileSystem implements SafeFsInterface {
 
     // Node.js built-in fallback - copy file
     await nodeFs.copyFile(src, dest);
+  }
+
+
+  async mkdtemp(prefix: string): Promise<string> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.mkdtemp) {
+      try {
+        return await this.fsExtra.mkdtemp(prefix);
+      } catch (error) {
+        console.warn(`fs-extra.mkdtemp failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    return await nodeFs.mkdtemp(prefix);
+  }
+
+  async mkdir(dirPath: string, options?: Mode | MakeDirectoryOptions | null): Promise<void> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.mkdir) {
+      try {
+        await this.fsExtra.mkdir(dirPath, options);
+        return;
+      } catch (error) {
+        console.warn(`fs-extra.mkdir failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    if (typeof options === 'object' && options !== null) {
+      // options is MakeDirectoryOptions
+      await nodeFs.mkdir(dirPath, { recursive: true, ...options });
+    } else if (options !== null && options !== undefined) {
+      // options is a Mode (string/number)
+      await nodeFs.mkdir(dirPath, { recursive: true, mode: options });
+    } else {
+      // options is null/undefined
+      await nodeFs.mkdir(dirPath, { recursive: true });
+    }
+  }
+
+  async chmod(filePath: string, mode: string | number): Promise<void> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.chmod) {
+      try {
+        await this.fsExtra.chmod(filePath, mode);
+        return;
+      } catch (error) {
+        console.warn(`fs-extra.chmod failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    await nodeFs.chmod(filePath, mode);
+  }
+
+  async utimes(filePath: string, atime: Date | number, mtime: Date | number): Promise<void> {
+    await this.ensureInitialized();
+    
+    if (!this.fallbackMode && this.fsExtra?.utimes) {
+      try {
+        await this.fsExtra.utimes(filePath, atime, mtime);
+        return;
+      } catch (error) {
+        console.warn(`fs-extra.utimes failed, using Node.js fallback: ${(error as Error).message}`);
+      }
+    }
+
+    // Node.js built-in fallback
+    await nodeFs.utimes(filePath, atime, mtime);
   }
 
   /**
@@ -388,8 +479,23 @@ export const stat = (filePath: string) => safeFs.stat(filePath);
 export const remove = (filePath: string) => safeFs.remove(filePath);
 export const ensureDir = (dirPath: string) => safeFs.ensureDir(dirPath);
 export const appendFile = (filePath: string, data: string) => safeFs.appendFile(filePath, data);
-export const move = (src: string, dest: string, options?: any) => safeFs.move(src, dest, options);
-export const copy = (src: string, dest: string, options?: any) => safeFs.copy(src, dest, options);
+export const move = (src: string, dest: string, options?: Record<string, unknown>) => safeFs.move(src, dest, options);
+export const copy = (src: string, dest: string, options?: Record<string, unknown>) => safeFs.copy(src, dest, options);
+// JSON utility functions - always use Node.js built-in JSON methods
+export const readJSON = async (filePath: string): Promise<unknown> => {
+  const content = await readFile(filePath, 'utf8');
+  return JSON.parse(content);
+};
+export const readJson = readJSON; // Alias
+export const writeJSON = async (filePath: string, data: unknown): Promise<void> => {
+  const jsonStr = JSON.stringify(data, null, 2);
+  await writeFile(filePath, jsonStr);
+};
+export const writeJson = writeJSON; // Alias
+export const mkdtemp = (prefix: string) => safeFs.mkdtemp(prefix);
+export const mkdir = (dirPath: string, options?: Mode | MakeDirectoryOptions | null) => safeFs.mkdir(dirPath, options);
+export const chmod = (filePath: string, mode: string | number) => safeFs.chmod(filePath, mode);
+export const utimes = (filePath: string, atime: Date | number, mtime: Date | number) => safeFs.utimes(filePath, atime, mtime);
 
 // Synchronous version for backwards compatibility (used in server initialization)
 export const ensureDirSync = (dirPath: string) => {
@@ -397,7 +503,7 @@ export const ensureDirSync = (dirPath: string) => {
     mkdirSync(dirPath, { recursive: true });
   } catch (error) {
     // If directory already exists, that's fine
-    if ((error as any).code !== 'EEXIST') {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
       throw error;
     }
   }
@@ -406,16 +512,8 @@ export const ensureDirSync = (dirPath: string) => {
 // Export diagnostic function
 export const getFsExtraDiagnostics = () => safeFs.getDiagnostics();
 
-// Export Stats interface for compatibility
-export interface Stats {
-  isDirectory(): boolean;
-  isFile(): boolean;
-  mtime: Date;
-  mode: number;
-  mtimeMs: number;
-  size: number;
-  birthtime: Date;
-}
+// Export Stats interface for compatibility - now uses Node.js built-in type
+export { Stats };
 
 // Export the safe filesystem instance for advanced usage
 export { safeFs };

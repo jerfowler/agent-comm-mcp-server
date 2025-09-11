@@ -38,9 +38,9 @@ export async function archiveCompletedTasks(
     
     return {
       success: true,
-      archivedCount: result.archived?.total, // Keep undefined when missing (test expects undefined)
+      archivedCount: result.archived.total, // Keep undefined when missing (test expects undefined)
       timestamp: result.timestamp,
-      message: `Successfully archived ${result.archived?.total || 0} completed tasks`
+      message: `Successfully archived ${result.archived.total || 0} completed tasks`
     };
   } catch (error) {
     return {

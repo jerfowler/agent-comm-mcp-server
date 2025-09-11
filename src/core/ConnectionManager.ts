@@ -12,7 +12,7 @@ export interface Connection {
 }
 
 export class ConnectionManager {
-  private connections: Map<string, Connection> = new Map();
+  private connections = new Map<string, Connection>();
 
   /**
    * Register a new agent connection
@@ -71,7 +71,7 @@ export class ConnectionManager {
     let removedCount = 0;
 
     for (const [id, connection] of this.connections.entries()) {
-      const lastActivity = connection.lastActivity || connection.startTime;
+      const lastActivity = connection.lastActivity ?? connection.startTime;
       if (lastActivity < oneHourAgo) {
         this.connections.delete(id);
         removedCount++;

@@ -1,6 +1,5 @@
 # Agent Communication MCP Server
 
-[![npm version](https://badge.fury.io/js/%40jerfowler%2Fagent-comm-mcp-server.svg)](https://www.npmjs.com/package/@jerfowler/agent-comm-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/jerfowler/agent-comm-mcp-server)](https://github.com/jerfowler/agent-comm-mcp-server)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
@@ -61,6 +60,14 @@ npm install && npm run build
 
 ### Setup with Claude
 
+**Quick Setup:**
+```bash
+# Install and setup in one step
+npm install -g @jerfowler/agent-comm-mcp-server
+npm run setup  # Creates .mcp.json with all configured servers
+```
+
+**Manual Setup:**
 Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_config.json`):
 
 ```json
@@ -77,7 +84,7 @@ Add this to your Claude configuration file (`.mcp.json` or `claude_desktop_confi
 }
 ```
 
-That's it! Claude now has access to the agent communication tools.
+**🔒 Security Note:** Never commit API keys to git. The `.mcp.json` file is gitignored to protect sensitive credentials. Use `.mcp.json.example` as a template and `npm run setup` for easy configuration.
 
 ### Optional: TodoWrite Hook Integration
 
@@ -190,9 +197,10 @@ The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everythi
 **Context-Based Tools (5 tools):**
 - Get clean task context without file paths
 - Submit implementation plans with automatic validation
-- Report progress updates in real-time
+- Report progress updates in real-time  
 - Complete tasks with intelligent reconciliation
 - Batch cleanup operations
+- **NEW**: Optional `taskId` parameter support for targeting specific tasks
 
 **Diagnostic Tools (2 tools):**
 - Get complete lifecycle visibility for any task
@@ -287,6 +295,68 @@ The server is configurable via environment variables:
 | `AGENT_COMM_DISABLE_ARCHIVE` | Turn off archiving completely | `false` |
 
 For most users, the defaults work perfectly. The system creates directories automatically as needed.
+
+---
+
+## Filesystem Architecture
+
+The server implements a **robust dual-layer filesystem architecture** designed for reliable file operations with comprehensive error handling and cross-platform compatibility.
+
+### Architecture Overview
+
+```
+High-Level Operations (file-system.ts)
+    ↓ Validation & Error Handling
+Low-Level Operations (fs-extra-safe.ts)  
+    ↓ Fallback Mechanisms
+Node.js Built-in Modules (fs, path)
+    ↓ Cross-Platform Support
+Operating System Filesystem
+```
+
+### Layer Responsibilities
+
+**🎯 High-Level Layer (`src/utils/file-system.ts`)**
+- Task-focused operations with domain validation
+- Automatic directory creation for write operations
+- Meaningful error messages with context (FileNotFoundError, InvalidTaskError)
+- Task metadata parsing and validation utilities
+- Agent Communication Server specific functionality
+
+**⚙️ Low-Level Layer (`src/utils/fs-extra-safe.ts`)**
+- Direct filesystem operations with Node.js built-in fallbacks  
+- Handles fs-extra import issues and module resolution conflicts
+- Diagnostic capabilities and performance monitoring
+- Cross-platform reliability with multiple import strategies
+- Basic operations: pathExists, readdir, writeFile, readFile, stat, remove, ensureDir
+
+### Usage Guidelines
+
+**Use High-Level Layer when:**
+- Creating or managing agent tasks
+- Need validation (task names, agent names)
+- Want automatic directory creation
+- Need domain-specific error handling
+
+**Use Low-Level Layer when:**
+- Need direct filesystem control
+- Bulk operations like directory scanning
+- Require specific fs-extra features
+- Building custom filesystem utilities
+
+### Key Benefits
+
+**🛡️ Reliability**: Multi-strategy imports with Node.js fallbacks ensure operations work regardless of fs-extra installation status
+
+**🔒 Validation**: Comprehensive input validation prevents path traversal attacks and invalid task creation
+
+**🚀 Performance**: Optimized imports and caching reduce overhead while maintaining flexibility
+
+**🔧 Maintainability**: Clear separation of concerns makes the codebase easier to understand and extend
+
+**🌐 Cross-Platform**: Consistent behavior across Windows, macOS, and Linux environments
+
+This architecture ensures reliable filesystem operations while providing the flexibility needed for both simple task management and complex agent coordination workflows.
 
 ---
 

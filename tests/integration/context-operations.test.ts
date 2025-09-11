@@ -10,7 +10,7 @@
  */
 
 import * as path from 'path';
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import { tmpdir } from 'os';
 
 // Import context-based tools
@@ -274,9 +274,12 @@ Train and deploy machine learning model for user behavior prediction
       expect(task.title).toBe('ML Model Training');
       expect(task.status).toBe('in_progress');
       expect(task.progress).toBeDefined();
-      expect(task.progress!.completed).toBe(1);
-      expect(task.progress!.inProgress).toBe(0);
-      expect(task.progress!.pending).toBe(4);
+      if (!task.progress) {
+        throw new Error('Task progress not found');
+      }
+      expect(task.progress.completed).toBe(1);
+      expect(task.progress.inProgress).toBe(0);
+      expect(task.progress.pending).toBe(4);
     });
   });
 

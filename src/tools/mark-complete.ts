@@ -5,7 +5,7 @@
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, CompletionResult } from '../core/TaskContextManager.js';
-import { validateRequiredString } from '../utils/validation.js';
+import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { verifyAgentWork, DEFAULT_CONFIDENCE_THRESHOLD } from '../core/agent-work-verifier.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
@@ -38,7 +38,7 @@ interface ReconciledCompletion {
  */
 function extractUncheckedItems(content: string): string[] {
   const uncheckedRegex = /^- \[ \] \*\*([^:]+)\*\*:/gm;
-  const matches = content.match(uncheckedRegex) || [];
+  const matches = content.match(uncheckedRegex) ?? [];
   return matches.map(match => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
@@ -50,7 +50,7 @@ function extractUncheckedItems(content: string): string[] {
  */
 function extractCheckedItems(content: string): string[] {
   const checkedRegex = /^- \[x\] \*\*([^:]+)\*\*:/gmi;
-  const matches = content.match(checkedRegex) || [];
+  const matches = content.match(checkedRegex) ?? [];
   return matches.map(match => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
@@ -62,10 +62,11 @@ function extractCheckedItems(content: string): string[] {
  */
 async function validateCompletion(
   config: ServerConfig, 
-  agent: string
+  agent: string,
+  taskId?: string
 ): Promise<CompletionValidation> {
   try {
-    // Find the current active task for the agent
+    // Find the task directory - either specified or active
     const agentDir = path.join(config.commDir, agent);
     if (!await fs.pathExists(agentDir)) {
       return {
@@ -77,19 +78,30 @@ async function validateCompletion(
       };
     }
     
-    const taskDirs = await fs.listDirectory(agentDir);
-    const activeTaskDir = await (async () => {
-      for (const dir of taskDirs) {
-        const donePath = path.join(agentDir, dir, 'DONE.md');
-        const errorPath = path.join(agentDir, dir, 'ERROR.md');
-        const doneExists = await fs.pathExists(donePath);
-        const errorExists = await fs.pathExists(errorPath);
-        if (!doneExists && !errorExists) {
-          return dir;
-        }
+    let activeTaskDir: string | null = null;
+    
+    if (taskId) {
+      // Use specified taskId
+      const taskPath = path.join(agentDir, taskId);
+      if (await fs.pathExists(taskPath)) {
+        activeTaskDir = taskId;
       }
-      return null;
-    })();
+    } else {
+      // Find active task (backward compatibility)
+      const taskDirs = await fs.listDirectory(agentDir);
+      activeTaskDir = await (async () => {
+        for (const dir of taskDirs) {
+          const donePath = path.join(agentDir, dir, 'DONE.md');
+          const errorPath = path.join(agentDir, dir, 'ERROR.md');
+          const doneExists = await fs.pathExists(donePath);
+          const errorExists = await fs.pathExists(errorPath);
+          if (!doneExists && !errorExists) {
+            return dir;
+          }
+        }
+        return null;
+      })();
+    }
     
     if (!activeTaskDir) {
       // No active task found
@@ -156,7 +168,7 @@ function reconcileCompletion(
     return { status, summary };
   }
   
-  const mode = reconciliation?.mode || 'strict';
+  const mode = reconciliation?.mode ?? 'strict';
   
   switch (mode) {
     case 'auto_complete':
@@ -180,7 +192,7 @@ ${summary}`,
       
     case 'reconcile': {
       // Document variance with explanations
-      const explanations = reconciliation?.explanations || {};
+      const explanations = reconciliation?.explanations ?? {};
       return {
         status: status === 'DONE' ? 'DONE' : 'ERROR',
         summary: `## Task Completion with Variance
@@ -232,7 +244,7 @@ ${summary}`,
       
     case 'strict':
       // Strict mode - reject if unchecked items exist and status is DONE
-      if (status === 'DONE' && validation.hasIncompleteItems) {
+      if (status === 'DONE') {
         throw new Error(`Cannot mark DONE with ${validation.uncheckedItems.length} unchecked items. Use reconciliation mode or complete all items first.`);
       }
       return { status, summary };
@@ -249,9 +261,13 @@ export async function markComplete(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<CompletionResult> {
+  // Validate configuration has required components
+  validateRequiredConfig(config);
+  
   const status = validateRequiredString(args['status'], 'status');
   const summary = validateRequiredString(args['summary'], 'summary');
   const agent = validateRequiredString(args['agent'], 'agent');
+  const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
   
   // Parse reconciliation options if provided
   const reconciliationMode = args['reconciliation_mode'] as string | undefined;
@@ -259,7 +275,7 @@ export async function markComplete(
   
   const reconciliation: ReconciliationOptions | undefined = reconciliationMode ? {
     mode: reconciliationMode as 'strict' | 'auto_complete' | 'reconcile' | 'force',
-    explanations: reconciliationExplanations || undefined
+    explanations: reconciliationExplanations ?? undefined
   } : undefined;
   
   // Validate status
@@ -272,24 +288,20 @@ export async function markComplete(
     throw new Error('Summary must be at least 10 characters long');
   }
   
-  // Create connection for the agent
+  // Create connection for the agent with optional taskId
   const connection = {
-    id: `mark-complete-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `mark-complete-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     agent,
     startTime: new Date(),
     metadata: { 
       operation: 'mark-complete', 
       status, 
       summarySize: summary.length,
-      reconciliationMode: reconciliation?.mode
+      reconciliationMode: reconciliation?.mode,
+      ...(taskId && { taskId }) // Include taskId if provided
     }
   };
   
-  // Ensure required components exist
-  if (!config.connectionManager || !config.eventLogger) {
-    throw new Error('Configuration missing required components: connectionManager and eventLogger');
-  }
-
   // **MANDATORY VERIFICATION GATE** - Prevents false success reporting
   // This addresses Issue #11: Agent False Success Reporting
   if (status === 'DONE') {
@@ -368,7 +380,7 @@ export async function markComplete(
   }
   
   // Validate completion against plan checkboxes
-  const validation = await validateCompletion(config, agent);
+  const validation = await validateCompletion(config, agent, taskId);
   
   // Apply reconciliation logic
   const reconciledCompletion = reconcileCompletion(
