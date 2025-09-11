@@ -12,7 +12,7 @@ import { getConfig } from '../../src/config.js';
 import { ServerConfig, CreateTaskResponse } from '../../src/types.js';
 import { ConnectionManager } from '../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../src/logging/EventLogger.js';
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 // Use Jest-provided __dirname
 
@@ -41,9 +41,9 @@ describe('TodoWrite Synchronization Integration', () => {
   afterAll(async () => {
     // Cleanup test files
     for (const cleanupPath of cleanupPaths) {
-      await fs.remove(cleanupPath).catch(() => {});
+      await fs.remove(cleanupPath).catch(() => { /* ignore cleanup errors */ });
     }
-    await fs.remove(testCommDir).catch(() => {});
+    await fs.remove(testCommDir).catch(() => { /* ignore cleanup errors */ });
   });
 
   beforeEach(() => {
@@ -53,7 +53,7 @@ describe('TodoWrite Synchronization Integration', () => {
   afterEach(async () => {
     // Cleanup after each test
     for (const cleanupPath of cleanupPaths) {
-      await fs.remove(cleanupPath).catch(() => {});
+      await fs.remove(cleanupPath).catch(() => { /* ignore cleanup errors */ });
     }
   });
 
@@ -277,8 +277,7 @@ describe('TodoWrite Synchronization Integration', () => {
       const syncResults = await Promise.all(syncPromises);
 
       // Verify all operations succeeded
-      for (let i = 0; i < syncResults.length; i++) {
-        const result = syncResults[i];
+      for (const result of syncResults) {
         expect(result.success).toBe(true);
         expect(result.matchedUpdates).toBe(3);
         expect(result.totalUpdates).toBe(3);
@@ -485,7 +484,7 @@ describe('TodoWrite Synchronization Integration', () => {
 
       // Verify plan structure integrity
       expect(finalPlan).toContain('# Consistency Test');
-      expect((finalPlan.match(/- \[[ x]\] \*\*/g) || []).length).toBe(3);
+      expect((finalPlan.match(/- \[[ x]\] \*\*/g) ?? []).length).toBe(3);
     });
   });
 

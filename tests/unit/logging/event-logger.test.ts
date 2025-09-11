@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { EventLogger, MockTimerDependency } from '../../../src/logging/EventLogger.js';
-import fs from 'fs-extra';
+import fs from '../../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import os from 'os';
 
@@ -462,25 +462,42 @@ describe('EventLogger', () => {
     it('should handle processWriteQueue early return when already writing', async () => {
       // Test coverage for line 272: early return in processWriteQueue
       
-      // Access the private property using bracket notation to set it
-      (eventLogger as any).isWriting = true;
-      (eventLogger as any).writeQueue = ['test'];
+      // Interface for accessing private properties for testing
+      interface EventLoggerPrivate extends EventLogger {
+        isWriting: boolean;
+        writeQueue: string[];
+        processWriteQueue(): Promise<void>;
+      }
+      
+      // Access the private property using type assertion
+      const loggerWithPrivates = eventLogger as unknown as EventLoggerPrivate;
+      loggerWithPrivates.isWriting = true;
+      loggerWithPrivates.writeQueue = ['test'];
       
       // Call the private method (will return early due to isWriting = true)
-      await (eventLogger as any).processWriteQueue();
+      await loggerWithPrivates.processWriteQueue();
       
       // Verify the queue was not processed (still has content)
-      expect((eventLogger as any).writeQueue).toHaveLength(1);
+      expect(loggerWithPrivates.writeQueue).toHaveLength(1);
     });
 
     it('should handle empty write queue in processWriteQueue', async () => {
       // Test coverage for line 272: early return when queue is empty
-      (eventLogger as any).isWriting = false;
-      (eventLogger as any).writeQueue = [];
+      
+      // Interface for accessing private properties for testing
+      interface EventLoggerPrivate extends EventLogger {
+        isWriting: boolean;
+        writeQueue: string[];
+        processWriteQueue(): Promise<void>;
+      }
+      
+      const loggerWithPrivates = eventLogger as unknown as EventLoggerPrivate;
+      loggerWithPrivates.isWriting = false;
+      loggerWithPrivates.writeQueue = [];
       
       // This should return early and not throw
-      await (eventLogger as any).processWriteQueue();
-      expect((eventLogger as any).writeQueue).toHaveLength(0);
+      await loggerWithPrivates.processWriteQueue();
+      expect(loggerWithPrivates.writeQueue).toHaveLength(0);
     });
   });
 
@@ -702,7 +719,16 @@ describe('EventLogger', () => {
       // Generate entries until we exceed size limit
       let currentSize = 0;
       let entryCount = 0;
-      const entries: any[] = [];
+      interface LogEntry {
+        timestamp: Date;
+        operation: string;
+        agent: string;
+        taskId: string;
+        success: boolean;
+        duration: number;
+        metadata?: Record<string, unknown>;
+      }
+      const entries: LogEntry[] = [];
       
       while (currentSize < maxLogSize) {
         const entry = {
@@ -924,13 +950,19 @@ describe('EventLogger', () => {
       const mockTimer = new MockTimerDependency();
       const testLogger = new EventLogger(testDir, mockTimer);
       
+      // Interface for accessing private properties for testing
+      interface EventLoggerPrivate extends EventLogger {
+        writeQueue: string[];
+        isWriting: boolean;
+      }
+      
       // For this test, we need to manually trigger the queue state that won't empty
-      // Use reflection to access private properties for testing
-      const testLoggerAny = testLogger as any;
+      // Use type assertion to access private properties for testing
+      const testLoggerPrivate = testLogger as unknown as EventLoggerPrivate;
       
       // Manually set the write queue to have items to simulate busy state
-      testLoggerAny.writeQueue = ['fake-entry'];
-      testLoggerAny.isWriting = false; // Not actively writing but queue not empty
+      testLoggerPrivate.writeQueue = ['fake-entry'];
+      testLoggerPrivate.isWriting = false; // Not actively writing but queue not empty
       
       // Start the waitForWriteQueueEmpty with a short timeout
       const waitPromise = testLogger.waitForWriteQueueEmpty(50);

@@ -24,7 +24,7 @@ export class DefaultTimerDependency implements TimerDependency {
 }
 
 export class MockTimerDependency implements TimerDependency {
-  private pendingTimers: Array<{ fn: () => void; delay: number; id: number }> = [];
+  private pendingTimers: { fn: () => void; delay: number; id: number }[] = [];
   private nextId = 0;
 
   setTimeout(fn: () => void, delay: number): number {
@@ -44,7 +44,7 @@ export class MockTimerDependency implements TimerDependency {
   flushAll(): void {
     const timers = [...this.pendingTimers];
     this.pendingTimers = [];
-    timers.forEach(timer => timer.fn());
+    timers.forEach(timer => { timer.fn(); });
   }
 
   flushNext(): void {
@@ -118,7 +118,7 @@ export class EventLogger extends EventEmitter {
     
     // Use LOG_DIR environment variable or provided logDir, with fallback to .logs
     const envLogDir = process.env['LOG_DIR'];
-    if (envLogDir && envLogDir.trim()) {
+    if (envLogDir?.trim()) {
       this.logDir = path.isAbsolute(envLogDir) ? envLogDir : path.resolve(logDir, envLogDir);
     } else {
       // Default to .logs subdirectory if no LOG_DIR specified
@@ -126,7 +126,7 @@ export class EventLogger extends EventEmitter {
     }
     
     this.logFilePath = path.join(this.logDir, 'agent-comm.log');
-    this.timerDependency = timerDependency || new DefaultTimerDependency();
+    this.timerDependency = timerDependency ?? new DefaultTimerDependency();
     // Config is received but not used in current implementation
     // Future: implement log rotation based on maxLogFileSize, maxLogAgeHours
     // Note: ensureLogDir() is called in processWriteQueue() to handle async properly
@@ -152,7 +152,7 @@ export class EventLogger extends EventEmitter {
       entry = {
         timestamp: new Date(),
         operation: entryOrOperation,
-        agent: agent!,
+        agent: agent ?? 'unknown',
         success: true,
         duration: 0,
         ...(data && { data })
@@ -240,9 +240,7 @@ export class EventLogger extends EventEmitter {
     const byOperation: Record<string, { count: number; successful: number; totalDuration: number; failures: number }> = {};
     
     for (const entry of entries) {
-      if (!byOperation[entry.operation]) {
-        byOperation[entry.operation] = { count: 0, successful: 0, totalDuration: 0, failures: 0 };
-      }
+      byOperation[entry.operation] ??= { count: 0, successful: 0, totalDuration: 0, failures: 0 };
       
       byOperation[entry.operation].count++;
       byOperation[entry.operation].totalDuration += entry.duration;
@@ -258,9 +256,7 @@ export class EventLogger extends EventEmitter {
     const byAgent: Record<string, { count: number; successful: number; totalDuration: number }> = {};
     
     for (const entry of entries) {
-      if (!byAgent[entry.agent]) {
-        byAgent[entry.agent] = { count: 0, successful: 0, totalDuration: 0 };
-      }
+      byAgent[entry.agent] ??= { count: 0, successful: 0, totalDuration: 0 };
       
       byAgent[entry.agent].count++;
       byAgent[entry.agent].totalDuration += entry.duration;

@@ -5,6 +5,133 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-09-09
+
+### ✨ Major Features
+
+#### MCP 2025-06-18 Resources System (Issues #23, #29)
+- **Complete MCP Resources System**: Full implementation of MCP 2025-06-18 protocol specification
+- **Resource Discovery**: `list_mcp_resources` tool for browsing available resources across servers
+- **Resource Reading**: `read_mcp_resource` tool for accessing specific resource content
+- **Multi-Server Support**: Seamless integration with multiple MCP servers
+- **Protocol Compliance**: Full adherence to MCP 2025-06-18 specification
+
+#### Enhanced Task Management (Issues #24, #25, #29)
+- **Multi-Task Workflow Support**: Enhanced task delegation with improved workflow coordination
+- **Optional taskId Parameter**: Flexible task targeting across all context-based tools
+- **Smart Task Discovery**: Automatic task resolution when taskId not specified
+- **Enhanced Task Creation**: Improved `create_task` tool with better validation
+- **Workflow Optimization**: Streamlined task handoff between agents
+
+#### Advanced Agent Communication (Issues #26, #29)
+- **Strict Agent Ownership Validation**: Comprehensive security improvements for agent isolation
+- **Enhanced Permission System**: Robust agent boundary enforcement
+- **Improved Error Handling**: Better error messages and validation feedback
+- **Agent Session Management**: Enhanced connection tracking and metadata
+
+#### MCP Prompts System (Issue #27, #29)
+- **Automatic Agent Guidance**: MCP protocol instructions injected into agent contexts
+- **Task Management Protocols**: Comprehensive task lifecycle guidance
+- **Best Practice Integration**: Embedded MCP usage patterns and conventions
+- **Context-Aware Assistance**: Dynamic help based on agent capabilities
+
+#### Infrastructure & Quality Improvements (Issues #28, #29)
+- **Filesystem Utilities Cleanup**: Consolidated and optimized file system operations
+- **TypeScript Strict Mode**: Enhanced type safety with `exactOptionalPropertyTypes`
+- **ESLint Strict Enforcement**: Zero tolerance for 'any' types and unsafe patterns
+- **Test Coverage Improvements**: Enhanced test suite with better coverage metrics
+- **Documentation Updates**: Comprehensive updates to README, PROTOCOL.md, and API docs
+
+### 🔧 Technical Enhancements
+
+#### Core System Improvements
+- **TaskContextManager**: Enhanced with optional taskId support across all context-based tools
+- **ConnectionManager**: Improved agent session tracking and connection metadata
+- **EventLogger**: Enhanced audit logging with better event categorization
+- **Lock Management**: Improved coordination for concurrent operations
+
+#### Tool Updates (17 MCP Tools Enhanced)
+- **Context-Based Tools**: All 5 tools now support optional taskId parameter
+- **Traditional Tools**: Enhanced with better validation and error handling
+- **Diagnostic Tools**: Improved monitoring and lifecycle visibility
+- **Utility Tools**: Enhanced server info and health check capabilities
+
+#### Development Experience
+- **Pre-commit Hooks**: Enhanced validation with TypeScript and ESLint checks
+- **CI/CD Pipeline**: Improved automated testing and quality assurance
+- **Error Prevention**: Multi-layer enforcement system for code quality
+- **Developer Tooling**: Enhanced debugging and diagnostic capabilities
+
+### 🐛 Bug Fixes
+- **Setup Script**: Updated to use ES module syntax for Node.js compatibility
+- **Type Safety**: Fixed all TypeScript strict mode violations
+- **Import Management**: Consolidated fs-extra usage through fs-extra-safe utility
+- **Error Handling**: Improved error propagation and user feedback
+- **Resource Access**: Fixed edge cases in MCP resource discovery and reading
+
+### 📚 Documentation
+- **Complete API Documentation**: Updated PROTOCOL.md with all new features
+- **MCP Resources Guide**: Comprehensive guide for MCP Resources System usage
+- **Enhanced README**: Updated with latest features and capabilities
+- **Integration Examples**: Added examples for multi-server MCP integration
+- **Migration Guide**: Documentation for upgrading from previous versions
+
+### 🔐 Security
+- **Agent Isolation**: Enhanced security boundaries between agents
+- **Validation Hardening**: Improved input validation across all tools
+- **Permission Enforcement**: Stricter agent ownership validation
+- **Audit Logging**: Enhanced security event logging and monitoring
+
+### ⚡ Performance
+- **Resource Loading**: Optimized MCP resource discovery and caching
+- **File System Operations**: Enhanced filesystem utilities performance
+- **Task Resolution**: Improved task discovery and context resolution
+- **Memory Management**: Better resource cleanup and management
+
+### 🧪 Testing
+- **Comprehensive Coverage**: Enhanced test suite covering all new features
+- **MCP Protocol Testing**: Dedicated tests for MCP 2025-06-18 compliance
+- **Integration Testing**: Improved cross-component testing
+- **Error Path Testing**: Enhanced error handling validation
+
+### 📦 Dependencies
+- **MCP SDK**: Updated to latest version with 2025-06-18 support
+- **TypeScript**: Enhanced strict mode configuration
+- **ESLint**: Updated with stricter type checking rules
+- **Development Tools**: Enhanced testing and validation tooling
+
+---
+
+**Issues Resolved**: #23, #24, #25, #26, #27, #28, #29  
+**Pull Request**: #32  
+**Contributors**: @jerfowler with Claude Code assistance  
+**Release Notes**: This major release introduces comprehensive MCP 2025-06-18 Resources System support, enhanced multi-task workflows, strict TypeScript enforcement, and significant infrastructure improvements. All features maintain backward compatibility while providing powerful new capabilities for agent coordination and communication.
+
+## [0.6.1] - 2025-09-07
+
+### 🛡️ Agent False Success Prevention (Issue #11)
+
+- **NEW**: Added Agent Work Verifier system to prevent false success reporting
+- **Implementation**: `src/core/agent-work-verifier.ts` - mandatory verification gates with confidence scoring
+- **Features**: File system evidence checking, MCP progress tracking validation, test execution verification
+- **Enhanced**: `mark_complete` tool with verification gate integration to prevent agents claiming completion without evidence
+- **Protection**: Prevents agents from marking tasks complete without actual work being performed
+- **Testing**: Comprehensive test suite (661 lines) covering all verification scenarios
+
+### 🔧 FileSystem Reliability Improvements (Issue #9)
+
+- **NEW**: SafeFileSystem wrapper (`src/utils/fs-extra-safe.ts`) resolving fs-extra runtime errors in MCP tools
+- **Robustness**: Provides reliable filesystem interface regardless of ESM/CJS import issues or module resolution conflicts
+- **Fallback**: Dynamic module loading with Node.js built-in fallbacks for maximum compatibility
+- **Coverage**: All filesystem operations (pathExists, readdir, writeFile, readFile, stat, remove, ensureDir)
+- **Testing**: Comprehensive test suite (583 lines) validating both primary and fallback mechanisms
+
+### 🐛 Bug Fixes
+
+- **Fixed**: TypeScript interface compliance in test mocks across multiple test files
+- **Corrected**: Import paths updated in 9 source files for SafeFileSystem compatibility
+- **Resolved**: Test compatibility issues with new SafeFileSystem wrapper implementation
+
 ## [0.6.0] - 2025-01-05
 
 ### 🤖 Agent Templates & Documentation

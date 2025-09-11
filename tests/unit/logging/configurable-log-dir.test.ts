@@ -5,7 +5,7 @@
 
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
-import fs from 'fs-extra';
+import fs from '../../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import { tmpdir } from 'os';
 

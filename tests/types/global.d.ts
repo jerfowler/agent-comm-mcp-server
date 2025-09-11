@@ -3,22 +3,23 @@
  */
 
 import type { ServerConfig as _ServerConfig, Task as _Task, Agent as _Agent } from '../../src/types.js';
+import type { Stats } from 'fs';
 
 declare global {
   const testUtils: {
-    createMockConfig: (overrides?: any) => any;
-    createMockTask: (overrides?: any) => any;
-    createMockStats: (overrides?: any) => any;
+    createMockConfig: (overrides?: Partial<_ServerConfig>) => _ServerConfig;
+    createMockTask: (overrides?: Partial<_Task>) => _Task;
+    createMockStats: (overrides?: Partial<Stats>) => Stats;
     getTestTimestamp: () => string;
     sampleTaskContent: string;
     samplePlanContent: string;
     validationTestCases: {
       validStrings: string[];
-      invalidStrings: any[];
+      invalidStrings: unknown[];
       validNumbers: number[];
-      invalidNumbers: any[];
+      invalidNumbers: unknown[];
       validBooleans: boolean[];
-      invalidBooleans: any[];
+      invalidBooleans: unknown[];
       pathTraversalAttempts: string[];
       specialCharacters: string[];
       longStrings: string;

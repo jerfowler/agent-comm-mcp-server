@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import * as path from 'path';
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import { tmpdir } from 'os';
 
 // Import tools for state management
@@ -132,7 +132,10 @@ describe('State Transition Regression Test', () => {
       const archiveResult = await archiveTasksTool(config, { mode: 'completed' });
       expect(archiveResult.archived).toBeDefined();
       expect(archiveResult.archived).not.toBeNull();
-      expect(archiveResult.archived!.total).toBeGreaterThan(0);
+      if (!archiveResult.archived) {
+        throw new Error('Archive result not found');
+      }
+      expect(archiveResult.archived.total).toBeGreaterThan(0);
       
       // Verify task is no longer in active list
       const remainingTasks = await checkTasks(config, { agent });
@@ -242,7 +245,7 @@ describe('State Transition Regression Test', () => {
       const createResults = await Promise.all(createPromises);
       
       // Verify all tasks were created
-      createResults.forEach(result => expect(result.success).toBe(true));
+      createResults.forEach(result => { expect(result.success).toBe(true); });
       
       let allTasks = await checkTasks(config, { agent });
       expect(allTasks.tasks).toHaveLength(numTasks);

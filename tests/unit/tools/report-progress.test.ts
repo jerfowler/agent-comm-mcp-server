@@ -44,6 +44,14 @@ describe('Report Progress Tool', () => {
 
     mockValidation.validateRequiredString.mockImplementation((value) => value as string);
     
+    // Setup validateRequiredConfig mock - pass by default
+    mockValidation.validateRequiredConfig
+      .mockImplementation((config) => {
+        if (!config.connectionManager || !config.eventLogger) {
+          throw new Error('Configuration missing required components: connectionManager and eventLogger');
+        }
+      });
+    
     mockContextManager = {
       reportProgress: jest.fn<() => Promise<ProgressReportResult>>().mockResolvedValue(mockProgressResult)
     } as any;

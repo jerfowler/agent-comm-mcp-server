@@ -6,12 +6,14 @@
 import { jest } from '@jest/globals';
 import { syncTodoCheckboxes } from '../../src/tools/sync-todo-checkboxes.js';
 import { reportProgress } from '../../src/tools/report-progress.js';
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import { ServerConfig } from '../../src/types.js';
+import type { ConnectionManager } from '../../src/core/ConnectionManager.js';
+import type { EventLogger } from '../../src/logging/EventLogger.js';
 
 // Mock fs-extra with factory function - proper TypeScript pattern
-jest.mock('fs-extra', () => ({
+jest.mock('../../src/utils/fs-extra-safe.js', () => ({
   pathExists: jest.fn(),
   readFile: jest.fn(),
   writeFile: jest.fn(),
@@ -56,12 +58,12 @@ function createMockServerConfig(): ServerConfig {
       getStatistics: jest.fn(),
       getConnectionCount: jest.fn(),
       hasConnection: jest.fn()
-    } as any,
+    } as unknown as ConnectionManager,
     eventLogger: {
       logOperation: jest.fn(),
       logError: jest.fn(),
       getOperationStatistics: jest.fn()
-    } as any
+    } as unknown as EventLogger
   };
 }
 
@@ -71,6 +73,7 @@ describe('Tool Coordination Integration (TDD)', () => {
   const testTaskDir = '2025-09-05T07-49-48-test-task';
   const testAgentPath = path.join(mockConfig.commDir, testAgent);
   const testTaskPath = path.join(testAgentPath, testTaskDir);
+  const testInitPath = path.join(testTaskPath, 'INIT.md');
   const testPlanPath = path.join(testTaskPath, 'PLAN.md');
   const testProgressPath = path.join(testTaskPath, 'PROGRESS.md');
   const testLockPath = path.join(testTaskPath, '.sync.lock');
@@ -171,6 +174,7 @@ Step 3: Implement Authentication - COMPLETE
         if (filePath === testLockPath) return Promise.resolve(true);
         if (filePath === testAgentPath) return Promise.resolve(true);
         if (filePath === testTaskPath) return Promise.resolve(true);
+        if (filePath === testInitPath) return Promise.resolve(true);
         if (filePath === testPlanPath) return Promise.resolve(true);
         if (filePath === testProgressPath) return Promise.resolve(true);
         return Promise.resolve(false);
@@ -189,6 +193,7 @@ Step 3: Implement Authentication - COMPLETE
             lockId: 'sync-lock-id'
           }));
         }
+        if (filePath === testInitPath) return Promise.resolve('# Test Task\n\nThis is a test task initialization.');
         if (filePath === testPlanPath) return Promise.resolve(samplePlanContent);
         if (filePath === testProgressPath) return Promise.resolve(sampleProgressContent);
         return Promise.resolve('');
@@ -388,9 +393,8 @@ Step 3: Implement Authentication - COMPLETE
       const failedResults = results.filter(r => r.status === 'rejected');
       if (failedResults.length > 0) {
         failedResults.forEach(result => {
-          if (result.status === 'rejected') {
-            expect(result.reason.message).toContain('locked');
-          }
+          const error = result.reason as Error;
+          expect(error.message).toContain('locked');
         });
       }
     });

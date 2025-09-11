@@ -370,9 +370,9 @@ describe('Check Tasks Tool', () => {
   describe('async operation handling', () => {
     it('should properly await TaskContextManager operation', async () => {
       const args = { agent: 'async-agent' };
-      let resolvePromise: (value: any[]) => void;
+      let resolvePromise: (value: TaskSummary[]) => void;
       
-      const delayedPromise = new Promise<any[]>((resolve) => {
+      const delayedPromise = new Promise<TaskSummary[]>((resolve) => {
         resolvePromise = resolve;
       });
       

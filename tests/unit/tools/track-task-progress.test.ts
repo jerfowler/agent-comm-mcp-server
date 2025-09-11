@@ -4,16 +4,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import fs from 'fs-extra';
+import fs from '../../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import * as os from 'os';
 import { testUtils } from '../../utils/testUtils.js';
 
 // This import should FAIL initially until we implement the tool
 import { trackTaskProgress } from '../../../src/tools/track-task-progress.js';
+import { ServerConfig } from '../../../src/types.js';
 
 describe('track_task_progress Tool (TDD)', () => {
-  let config: any;
+  let config: ServerConfig;
   let tempDir: string;
   let testDir: string;
 

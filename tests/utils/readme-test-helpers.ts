@@ -3,7 +3,7 @@
  * Simulates what Claude would do when interpreting natural language prompts
  */
 
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import { testUtils } from './testUtils.js';
 import { createTask } from '../../src/tools/create-task.js';
@@ -16,8 +16,8 @@ export interface PromptScenario {
   name: string;
   prompt: string;
   expectedTool: string;
-  expectedParams: Record<string, any>;
-  expectedResponse: Record<string, any>;
+  expectedParams: Record<string, unknown>;
+  expectedResponse: Record<string, unknown>;
 }
 
 export interface TaskScenarioContext {
@@ -63,8 +63,8 @@ export const readmeTestHelpers = {
    */
   async simulateDelegateTaskPrompt(
     context: TaskScenarioContext,
-    agent: string = 'senior-frontend-engineer',
-    taskContent: string = 'Implement a responsive dashboard component with real-time data updates and dark mode support'
+    agent = 'senior-frontend-engineer',
+    taskContent = 'Implement a responsive dashboard component with real-time data updates and dark mode support'
   ) {
     // Simulate what Claude would do: use create_task or delegate_task
     const result = await createTask(context.config, {
@@ -82,7 +82,7 @@ export const readmeTestHelpers = {
    */
   async simulateMonitorProgressPrompt(
     context: TaskScenarioContext,
-    agent: string = 'senior-frontend-engineer'
+    agent = 'senior-frontend-engineer'
   ) {
     // First find tasks for the agent
     const agentDir = path.join(context.commDir, agent);
@@ -111,7 +111,7 @@ export const readmeTestHelpers = {
    */
   async simulateLifecycleAnalysisPrompt(
     context: TaskScenarioContext,
-    agent: string = 'senior-frontend-engineer'
+    agent = 'senior-frontend-engineer'
   ) {
     // Find existing task
     const agentDir = path.join(context.commDir, agent);
@@ -182,7 +182,7 @@ export const readmeTestHelpers = {
     });
 
     // Transform ArchiveResult into the expected test format
-    const archiveCount = result.archived?.total || 0;
+    const archiveCount = result.archived?.total ?? 0;
     return {
       success: true,
       archived: archiveCount,
@@ -193,9 +193,10 @@ export const readmeTestHelpers = {
   /**
    * Validate tool response format matches README expectations
    */
-  validateToolResponse(response: any, expectedFields: string[]): boolean {
+  validateToolResponse(response: unknown, expectedFields: string[]): boolean {
+    const responseObj = response as Record<string, unknown>;
     for (const field of expectedFields) {
-      if (!(field in response)) {
+      if (!(field in responseObj)) {
         return false;
       }
     }

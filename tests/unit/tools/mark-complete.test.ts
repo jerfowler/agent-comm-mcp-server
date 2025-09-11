@@ -44,6 +44,14 @@ describe('Mark Complete Tool', () => {
     mockValidation.validateRequiredString
       .mockImplementation((value) => value as string);
     
+    // Setup validateRequiredConfig mock - pass by default
+    mockValidation.validateRequiredConfig
+      .mockImplementation((config) => {
+        if (!config.connectionManager || !config.eventLogger) {
+          throw new Error('Configuration missing required components: connectionManager and eventLogger');
+        }
+      });
+    
     // Setup agent work verifier mock - return high confidence for tests
     mockAgentVerifier.verifyAgentWork.mockResolvedValue({
       success: true,

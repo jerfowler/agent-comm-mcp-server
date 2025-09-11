@@ -16,7 +16,7 @@ const mockArchiveTasksModule = archiveTasksModule as jest.Mocked<typeof archiveT
 
 describe('Archive Completed Tasks Tool', () => {
   let mockConfig: ServerConfig;
-  let mockArchiveResult: any;
+  let mockArchiveResult: ArchiveResult;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -345,7 +345,7 @@ describe('Archive Completed Tasks Tool', () => {
 
   describe('async operation handling', () => {
     it('should handle delayed archive operations', async () => {
-      let resolveArchive: (value: any) => void;
+      let resolveArchive: (value: ArchiveResult) => void;
       const delayedPromise = new Promise<ArchiveResult>((resolve) => {
         resolveArchive = resolve;
       });

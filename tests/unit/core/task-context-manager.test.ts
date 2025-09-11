@@ -5,9 +5,10 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
-import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { ConnectionManager, Connection } from '../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
-import fs from 'fs-extra';
+import { AgentOwnershipError } from '../../../src/types.js';
+import fs from '../../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import os from 'os';
 
@@ -16,7 +17,7 @@ describe('TaskContextManager', () => {
   let connectionManager: ConnectionManager;
   let eventLogger: EventLogger;
   let testDir: string;
-  let mockConnection: any;
+  let mockConnection: Connection;
   
   beforeEach(async () => {
     // Create temporary test directory
@@ -349,13 +350,23 @@ Some additional notes here.
 `;
 
         // This test will FAIL initially because current implementation doesn't support checkbox format
-        const result = (contextManager as any).analyzePlanProgress(planWithCheckboxes);
+        // Interface for accessing private methods for testing
+        interface TaskContextManagerPrivate extends TaskContextManager {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const result = contextManagerPrivate.analyzePlanProgress(planWithCheckboxes);
         expect(result).toEqual({ completed: 2, inProgress: 0, pending: 2, blocked: 0 });
       });
 
       it('should handle empty or malformed content gracefully', () => {
         const emptyContent = '';
-        const result1 = (contextManager as any).analyzePlanProgress(emptyContent);
+        // Interface for accessing private methods for testing
+        interface TaskContextManagerPrivate extends TaskContextManager {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const result1 = contextManagerPrivate.analyzePlanProgress(emptyContent);
         expect(result1).toEqual({ completed: 0, inProgress: 0, pending: 0, blocked: 0 });
 
         const malformedContent = `# Plan
@@ -363,7 +374,7 @@ Some additional notes here.
 - [ ] **Valid checkbox**: This should work
 - [x] **Another valid**: This should work too`;
         
-        const result2 = (contextManager as any).analyzePlanProgress(malformedContent);
+        const result2 = contextManagerPrivate.analyzePlanProgress(malformedContent);
         expect(result2).toEqual({ completed: 1, inProgress: 0, pending: 1, blocked: 0 });
       });
 
@@ -377,7 +388,12 @@ Regular text line
 ## Section header
 - [x] **Final Valid**: Should count`;
 
-        const result = (contextManager as any).analyzePlanProgress(mixedContent);
+        // Interface for accessing private methods for testing
+        interface TaskContextManagerPrivate extends TaskContextManager {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const result = contextManagerPrivate.analyzePlanProgress(mixedContent);
         expect(result).toEqual({ completed: 2, inProgress: 0, pending: 1, blocked: 0 });
       });
     });
@@ -388,6 +404,18 @@ Regular text line
         const agentDir = path.join(testDir, 'comm', 'senior-system-architect');
         const taskDir = path.join(agentDir, 'checkbox-update-task');
         await fs.ensureDir(taskDir);
+        
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: Checkbox Update Test
+        
+## Objective
+Test checkbox progress tracking functionality
+
+## Requirements
+- Test checkbox state updates
+- Verify progress tracking
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
         
         const initialPlan = `# Implementation Plan
 
@@ -418,6 +446,18 @@ Regular text line
         const taskDir = path.join(agentDir, 'multi-update-task');
         await fs.ensureDir(taskDir);
         
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: Multi Update Test
+        
+## Objective
+Test multiple progress updates in single report
+
+## Requirements
+- Test multiple step updates
+- Verify concurrent progress tracking
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
+        
         const initialPlan = `# Multi-Step Plan
 
 - [ ] **Step 1**: First task to complete
@@ -446,6 +486,18 @@ Regular text line
         const agentDir = path.join(testDir, 'comm', 'senior-system-architect');
         const taskDir = path.join(agentDir, 'no-plan-task');
         await fs.ensureDir(taskDir);
+        
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: No Plan Test
+        
+## Objective
+Test graceful handling of missing PLAN.md
+
+## Requirements
+- Handle missing plan files
+- Return success without error
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
 
         const updates = [{ step: 1, status: 'COMPLETE' as const, description: 'Task done' }];
 
@@ -465,7 +517,12 @@ Regular text line
 - [ ] **Documentation**: Write user documentation`;
 
         // This will FAIL initially because extractProgressMarkers doesn't exist
-        const markers = (contextManager as any).extractProgressMarkers(planContent);
+        // Interface for accessing private methods for testing
+        interface TaskContextManagerPrivate extends TaskContextManager {
+          extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const markers = contextManagerPrivate.extractProgressMarkers(planContent);
         expect(markers).toEqual({
           completed: ['Database Setup', 'Testing Suite'],
           pending: ['API Implementation', 'Documentation']
@@ -474,7 +531,12 @@ Regular text line
 
       it('should handle empty content', () => {
         const emptyContent = '';
-        const markers = (contextManager as any).extractProgressMarkers(emptyContent);
+        // Interface for accessing private methods for testing
+        interface TaskContextManagerPrivate extends TaskContextManager {
+          extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const markers = contextManagerPrivate.extractProgressMarkers(emptyContent);
         expect(markers).toEqual({
           completed: [],
           pending: []
@@ -487,7 +549,12 @@ Regular text line
 - [ ] Regular checkbox without bold: Should not be extracted
 - [x] **Another Valid Task**: Should be extracted`;
 
-        const markers = (contextManager as any).extractProgressMarkers(planContent);
+        // Interface for accessing private methods for testing
+        interface TaskContextManagerPrivate extends TaskContextManager {
+          extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const markers = contextManagerPrivate.extractProgressMarkers(planContent);
         expect(markers).toEqual({
           completed: ['Database Setup', 'Another Valid Task'],
           pending: []
@@ -522,6 +589,19 @@ Regular text line
         const taskDir = path.join(agentDir, 'e2e-checkbox-test');
         await fs.ensureDir(taskDir);
 
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: E2E Checkbox Test
+        
+## Objective
+Test complete end-to-end checkbox progress workflow
+
+## Requirements
+- Test complete checkbox lifecycle
+- Verify plan submission and progress tracking
+- Validate file updates
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
+
         const initialPlan = `# End-to-End Test Plan
 
 - [ ] **Phase 1**: Initial setup and configuration
@@ -554,7 +634,12 @@ Regular text line
         expect(finalPlan).toContain('- [ ] **Phase 3**'); // Still pending
 
         // Step 6: Verify progress analysis still works
-        const progress = (contextManager as any).analyzePlanProgress(finalPlan);
+        // Interface for accessing private methods for testing
+        interface TaskContextManagerPrivate extends TaskContextManager {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const progress = contextManagerPrivate.analyzePlanProgress(finalPlan);
         expect(progress).toEqual({ completed: 2, inProgress: 0, pending: 1, blocked: 0 });
       });
     });
@@ -590,9 +675,12 @@ Regular text line
     });
 
     it('should handle startTask with non-existent task file', async () => {
-      // Test coverage for line 245: Task not found or not accessible
+      // Test coverage for ownership validation of non-existent task
       await expect(contextManager.startTask('non-existent-task', mockConnection))
-        .rejects.toThrow('Task not found or not accessible');
+        .rejects.toThrow(AgentOwnershipError);
+        
+      await expect(contextManager.startTask('non-existent-task', mockConnection))
+        .rejects.toThrow("Task 'non-existent-task' not found for agent 'senior-system-architect'");
     });
 
     it('should handle task without PROGRESS.md file', async () => {

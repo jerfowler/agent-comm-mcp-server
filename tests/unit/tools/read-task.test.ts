@@ -9,6 +9,7 @@ import * as validation from '../../../src/utils/validation.js';
 import { ServerConfig, TaskMetadata, InvalidTaskError, FileNotFoundError } from '../../../src/types.js';
 import { testUtils } from '../../utils/testUtils.js';
 import * as path from 'path';
+import type { Stats } from 'fs';
 
 // Mock modules
 jest.mock('../../../src/utils/file-system.js');
@@ -19,7 +20,7 @@ const mockValidation = validation as jest.Mocked<typeof validation>;
 
 describe('Read Task Tool', () => {
   let mockConfig: ServerConfig;
-  let mockStats: any;
+  let mockStats: Stats;
   let mockMetadata: TaskMetadata;
 
   beforeEach(() => {
@@ -747,7 +748,7 @@ describe('Read Task Tool', () => {
       };
       
       let resolveRead: (value: string) => void;
-      let resolveStats: (value: any) => void;
+      let resolveStats: (value: Stats) => void;
       
       const delayedRead = new Promise<string>((resolve) => {
         resolveRead = resolve;

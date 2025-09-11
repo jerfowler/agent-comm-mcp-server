@@ -8,7 +8,6 @@ This file provides guidance to Claude Code when working with the **agent-comm-mc
 **Purpose**: MCP server for AI agent task communication and delegation with diagnostic lifecycle visibility  
 **Author**: Jeremy Fowler  
 **License**: MIT  
-**Version**: 0.6.0  
 
 This is a standalone TypeScript NPM package that implements a Model Context Protocol (MCP) server enabling Claude Code to coordinate multiple specialized agents, track their progress in real-time, and understand exactly how they approach and solve complex tasks.
 
@@ -46,6 +45,218 @@ INIT → PLAN → PROGRESS → DONE/ERROR
   ↓      ↓        ↓         ↓
 Context-based workflow with diagnostic visibility
 ```
+
+## Comprehensive TypeScript Strict Mode Enforcement System
+
+This project implements a **multi-layered enforcement system** to permanently eliminate TypeScript strict mode violations, 'any' types, and direct fs-extra imports. This system prevents the "never ending cycle of fix, break, repeat" through comprehensive validation at multiple checkpoints.
+
+### Enforcement Architecture
+
+The system uses **four complementary layers** that work together:
+
+```
+Layer 1: Real-time Write Validation (Claude Code hooks)
+         ↓
+Layer 2: Pre-commit Git Validation (Git hooks)
+         ↓  
+Layer 3: ESLint Strict Configuration (Build-time)
+         ↓
+Layer 4: TypeScript Strict Mode (Compile-time)
+```
+
+### Layer 1: Real-time Write Validation
+
+**File**: `.claude/hooks/write-tool-validator.py`  
+**Trigger**: Claude Code Write tool operations  
+**Purpose**: Catch violations immediately as files are being written
+
+**Features**:
+- Blocks Write operations for TypeScript/JavaScript files with violations
+- Pattern-based detection: `any` types, direct fs-extra imports, unsafe operations
+- Runs TypeScript compiler check on content before write
+- Runs ESLint validation on content before write
+- Provides immediate feedback with fix suggestions
+
+**Exit Codes**:
+- `0` = Allow write (no violations)
+- `1` = Block write (violations detected)
+- `2` = Allow with warning
+
+### Layer 2: Pre-commit Git Validation  
+
+**File**: `.git/hooks/pre-commit`  
+**Trigger**: Git commit operations  
+**Purpose**: Comprehensive validation before code enters version control
+
+**Six-Phase Validation**:
+1. **TypeScript Strict Mode**: `npm run type-check` with `exactOptionalPropertyTypes`
+2. **ESLint Strict Enforcement**: Zero tolerance for warnings/errors
+3. **Critical File Validation**: Pattern scanning in staged files
+4. **Test Coverage**: Maintain 95%+ coverage requirement
+5. **Build Validation**: Ensure successful TypeScript compilation
+6. **Documentation Consistency**: Check for API change documentation
+
+**Cannot Be Bypassed**: All phases must pass for commit to succeed
+
+### Layer 3: Hardened ESLint Configuration
+
+**File**: `.eslintrc.cjs`  
+**Updated Configuration**: Strict type checking with complete 'any' ban
+
+**Key Rules**:
+```javascript
+extends: [
+  'eslint:recommended',
+  'plugin:@typescript-eslint/strict-type-checked',
+  'plugin:@typescript-eslint/stylistic-type-checked'
+],
+rules: {
+  // STRICT ENFORCEMENT: Ban 'any' types completely
+  '@typescript-eslint/no-explicit-any': 'error',
+  '@typescript-eslint/no-unsafe-argument': 'error',
+  '@typescript-eslint/no-unsafe-assignment': 'error',
+  '@typescript-eslint/no-unsafe-call': 'error',
+  '@typescript-eslint/no-unsafe-member-access': 'error',
+  '@typescript-eslint/no-unsafe-return': 'error',
+  
+  // Ban direct fs-extra imports
+  'no-restricted-imports': ['error', {
+    patterns: [{
+      group: ['fs-extra'],
+      message: 'Import from ../utils/fs-extra-safe.js instead'
+    }]
+  }],
+  
+  // Ban 'any' in all contexts using AST selectors
+  'no-restricted-syntax': ['error', {
+    selector: 'TSTypeAnnotation > TSAnyKeyword',
+    message: 'The "any" type is banned. Use specific types or unknown instead.'
+  }]
+}
+```
+
+### Layer 4: fs-extra-safe Utility Architecture
+
+**File**: `src/utils/fs-extra-safe.ts`  
+**Purpose**: Centralized, fully-tested fs-extra wrapper  
+**Proven Solution**: Cherry-picked from commit `55c379a` with 82.4% coverage
+
+**Benefits**:
+- Eliminates fs-extra import inconsistencies across codebase
+- Provides fallback mechanisms for edge cases
+- Comprehensive test coverage eliminates repeated test failures
+- Single source of truth for file system operations
+
+### Session Continuity System
+
+**Problem**: Context compaction can lose critical session state  
+**Solution**: Automatic state capture and recovery hooks
+
+#### Pre-Compact State Capture
+**File**: `.claude/hooks/pre-compact-state-capture.py`  
+**Trigger**: Before Claude Code context compaction  
+**Captures**:
+- Git context (branch, recent commits, status)
+- Project context (package.json, version)
+- Agent communication state (active tasks, progress)
+- Todo lists and working directory context
+- Environment variables and tool states
+
+#### Session Recovery
+**File**: `.claude/hooks/session-stats-recovery.py`  
+**Trigger**: Session start/stats events  
+**Features**:
+- Finds and loads recent state captures
+- Displays context recovery information
+- Shows agent task status and git state
+- Auto-cleanup of old state files
+
+### Validation Commands
+
+**Complete CI Pipeline**: 
+```bash
+npm run ci              # type-check + lint + all tests (must pass 100%)
+```
+
+**Individual Validation**:
+```bash
+npm run type-check      # TypeScript strict mode validation
+npm run lint            # ESLint strict enforcement  
+npm run test:unit       # Unit tests with 95%+ coverage requirement
+npm run build           # TypeScript compilation verification
+```
+
+### Hook Installation
+
+**Automatic Setup**: Hooks are stored in `.claude/hooks/` and automatically discovered by Claude Code
+
+**Manual Verification**:
+```bash
+# Check hook permissions
+ls -la .claude/hooks/
+# Should show executable permissions (755) on all .py files
+
+# Test Write validator (if needed)
+echo '{"tool":{"name":"Write","parameters":{"file_path":"test.ts","content":"const x: any = 1;"}}}' | \
+  .claude/hooks/write-tool-validator.py
+
+# Test state capture (creates sample state file)
+echo '{}' | .claude/hooks/pre-compact-state-capture.py
+```
+
+### Enforcement Metrics
+
+**Before Enforcement**:
+- 78.12% branch coverage (below 80% threshold)
+- Recurring TypeScript strict mode violations  
+- 192+ ESLint violations detected
+- Repeated fs-extra import issues
+
+**After Enforcement**:
+- 84.08% branch coverage (above 80% threshold)
+- Zero TypeScript strict mode violations allowed
+- Zero ESLint violations allowed
+- Centralized fs-extra-safe usage
+
+### Critical Success Factors
+
+1. **Never Lower Thresholds**: Test coverage and quality standards are never compromised
+2. **Fix Forward**: Always fix code to match tests/standards, never vice versa  
+3. **Multi-Layer Defense**: No single point of failure in enforcement
+4. **Immediate Feedback**: Catch violations as early as possible in workflow
+5. **Session Continuity**: Preserve context across compaction events
+6. **Zero Tolerance**: All violations must be fixed before proceeding
+
+### Troubleshooting
+
+**Common Violations**:
+```typescript
+// ❌ BANNED - Direct any type
+const data: any = response;
+
+// ✅ ALLOWED - Specific type  
+const data: ResponseData = response;
+
+// ❌ BANNED - Direct fs-extra import
+import * as fs from 'fs-extra';
+
+// ✅ ALLOWED - fs-extra-safe utility
+import * as fs from '../utils/fs-extra-safe.js';
+
+// ❌ BANNED - Type assertion to any
+const result = (data as any).property;
+
+// ✅ ALLOWED - Proper type assertion
+const result = (data as ResponseData).property;
+```
+
+**If Enforcement Fails**:
+1. Check hook permissions: `ls -la .claude/hooks/`
+2. Verify ESLint config: `cat .eslintrc.cjs`
+3. Test TypeScript config: `npx tsc --showConfig`
+4. Run individual validation: `npm run type-check && npm run lint`
+
+This enforcement system ensures **100% clean pull requests** and eliminates the recurring TypeScript strict mode issues permanently.
 
 ## Development Workflow
 
@@ -326,128 +537,28 @@ git push --force-with-lease origin your-branch
 - **[.github/workflows/pr-issue-linking.yml](./.github/workflows/pr-issue-linking.yml)** - PR-issue linking and auto-closure  
 - **[.github/workflows/stale-issues.yml](./.github/workflows/stale-issues.yml)** - Stale issue lifecycle management
 
-### Comprehensive Automated Semver Workflow System
+### Automated Release Workflow
 
-This repository implements a **complete automated semantic versioning workflow** that handles the entire lifecycle from feature development to NPM publication.
+**Two-Stage Architecture:**
+1. **release.yml**: Creates version bump PRs with automated semantic versioning
+2. **publish.yml**: Publishes to NPM and creates GitHub releases after PR merge
 
-#### Workflow Architecture (8 GitHub Actions)
-- **`test-validation.yml`** - Performance validation and CI checks
-- **`comprehensive-testing.yml`** - Multi-layered testing strategy
-- **`promote.yml`** - Feature → test branch with version analysis
-- **`release.yml`** - Test → main with automated semver and NPM publication
-- **`pr-validation.yml`** - PR quality gates
-- **`issue-management.yml`** - Issue automation and labeling
-- **`pr-issue-linking.yml`** - PR-issue integration
-- **`stale-issues.yml`** - Stale issue lifecycle management
-
-#### Automated Semantic Versioning
-```bash
-# Version bump script with CI/CD integration
-node scripts/bump-version.cjs              # Analyze and bump version
-node scripts/bump-version.cjs --dry-run    # Preview changes only
-node scripts/bump-version.cjs --force-type=major  # Force version type
-node scripts/bump-version.cjs --no-commit --no-tag  # Skip git operations
-```
-
-**Conventional Commit Detection:**
-- `feat:` → Minor version bump (unless CI/CD related)
+**Version Bumping:**
+- `feat:` → Minor version bump
 - `fix:` → Patch version bump  
-- `BREAKING CHANGE` or `!:` → Major version bump (→ Minor in beta 0.x.x)
+- `BREAKING CHANGE` or `!:` → Major version bump
 - `chore/docs/test/style/refactor/ci:` → No version bump
 
-**Beta Versioning (0.x.x):**
-- Breaking changes and features → **Minor bump** (prevents 1.0.0 until ready)
-- Bug fixes → Patch bump
-- Major version (1.0.0) → Only with explicit `--force-type=major` or production readiness
-
-**Smart CI/CD Detection:**
-CI/CD "features" are automatically treated as chores:
-- Keywords: `workflow`, `CI`, `CD`, `github action`, `semver`, `branch`, `automation`, `pipeline`, `deployment`, `release`, `promotion`
-- Example: `feat: implement GitHub Actions workflow` → Treated as chore (no version bump)
-
-**Manual Version Override:**
-Force specific version bump with commit message tags:
+**Quick Commands:**
 ```bash
-git commit -m "fix: resolve critical issue [force-patch]"    # Forces patch
-git commit -m "feat: new feature [force-minor]"            # Forces minor  
-git commit -m "feat!: breaking change [force-major]"       # Forces major
+node scripts/bump-version.cjs --dry-run     # Preview version bump
+gh workflow run release.yml --ref main     # Trigger release workflow
 ```
 
-**Workflow Override:**
-```bash
-gh workflow run release.yml --ref main -f force_type=patch  # Manual dispatch
-```
+**NPM Publishing Requirements:**
+- `NPM_TOKEN` secret must be configured in repository settings
+- Use automated workflows - never publish manually
 
-#### Complete Release Flow
-```
-Feature Branch → Test Branch → Main Branch → NPM Publication
-     ↓              ↓             ↓              ↓
-  promote.yml   release.yml   version bump   npm publish
-```
-
-**Key Features:**
-- ✅ **Automated version analysis** based on conventional commits
-- ✅ **CHANGELOG.md generation** with categorized changes
-- ✅ **Version consistency** across package.json, CHANGELOG.md, and git tags
-- ✅ **GitHub release creation** with automated notes
-- ✅ **NPM publication** with provenance
-- ✅ **Version badges** in README.md for visibility
-
-#### Workflow Verification
-```bash
-# Manual verification commands
-node scripts/bump-version.cjs --dry-run     # Test version detection
-npm run ci                                  # Full CI pipeline
-gh workflow run promote.yml --ref test     # Test promotion workflow
-gh workflow run release.yml --ref main     # Test release workflow
-```
-
-**Verification Command:** `.claude/commands/verify-workflow.yaml`
-- Validates all 8 GitHub Actions workflows
-- Tests version bump script functionality
-- Confirms version consistency across files
-- Checks workflow status and recent runs
-
-#### Implementation Lessons Learned
-
-#### YAML Syntax in GitHub Actions
-- **Problem**: Template literals with newlines cause YAML parsing errors
-- **Solution**: Use array `.join('\n')` approach for multiline strings
-- **Pattern**: Always validate YAML syntax before deploying workflows
-```bash
-python3 -c "import yaml; yaml.safe_load(open('.github/workflows/file.yml'))"
-```
-
-#### Performance Validation Fixes
-- **Problem**: MCP server startup failures in CI environment
-- **Solution**: Replace memory tests with simple binary execution tests using `--help` flag
-- **Pattern**: MCP servers require stdin connections not available in GitHub Actions
-
-#### Version Persistence in Release Workflow
-- **Problem**: Version changes weren't committed before tagging
-- **Solution**: Add explicit commit step before push in release.yml
-- **Pattern**: Use `[skip ci]` in commit messages to avoid infinite loops
-
-#### GitHub Actions Permissions
-- **Problem**: Workflows failed without explicit permissions
-- **Solution**: Add `permissions:` block to all workflow files
-- **Required**: `contents: write`, `id-token: write`, `issues: read`, `pull-requests: read`
-
-#### Single-Developer Workflow Adaptation
-- **Challenge**: GitHub doesn't allow self-approval by default
-- **Solution**: Admin can use `--admin` flag to merge: `gh pr merge --squash --delete-branch --admin`
-- **Branch Protection**: Configured to allow admin bypass for single-developer repository
-
-#### Issue Automation Validation
-- **Testing**: Issue #8 validates complete automation pipeline
-- **Results**: Auto-assignment ✅, priority labeling ✅, category detection ✅
-- **Keywords**: "critical" → `priority:high`, "testing" → `category:testing`
-
-#### Automated Semver Status
-- **Current State**: Ready for 1.0.0 major release (83 commits analyzed)
-- **Version Detection**: Functional with conventional commits
-- **CI/CD Pipeline**: All 8 workflows operational
-- **NPM Publishing**: Configured with provenance and access controls
 
 ## Tool Categories (17 Total)
 
@@ -497,19 +608,13 @@ echo '{"tool":{"name":"TodoWrite"},"result":{"todos":[{"content":"Test todo","st
 ./scripts/verify-hook-installation.sh  # Comprehensive validation
 ```
 
-## Publishing Process
+## Publishing
 
-### Current Status
-- **Version**: 0.6.0
-- **Ready**: ✅ All tests passing, build clean, npm package configured
+All releases are handled through automated GitHub Actions workflows:
+1. **release.yml**: Creates version bump PRs with automated semantic versioning
+2. **publish.yml**: Publishes to NPM and creates GitHub releases after PR merge
 
-### Publishing Steps
-```bash
-npm login                              # Browser-based authentication
-npm publish --access public           # Publish to npm registry
-gh release create v0.6.0             # Create GitHub release
-npx @jerfowler/agent-comm-mcp-server  # Test published package
-```
+**Never publish manually** - always use the automated two-stage workflow.
 
 ## Key Files
 
@@ -558,15 +663,13 @@ npx @jerfowler/agent-comm-mcp-server  # Test published package
 await eventLogger.waitForWriteQueueEmpty();
 ```
 
-### Hook Development
-- Always test with both `python3` and `python` commands
-- Use stdin for JSON input, not command-line arguments
-- Exit code 2 means "success with information"
-- Handle invalid JSON gracefully (exit code 0)
 
 ## Important Notes
 
 ### Security & Best Practices
+- **🔒 CRITICAL**: Never commit API keys or sensitive credentials to git
+- Use `.mcp.json.example` as template, actual `.mcp.json` is gitignored
+- Run `npm run setup` for safe MCP configuration setup
 - Never expose file paths to agents (use context IDs only)
 - Always validate tool parameters before processing
 - Use lock coordination for file operations
@@ -583,119 +686,34 @@ await eventLogger.waitForWriteQueueEmpty();
 - Validate JSON-RPC response structures
 - Use TypeScript type compliance checks
 
-### Common Gotchas
-- Hook must read from stdin, not argv
+### Important Notes
 - MCP tools return structured responses, not plain strings
-- TaskContextManager hides all file operations from agents
-- Archive operations require proper timestamp formatting
+- TaskContextManager abstracts all file operations from agents  
+- Archive operations use proper timestamp formatting
 
 ## TypeScript Strict Mode Requirements
 
-### Critical Testing Standards
-This project uses TypeScript strict mode with `exactOptionalPropertyTypes: true`. ALL tests must pass TypeScript compilation without errors or warnings.
+This project uses TypeScript strict mode with `exactOptionalPropertyTypes: true`. ALL tests must pass TypeScript compilation.
 
-**NEVER skip TypeScript type checking on tests** - this leads to runtime failures in CI/CD pipelines.
+**Key Patterns:**
+- Use factory function mocking for fs-extra: `jest.mock('fs-extra', () => ({...}))`
+- Type error assertions: `(error as Error).message`
+- Always return promises for async mock functions
+- Use proper type assertions instead of type casting
 
-### Jest + fs-extra Mock Patterns
+**Reference**: See `tests/unit/utils/file-system.test.ts` for correct patterns.
 
-#### ❌ WRONG - Automatic Mocking with Type Casting
-```typescript
-// DON'T DO THIS - causes "UnknownFunction" errors in strict mode
-jest.mock('fs-extra');
-const mockedFs = fs as unknown as MockedFsExtra;
-(mockedFs.pathExists as jest.Mock).mockImplementation(...);
-```
-
-#### ✅ CORRECT - Factory Function Mocking
-```typescript
-// Factory function mock - proper TypeScript pattern
-jest.mock('fs-extra', () => ({
-  pathExists: jest.fn(),
-  readFile: jest.fn(),
-  writeFile: jest.fn(),
-  readdir: jest.fn(),
-  stat: jest.fn(),
-  remove: jest.fn(),
-  ensureDir: jest.fn()
-}));
-
-// Properly typed mock interface
-const mockFs = fs as unknown as jest.Mocked<{
-  pathExists: jest.MockedFunction<(path: string) => Promise<boolean>>;
-  readFile: jest.MockedFunction<(path: string, encoding?: string) => Promise<string>>;
-  writeFile: jest.MockedFunction<(path: string, data: string) => Promise<void>>;
-  readdir: jest.MockedFunction<(path: string) => Promise<string[]>>;
-  stat: jest.MockedFunction<(path: string) => Promise<{ isDirectory: () => boolean; mtime?: Date }>>;
-  remove: jest.MockedFunction<(path: string) => Promise<void>>;
-  ensureDir: jest.MockedFunction<(path: string) => Promise<void>>;
-}>;
-
-// Clean mock calls - no type casting needed
-mockFs.pathExists.mockImplementation((filePath: string) => {
-  // implementation
-});
-```
-
-### Error Handling in Tests
-```typescript
-// ❌ WRONG - 'error' is of type 'unknown'
-} catch (error) {
-  expect(error.message).toContain('expected text');
-}
-
-// ✅ CORRECT - Proper error type assertion
-} catch (error) {
-  expect((error as Error).message).toContain('expected text');
-}
-```
-
-### Mock Call Assertions
-```typescript
-// ✅ CORRECT - Type-safe mock call assertions
-const writeFileCalls = mockFs.writeFile.mock.calls;
-const planWriteCall = writeFileCalls.find(call => 
-  (call as [string, string])[0].endsWith('PLAN.md')
-) as [string, string];
-expect(planWriteCall).toBeDefined();
-expect(planWriteCall[1]).toContain('expected content');
-```
-
-### Promise-based Mock Returns
-```typescript
-// ✅ CORRECT - Always return promises for async mocks
-mockFs.writeFile.mockImplementation(async (filePath: string, content: string) => {
-  // logic here
-  return Promise.resolve(); // ← Always return Promise for async functions
-});
-```
-
-### Fixing Common Strict Mode Errors
-
-1. **"UnknownFunction" errors**: Use factory function mocks instead of automatic mocking
-2. **"Object is of type 'unknown'"**: Add proper type assertions `(error as Error)`
-3. **"possibly undefined"**: Add null checks or proper type assertions
-4. **"not assignable to parameter"**: Check mock function signatures match expected types
-5. **Mock reassignment errors**: Use `.mockImplementation()` instead of reassigning mock functions
-
-### CI Pipeline Requirements
-
-**GitHub Actions MUST pass these checks**:
-- `npm run type-check` - Zero TypeScript errors
-- `npm run lint:all` - Zero ESLint warnings/errors  
-- `npm run test:all` - 100% test success rate
-- `npm run ci` - Complete pipeline validation
-
-### Verification Commands
+### Essential Commands
 ```bash
-# Always run these before committing
-npm run type-check      # TypeScript strict mode validation
-npm run lint:all        # Code quality checks
+# Before committing - must pass 100%
+npm run ci              # Complete pipeline (type + lint + test)
+npm run type-check      # TypeScript validation  
 npm run test:all        # Full test suite
-npm run ci              # Complete CI pipeline
+npm run lint:all        # Code quality
 
-# Quick validation during development
+# Development
 npm run test:unit       # Unit tests only
-npm run test:smoke      # Critical path tests
+npm run test:smoke      # Critical path validation
 ```
 
 ### References
@@ -737,9 +755,56 @@ node scripts/bump-version.cjs --dry-run         # Test version detection
 gh workflow list                                # List all workflows
 gh run list --limit 5                          # Recent workflow runs
 
-# Publishing
-npm run clean && npm run build && npm test:all  # Pre-publish verification
-npm publish --access public                     # Publish to npm
+# Publishing (automated only)
+gh workflow run release.yml --ref main          # Create release PR
+# After PR merge, publish.yml automatically publishes to NPM
 ```
+
+## **🚨 CRITICAL: Test Error Prevention System**
+
+**MANDATORY FOR ALL AGENTS**: This project implements a comprehensive test error prevention system to eliminate recurring patterns that cause CI/CD failures.
+
+### **Required Reading Before Any Test Work**
+
+1. **`TEST-ERROR-PATTERNS.md`** - Database of all banned error patterns with examples
+2. **`TEST-GUIDELINES.md`** - Comprehensive mandatory requirements and enforcement
+
+### **Zero Tolerance Violations**
+
+The following patterns will cause **immediate pre-commit hook failure** and must be avoided:
+
+- **❌ 'any' types in test files** - Use `as unknown as SpecificType` instead
+- **❌ Logical OR (`||`) for defaults** - Use nullish coalescing (`??`) instead  
+- **❌ Missing configuration validation** - Tests expecting errors must have runtime validation
+- **❌ Invalid test plans** - Must be >50 chars with proper structure and checkboxes
+- **❌ Incomplete mock setup** - Must mock ALL required files (INIT.md, PLAN.md, etc.)
+
+### **Enforcement Mechanisms**
+
+1. **Real-time Validation**: Claude Code hooks prevent violations during write
+2. **Pre-commit Hook**: Comprehensive validation including all test suites
+3. **Agent Constraints**: Backend engineers automatically receive prevention guidelines
+4. **CI/CD Pipeline**: Branch protection with strict quality gates
+
+### **Pre-Work Checklist**
+
+Before ANY test-related work, agents must:
+- [ ] Review `TEST-ERROR-PATTERNS.md` for current banned patterns
+- [ ] Follow all requirements in `TEST-GUIDELINES.md`
+- [ ] Verify no 'any' types will be used in test files
+- [ ] Confirm proper TypeScript patterns and ESLint compliance
+- [ ] Ensure complete mock setup for all dependencies
+
+### **Escalation Process**
+
+If a new error pattern is discovered:
+1. **STOP** all work immediately
+2. **Document** in `TEST-ERROR-PATTERNS.md`
+3. **Update** prevention guidelines and agent constraints
+4. **Only then** fix the specific instance
+
+**Success Metric**: Zero repeated patterns from the error database - once documented, never repeated.
+
+---
 
 This MCP server is designed to make AI agent coordination simple, transparent, and powerful. Focus on the context-based tools for the best user experience.
