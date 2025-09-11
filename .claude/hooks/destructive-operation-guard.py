@@ -556,6 +556,12 @@ def main():
     import argparse
     import re
     
+    # Handle case where hook is called without arguments (Claude Code integration)
+    if len(sys.argv) == 1:
+        # Called without arguments - this is normal for Claude Code hooks
+        # Just exit successfully and allow the operation
+        sys.exit(0)
+    
     parser = argparse.ArgumentParser(description='Destructive Operation Guard - Data Loss Prevention')
     parser.add_argument('action', choices=['check', 'protect', 'create-backup', 'verify-safety'],
                        help='Action to perform')

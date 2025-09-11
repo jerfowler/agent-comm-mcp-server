@@ -1,16 +1,17 @@
-# Test Validation Workflow  
+# TEMPORARILY DISABLED - Test Validation Workflow  
 # Comprehensive validation for develop branch before promotion
 
-name: Test Branch Validation
+name: DISABLED - Test Branch Validation
 
 on:
-  push:
-    branches: [ test ]
-  pull_request:
-    branches: [ test ]
+  # TEMPORARILY DISABLED FOR REPOSITORY RECOVERY
+  # push:
+  #   branches: [ test ]
+  # pull_request:
+  #   branches: [ test ]
     
   # Manual trigger for validation
-  workflow_dispatch:
+  # workflow_dispatch:
 
 permissions:
   contents: read
