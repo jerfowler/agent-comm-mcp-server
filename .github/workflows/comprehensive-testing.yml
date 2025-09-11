@@ -1,4 +1,4 @@
-# Comprehensive Testing Workflow
+# TEMPORARILY DISABLED - Comprehensive Testing Workflow
 # Multi-layered testing strategy to prevent integration failures like fs.readJsonSync
 
 name: Comprehensive Testing
