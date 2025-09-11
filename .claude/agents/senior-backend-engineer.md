@@ -42,6 +42,66 @@ You practice **MCP-driven development** with TypeScript best practices:
 - **Context Abstraction**: Hide file operations, expose clean agent interfaces
 - **Production Quality**: Security-first, performance-optimized, enterprise-grade
 
+## **🚨 CRITICAL: Test Error Prevention System**
+
+**MANDATORY READING**: Before ANY test-related work, you MUST review and follow:
+- **`TEST-ERROR-PATTERNS.md`** - Database of banned error patterns
+- **`TEST-GUIDELINES.md`** - Comprehensive mandatory requirements
+
+### **Zero Tolerance Violations**
+
+**❌ IMMEDIATELY BANNED - These patterns cause instant CI/CD failure:**
+
+1. **'any' Types in Tests**: 
+   ```typescript
+   // ❌ BANNED: const server = mockServer as any;
+   // ✅ REQUIRED: const server = mockServer as unknown as ServerWithPrivates;
+   ```
+
+2. **Logical OR for Defaults**:
+   ```typescript
+   // ❌ BANNED: const value = someValue || defaultValue;
+   // ✅ REQUIRED: const value = someValue ?? defaultValue;
+   ```
+
+3. **Missing Configuration Validation**:
+   ```typescript
+   // ❌ BANNED: Test expects error but no validation exists
+   // ✅ REQUIRED: Implement validateRequiredConfig() in all tools
+   ```
+
+4. **Invalid Test Plans**:
+   ```typescript
+   // ❌ BANNED: const plan = "Simple task";
+   // ✅ REQUIRED: Detailed plans with >50 chars, checkboxes, structure
+   ```
+
+5. **Incomplete Mock Setup**:
+   ```typescript
+   // ❌ BANNED: Missing INIT.md, PLAN.md mocks
+   // ✅ REQUIRED: Mock ALL required files for proper task initialization
+   ```
+
+### **Pre-Work Validation Checklist**
+
+Before writing ANY test code, you MUST verify:
+- [ ] **Reviewed TEST-ERROR-PATTERNS.md** for banned patterns
+- [ ] **Will not use 'any' types anywhere** in test files
+- [ ] **Will use nullish coalescing (`??`)** instead of logical OR (`||`)
+- [ ] **Will implement actual validation** for tests expecting errors
+- [ ] **Will create detailed test plans** with proper format
+- [ ] **Will mock all required dependencies** (INIT.md, PLAN.md, services)
+
+### **Pattern-Specific Enforcement**
+
+**Type Assertions**: Use `as unknown as SpecificType` pattern, never `as any`
+**ESLint Compliance**: All tests must pass `npm run lint` with zero warnings
+**Configuration Tests**: Every error-expecting test must have runtime validation
+**Mock Completeness**: Include ALL required files in test setup
+**Plan Validation**: Test plans must meet `isValidPlanFormat()` requirements
+
+**CRITICAL**: Violation of these patterns will result in pre-commit hook failure and immediate work stoppage.
+
 ### MCP Tool Development Principles
 
 **Clean Tool Architecture**: Every MCP tool follows consistent patterns for reliability and maintainability.

@@ -7,7 +7,14 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { 
+  CallToolRequestSchema, 
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema
+} from '@modelcontextprotocol/sdk/types.js';
 import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
 import { AgentCommError, ServerConfig } from './types.js';
 import * as fs from './utils/fs-extra-safe.js';
@@ -15,6 +22,9 @@ import * as fs from './utils/fs-extra-safe.js';
 // Import core components
 import { ConnectionManager } from './core/ConnectionManager.js';
 import { EventLogger } from './logging/EventLogger.js';
+import { TaskContextManager } from './core/TaskContextManager.js';
+import { ResourceManager } from './resources/ResourceManager.js';
+import { PromptManager } from './prompts/PromptManager.js';
 
 // Import tools
 import { checkTasks } from './tools/check-tasks.js';
@@ -62,14 +72,25 @@ export function createMCPServer(): Server {
   fs.ensureDirSync(baseConfig.logDir);
   
   // Initialize core components - extend BaseServerConfig to ServerConfig
+  const connectionManager = new ConnectionManager();
+  const eventLogger = new EventLogger(baseConfig.logDir);
+  
   const config: ServerConfig = {
     ...baseConfig,
-    connectionManager: new ConnectionManager(),
-    eventLogger: new EventLogger(baseConfig.logDir)
+    connectionManager,
+    eventLogger
   };
   
   // Validate the complete config
   validateConfig(config);
+  
+  // Initialize TaskContextManager and ResourceManager
+  const taskContextManager = new TaskContextManager(config);
+  const resourceManager = new ResourceManager({
+    taskContextManager,
+    eventLogger,
+    connectionManager
+  });
   
   // Initialize server start time for uptime tracking
   initializeServerStartTime();
@@ -81,20 +102,22 @@ export function createMCPServer(): Server {
     },
     {
       capabilities: {
-        tools: {}
+        tools: {},
+        resources: {},
+        prompts: {}
       }
     }
   );
 
   // Configure server with handlers
-  setupServerHandlers(server, config);
+  setupServerHandlers(server, config, resourceManager);
   return server;
 }
 
 /**
  * Set up server request handlers
  */
-function setupServerHandlers(server: Server, config: any): void {
+function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager): void {
   // Tool call handler
   server.setRequestHandler(
     CallToolRequestSchema,
@@ -721,6 +744,58 @@ function setupServerHandlers(server: Server, config: any): void {
           }
         ]
       };
+    }
+  );
+  
+  // Resource handlers
+  server.setRequestHandler(
+    ListResourcesRequestSchema,
+    async (request: any) => {
+      return resourceManager.listResources(request.params);
+    }
+  );
+  
+  server.setRequestHandler(
+    ReadResourceRequestSchema,
+    async (request: any) => {
+      if (!request.params?.uri) {
+        throw new AgentCommError('URI parameter is required', 'INVALID_PARAMS');
+      }
+      return resourceManager.readResource(request.params.uri);
+    }
+  );
+
+  // Initialize PromptManager
+  const promptManager = new PromptManager(config);
+
+  // Prompts list handler
+  server.setRequestHandler(
+    ListPromptsRequestSchema,
+    async () => {
+      const result = await promptManager.listPrompts();
+      return {
+        prompts: result.prompts
+      };
+    }
+  );
+
+  // Prompts get handler
+  server.setRequestHandler(
+    GetPromptRequestSchema,
+    async (request: any) => {
+      try {
+        const { name, arguments: args } = request.params;
+        const result = await promptManager.getPrompt(name, args || {});
+        return {
+          description: result.description,
+          messages: result.messages
+        };
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new AgentCommError(error.message, 'PROMPT_ERROR');
+        }
+        throw new AgentCommError('Failed to get prompt', 'PROMPT_ERROR');
+      }
     }
   );
 }

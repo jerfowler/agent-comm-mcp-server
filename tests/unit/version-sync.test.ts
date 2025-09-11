@@ -11,7 +11,8 @@ describe('Version Synchronization', () => {
   test('server version matches package.json version', () => {
     // Read package.json from the project root
     const packageJsonPath = join(__dirname, '..', '..', 'package.json');
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    const packageJsonContent = readFileSync(packageJsonPath, 'utf-8');
+    const packageJson = JSON.parse(packageJsonContent) as { version: string };
     
     // Get the server version from config
     const serverInfo = getServerInfo();

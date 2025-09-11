@@ -94,11 +94,12 @@ describe('README Example Scenarios', () => {
       expect(result.status).toBeDefined();
       expect(['pending', 'in_progress', 'completed', 'error']).toContain(result.status);
       
-      if (result.progress) {
-        expect(result.progress).toHaveProperty('percentage');
-        expect(result.progress).toHaveProperty('completed_steps');
-        expect(result.progress).toHaveProperty('total_steps');
-      }
+      // Validate progress properties when they exist
+      // The result type guarantees these properties if progress exists
+      expect(result.progress).toBeDefined();
+      expect(result.progress).toHaveProperty('percentage');
+      expect(result.progress).toHaveProperty('completed_steps');
+      expect(result.progress).toHaveProperty('total_steps');
     });
 
     it('should return meaningful progress information', async () => {
@@ -110,12 +111,13 @@ describe('README Example Scenarios', () => {
       // Validate response matches documented format
       expect(readmeTestHelpers.validateToolResponse(result, ['status'])).toBe(true);
       
-      if (result.progress) {
-        expect(readmeTestHelpers.validateToolResponse(
-          result.progress, 
-          ['percentage', 'completed_steps', 'total_steps']
-        )).toBe(true);
-      }
+      // Validate progress response
+      // The result type guarantees these properties if progress exists
+      expect(result.progress).toBeDefined();
+      expect(readmeTestHelpers.validateToolResponse(
+        result.progress, 
+        ['percentage', 'completed_steps', 'total_steps']
+      )).toBe(true);
     });
 
     it('should handle non-existent tasks gracefully', async () => {

@@ -15,9 +15,7 @@ describe('E2E - Complete Workflow Tests', () => {
   }, 30000);
 
   afterAll(async () => {
-    if (testEnv) {
-      await testEnv.cleanup();
-    }
+    await testEnv.cleanup();
   }, 30000);
 
   describe('Server Integration', () => {

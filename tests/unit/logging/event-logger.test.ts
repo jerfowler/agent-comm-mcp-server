@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { EventLogger, MockTimerDependency } from '../../../src/logging/EventLogger.js';
-import fs from 'fs-extra';
+import fs from '../../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import os from 'os';
 

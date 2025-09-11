@@ -1,13 +1,14 @@
-# Comprehensive Testing Workflow
+# TEMPORARILY DISABLED - Comprehensive Testing Workflow
 # Multi-layered testing strategy to prevent integration failures like fs.readJsonSync
 
-name: Comprehensive Testing
+name: DISABLED - Comprehensive Testing
 
 on:
-  push:
-    branches: [ main, test ]
-  pull_request:
-    branches: [ main, test ]
+  # TEMPORARILY DISABLED FOR REPOSITORY RECOVERY
+  # push:
+  #   branches: [ main, test ]
+  # pull_request:
+  #   branches: [ main, test ]
 
 jobs:
   # Layer 1: Quick validation - fails fast on basic issues

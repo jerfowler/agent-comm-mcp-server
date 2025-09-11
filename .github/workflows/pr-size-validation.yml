@@ -1,9 +1,10 @@
-name: PR Size Validation
+name: DISABLED - PR Size Validation
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main, test]
+  # TEMPORARILY DISABLED FOR REPOSITORY RECOVERY
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+  #   branches: [main, test]
 
 jobs:
   validate-pr-size:

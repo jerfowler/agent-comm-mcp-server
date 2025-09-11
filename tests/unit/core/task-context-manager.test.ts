@@ -7,7 +7,8 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
 import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
-import fs from 'fs-extra';
+import { AgentOwnershipError } from '../../../src/types.js';
+import fs from '../../../src/utils/fs-extra-safe.js';
 import path from 'path';
 import os from 'os';
 
@@ -389,6 +390,18 @@ Regular text line
         const taskDir = path.join(agentDir, 'checkbox-update-task');
         await fs.ensureDir(taskDir);
         
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: Checkbox Update Test
+        
+## Objective
+Test checkbox progress tracking functionality
+
+## Requirements
+- Test checkbox state updates
+- Verify progress tracking
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
+        
         const initialPlan = `# Implementation Plan
 
 - [ ] **Setup Environment**: Configure development environment
@@ -418,6 +431,18 @@ Regular text line
         const taskDir = path.join(agentDir, 'multi-update-task');
         await fs.ensureDir(taskDir);
         
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: Multi Update Test
+        
+## Objective
+Test multiple progress updates in single report
+
+## Requirements
+- Test multiple step updates
+- Verify concurrent progress tracking
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
+        
         const initialPlan = `# Multi-Step Plan
 
 - [ ] **Step 1**: First task to complete
@@ -446,6 +471,18 @@ Regular text line
         const agentDir = path.join(testDir, 'comm', 'senior-system-architect');
         const taskDir = path.join(agentDir, 'no-plan-task');
         await fs.ensureDir(taskDir);
+        
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: No Plan Test
+        
+## Objective
+Test graceful handling of missing PLAN.md
+
+## Requirements
+- Handle missing plan files
+- Return success without error
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
 
         const updates = [{ step: 1, status: 'COMPLETE' as const, description: 'Task done' }];
 
@@ -522,6 +559,19 @@ Regular text line
         const taskDir = path.join(agentDir, 'e2e-checkbox-test');
         await fs.ensureDir(taskDir);
 
+        // Add required INIT.md file for ownership validation
+        const initContent = `# Task: E2E Checkbox Test
+        
+## Objective
+Test complete end-to-end checkbox progress workflow
+
+## Requirements
+- Test complete checkbox lifecycle
+- Verify plan submission and progress tracking
+- Validate file updates
+`;
+        await fs.writeFile(path.join(taskDir, 'INIT.md'), initContent);
+
         const initialPlan = `# End-to-End Test Plan
 
 - [ ] **Phase 1**: Initial setup and configuration
@@ -590,9 +640,12 @@ Regular text line
     });
 
     it('should handle startTask with non-existent task file', async () => {
-      // Test coverage for line 245: Task not found or not accessible
+      // Test coverage for ownership validation of non-existent task
       await expect(contextManager.startTask('non-existent-task', mockConnection))
-        .rejects.toThrow('Task not found or not accessible');
+        .rejects.toThrow(AgentOwnershipError);
+        
+      await expect(contextManager.startTask('non-existent-task', mockConnection))
+        .rejects.toThrow("Task 'non-existent-task' not found for agent 'senior-system-architect'");
     });
 
     it('should handle task without PROGRESS.md file', async () => {

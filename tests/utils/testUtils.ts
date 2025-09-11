@@ -10,7 +10,7 @@ import { ServerConfig } from '../../src/types.js';
 export const testUtils = {
   // Create mock ServerConfig
   createMockConfig: (overrides: Partial<ServerConfig> = {}): ServerConfig => {
-    const baseLogDir = overrides.logDir || './test/logs';
+    const baseLogDir = overrides.logDir ?? './test/logs';
     
     const defaults: ServerConfig = {
       commDir: './test/comm',

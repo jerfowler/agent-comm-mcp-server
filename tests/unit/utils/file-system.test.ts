@@ -26,7 +26,7 @@ import { FileNotFoundError, InvalidTaskError } from '../../../src/types.js';
 import { sampleTaskFiles } from '../../fixtures/sample-tasks.js';
 
 // Mock fs-extra with the functions - use ESM default export format
-jest.mock('fs-extra', () => ({
+jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
   ensureDir: jest.fn(),
   pathExists: jest.fn(),
   readFile: jest.fn(),
@@ -39,7 +39,7 @@ jest.mock('fs-extra', () => ({
 }));
 
 // Import fs-extra after mocking to get the mocked functions
-import fs from 'fs-extra';
+import fs from '../../../src/utils/fs-extra-safe.js';
 const mockFs = fs as any as jest.Mocked<{
   ensureDir: jest.MockedFunction<any>,
   pathExists: jest.MockedFunction<any>,
