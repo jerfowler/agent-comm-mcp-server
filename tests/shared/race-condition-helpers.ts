@@ -3,20 +3,20 @@
  * Utilities to handle file system race conditions in tests
  */
 
-import * as fs from 'fs-extra';
+import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 
 /**
  * File system test helper with retry logic and race condition protection
  */
-export class FileSystemTestHelper {
+export const FileSystemTestHelper = {
   /**
    * Retry an operation with exponential backoff
    */
-  static async waitForFileSystem<T>(
+  async waitForFileSystem<T>(
     operation: () => Promise<T>, 
-    maxRetries: number = 5,
-    baseDelay: number = 100
+    maxRetries = 5,
+    baseDelay = 100
   ): Promise<T> {
     let lastError: Error | undefined;
 
@@ -36,14 +36,14 @@ export class FileSystemTestHelper {
       }
     }
 
-    throw lastError;
-  }
+    throw lastError ?? new Error('Operation failed');
+  },
 
   /**
    * Ensure directory exists with retry logic
    */
-  static async ensureDirectoryExists(dir: string): Promise<void> {
-    await this.waitForFileSystem(async () => {
+  async ensureDirectoryExists(dir: string): Promise<void> {
+    await FileSystemTestHelper.waitForFileSystem(async () => {
       await fs.ensureDir(dir);
       
       // Verify directory actually exists
@@ -57,13 +57,13 @@ export class FileSystemTestHelper {
       await fs.writeFile(testFile, 'test');
       await fs.remove(testFile);
     });
-  }
+  },
 
   /**
    * Atomic file write with verification
    */
-  static async writeFileAtomic(filePath: string, content: string): Promise<void> {
-    await this.waitForFileSystem(async () => {
+  async writeFileAtomic(filePath: string, content: string): Promise<void> {
+    await FileSystemTestHelper.waitForFileSystem(async () => {
       const dir = path.dirname(filePath);
       await fs.ensureDir(dir);
       
@@ -88,26 +88,26 @@ export class FileSystemTestHelper {
         throw error;
       }
     });
-  }
+  },
 
   /**
    * Safe file read with retry
    */
-  static async readFileSafe(filePath: string): Promise<string> {
-    return await this.waitForFileSystem(async () => {
+  async readFileSafe(filePath: string): Promise<string> {
+    return await FileSystemTestHelper.waitForFileSystem(async () => {
       if (!await fs.pathExists(filePath)) {
         throw new Error(`File ${filePath} does not exist`);
       }
       
       return await fs.readFile(filePath, 'utf-8');
     });
-  }
+  },
 
   /**
    * Safe JSON read with retry
    */
-  static async readJsonSafe<T = unknown>(filePath: string): Promise<T> {
-    return await this.waitForFileSystem(async () => {
+  async readJsonSafe<T = unknown>(filePath: string): Promise<T> {
+    return await FileSystemTestHelper.waitForFileSystem(async () => {
       if (!await fs.pathExists(filePath)) {
         throw new Error(`JSON file ${filePath} does not exist`);
       }
@@ -120,17 +120,17 @@ export class FileSystemTestHelper {
         throw new Error(`Failed to parse JSON from ${filePath}: ${errorMessage}`);
       }
     });
-  }
+  },
 
   /**
    * Safe directory removal with retry
    */
-  static async removeSafe(dirPath: string): Promise<void> {
+  async removeSafe(dirPath: string): Promise<void> {
     if (!await fs.pathExists(dirPath)) {
       return; // Already removed
     }
 
-    await this.waitForFileSystem(async () => {
+    await FileSystemTestHelper.waitForFileSystem(async () => {
       await fs.remove(dirPath);
       
       // Verify removal
@@ -139,34 +139,34 @@ export class FileSystemTestHelper {
         throw new Error(`Failed to remove ${dirPath}`);
       }
     });
-  }
+  },
 
   /**
    * Create test directory structure with retry
    */
-  static async createTestStructure(baseDir: string, structure: Record<string, unknown>): Promise<void> {
-    await this.ensureDirectoryExists(baseDir);
+  async createTestStructure(baseDir: string, structure: Record<string, unknown>): Promise<void> {
+    await FileSystemTestHelper.ensureDirectoryExists(baseDir);
 
     for (const [name, content] of Object.entries(structure)) {
       const fullPath = path.join(baseDir, name);
 
       if (typeof content === 'object' && content !== null) {
         // It's a directory
-        await this.createTestStructure(fullPath, content as Record<string, unknown>);
+        await FileSystemTestHelper.createTestStructure(fullPath, content as Record<string, unknown>);
       } else {
         // It's a file
-        await this.writeFileAtomic(fullPath, String(content));
+        await FileSystemTestHelper.writeFileAtomic(fullPath, String(content));
       }
     }
-  }
+  },
 
   /**
    * Wait for condition to be true with timeout
    */
-  static async waitForCondition(
+  async waitForCondition(
     condition: () => Promise<boolean> | boolean,
-    timeout: number = 5000,
-    checkInterval: number = 100
+    timeout = 5000,
+    checkInterval = 100
   ): Promise<void> {
     const startTime = Date.now();
 
@@ -184,13 +184,13 @@ export class FileSystemTestHelper {
     }
 
     throw new Error(`Condition not met within ${timeout}ms`);
-  }
+  },
 
   /**
    * Copy directory with retry logic
    */
-  static async copyDirectorySafe(src: string, dest: string): Promise<void> {
-    await this.waitForFileSystem(async () => {
+  async copyDirectorySafe(src: string, dest: string): Promise<void> {
+    await FileSystemTestHelper.waitForFileSystem(async () => {
       await fs.copy(src, dest);
       
       // Verify copy was successful
@@ -204,13 +204,13 @@ export class FileSystemTestHelper {
         throw new Error(`Copy failed: destination ${dest} does not exist`);
       }
     });
-  }
+  },
 
   /**
    * Move file/directory with retry logic
    */
-  static async moveSafe(src: string, dest: string): Promise<void> {
-    await this.waitForFileSystem(async () => {
+  async moveSafe(src: string, dest: string): Promise<void> {
+    await FileSystemTestHelper.waitForFileSystem(async () => {
       await fs.move(src, dest);
       
       // Verify move was successful
@@ -225,21 +225,21 @@ export class FileSystemTestHelper {
       }
     });
   }
-}
+};
 
 /**
  * Mock transport for MCP protocol testing
  */
 export class MockMCPTransport {
-  private responses: Map<number, any> = new Map();
+  private responses = new Map<number, unknown>();
   private requestId = 1;
 
   /**
    * Send a mock MCP request and return response
    */
-  async sendRequest(request: any): Promise<any> {
+  async sendRequest(request: unknown): Promise<unknown> {
     const id = this.requestId++;
-    const requestWithId = { ...request, id };
+    const requestWithId = { ...(request as Record<string, unknown>), id };
 
     // Simulate processing delay  
     await new Promise(resolve => setTimeout(resolve, 10));
@@ -247,7 +247,7 @@ export class MockMCPTransport {
     // Return mock response
     return {
       jsonrpc: '2.0',
-      id: requestWithId.id,
+      id: (requestWithId as { id: number }).id,
       result: this.responses.get(id) || { success: true }
     };
   }
@@ -255,7 +255,7 @@ export class MockMCPTransport {
   /**
    * Set mock response for next request
    */
-  setMockResponse(response: any): void {
+  setMockResponse(response: unknown): void {
     this.responses.set(this.requestId, response);
   }
 
@@ -270,18 +270,18 @@ export class MockMCPTransport {
 /**
  * Test timeout helper
  */
-export class TestTimeout {
+export const TestTimeout = {
   /**
    * Run operation with timeout
    */
-  static async withTimeout<T>(
+  async withTimeout<T>(
     operation: () => Promise<T>,
     timeoutMs: number,
     errorMessage?: string
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error(errorMessage || `Operation timed out after ${timeoutMs}ms`));
+        reject(new Error(errorMessage ?? `Operation timed out after ${timeoutMs}ms`));
       }, timeoutMs);
 
       operation()
@@ -291,35 +291,35 @@ export class TestTimeout {
         })
         .catch(error => {
           clearTimeout(timer);
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
         });
     });
-  }
+  },
 
   /**
    * Add timeout to any function
    */
-  static withTimeoutWrapper<T extends (...args: any[]) => Promise<any>>(
+  withTimeoutWrapper<T extends (...args: unknown[]) => Promise<unknown>>(
     fn: T,
     timeoutMs: number
   ): T {
     return ((...args: Parameters<T>) => {
-      return this.withTimeout(() => fn(...args), timeoutMs);
+      return TestTimeout.withTimeout(() => fn(...args), timeoutMs);
     }) as T;
   }
-}
+};
 
 /**
  * Helper to create isolated test environments
  */
 export class TestEnvironment {
-  public tempDir: string = '';
+  public tempDir = '';
   private originalEnv: Record<string, string | undefined> = {};
 
   /**
    * Set up isolated test environment
    */
-  async setup(prefix: string = 'test-env-'): Promise<void> {
+  async setup(prefix = 'test-env-'): Promise<void> {
     // Create temp directory
     const os = await import('os');
     const path = await import('path');

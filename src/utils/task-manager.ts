@@ -55,8 +55,8 @@ export async function getAgentTasks(config: ServerConfig, agentName: string): Pr
 
   // Sort by creation date, newest first
   return tasks.sort((a, b) => {
-    const timeA = a.created?.getTime() || 0;
-    const timeB = b.created?.getTime() || 0;
+    const timeA = a.created?.getTime() ?? 0;
+    const timeB = b.created?.getTime() ?? 0;
     return timeB - timeA;
   });
 }

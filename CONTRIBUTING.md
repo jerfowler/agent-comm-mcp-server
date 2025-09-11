@@ -111,7 +111,7 @@ Before your PR can be merged, ensure:
 - [ ] README.md updated for new features
 - [ ] PROTOCOL.md updated for API changes
 - [ ] JSDoc comments added for new functions/classes
-- [ ] CHANGELOG.md entry added (if applicable)
+- [ ] CHANGELOG.md entry added (if applicable - see CHANGELOG Policy below)
 
 ### Security & Dependencies ✅
 - [ ] No security vulnerabilities introduced (`npm audit`)
@@ -268,6 +268,23 @@ npm run ci
    - Git tag creation  
    - NPM package publication
    - GitHub release creation
+
+### CHANGELOG Policy
+
+**What belongs in CHANGELOG.md:**
+- ✅ **New MCP server features** - New tools, capabilities, or functionality
+- ✅ **Bug fixes** - Fixes to MCP server behavior or tool functionality  
+- ✅ **Breaking changes** - Changes that affect MCP tool interfaces or behavior
+- ✅ **Performance improvements** - Changes that improve MCP server performance
+- ✅ **Security fixes** - Security-related fixes to the MCP server
+
+**What does NOT belong in CHANGELOG.md:**
+- ❌ **CI/CD changes** - GitHub Actions, workflow improvements, pipeline fixes
+- ❌ **Documentation updates** - README, contributing guides, code comments
+- ❌ **Development tooling** - ESLint configs, build scripts, test utilities
+- ❌ **Repository management** - Gitignore changes, branch protection, issue templates
+
+The automated versioning system filters these out automatically, keeping the CHANGELOG focused on changes that affect MCP server users and functionality.
 
 ### Manual Promotion (if needed)
 

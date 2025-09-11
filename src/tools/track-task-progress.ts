@@ -5,7 +5,8 @@
  * and detailed progress metrics based on plan step completion
  */
 
-import * as fs from '../utils/fs-extra-safe.js';
+import { pathExists, readFile } from '../utils/file-system.js';
+import { stat } from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { validateRequiredString } from '../utils/validation.js';
 import { TrackTaskProgressArgs, TrackTaskProgressResult, ServerConfig } from '../types.js';
@@ -33,7 +34,7 @@ export async function trackTaskProgress(
   };
 
   // Check if task directory exists
-  if (!await fs.pathExists(taskPath)) {
+  if (!await pathExists(taskPath)) {
     return result;
   }
 
@@ -42,30 +43,30 @@ export async function trackTaskProgress(
   const errorPath = path.join(taskPath, 'ERROR.md');
   const planPath = path.join(taskPath, 'PLAN.md');
 
-  if (await fs.pathExists(donePath)) {
+  if (await pathExists(donePath)) {
     result.status = 'completed';
-    const stats = await fs.stat(donePath);
+    const stats = await stat(donePath);
     result.last_updated = stats.mtime.toISOString();
-  } else if (await fs.pathExists(errorPath)) {
+  } else if (await pathExists(errorPath)) {
     result.status = 'error';
-    const stats = await fs.stat(errorPath);
+    const stats = await stat(errorPath);
     result.last_updated = stats.mtime.toISOString();
-  } else if (await fs.pathExists(planPath)) {
+  } else if (await pathExists(planPath)) {
     result.status = 'in_progress';
-    const stats = await fs.stat(planPath);
+    const stats = await stat(planPath);
     result.last_updated = stats.mtime.toISOString();
   } else {
     // Only INIT file exists or task just created
     const initPath = path.join(taskPath, 'INIT.md');
-    if (await fs.pathExists(initPath)) {
-      const stats = await fs.stat(initPath);
+    if (await pathExists(initPath)) {
+      const stats = await stat(initPath);
       result.last_updated = stats.mtime.toISOString();
     }
   }
 
   // Parse progress from PLAN.md if it exists
-  if (await fs.pathExists(planPath)) {
-    const planContent = await fs.readFile(planPath, 'utf-8');
+  if (await pathExists(planPath)) {
+    const planContent = await readFile(planPath);
     const progressInfo = parseProgressFromPlan(planContent);
     
     result.progress = {

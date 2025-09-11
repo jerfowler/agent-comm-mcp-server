@@ -72,7 +72,7 @@ export function getServerInfo(
     author: PACKAGE_INFO.author,
     repository: PACKAGE_INFO.repository,
     uptime,
-    startTime: serverStartTime!.toISOString(),
+    startTime: serverStartTime?.toISOString() ?? new Date().toISOString(),
     capabilities: {
       tools: true,
       resources: false,
