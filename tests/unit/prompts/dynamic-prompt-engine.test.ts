@@ -382,14 +382,12 @@ describe('DynamicPromptEngine', () => {
     it('should handle invalid prompt names', async () => {
       await expect(
         engine.generatePromptContent('invalid-prompt' as unknown as PromptName, {})
-        engine.generatePromptContent('invalid-prompt' as any, {})
       ).rejects.toThrow('Unknown prompt: invalid-prompt');
     });
 
     it('should validate argument types', async () => {
       await expect(
         engine.generatePromptContent('task-workflow-guide', { agent: 123 as unknown })
-        engine.generatePromptContent('task-workflow-guide', { agent: 123 as any })
       ).rejects.toThrow('Invalid argument type');
     });
   });

@@ -67,7 +67,6 @@ describe('Agent Ownership Validation', () => {
         isDirectory: () => true,
         mtime: new Date()
       } as fs.Stats);
-      } as any);
 
       // This should not throw
       await expect(
@@ -101,7 +100,6 @@ describe('Agent Ownership Validation', () => {
         isDirectory: () => true,
         mtime: new Date()
       } as fs.Stats);
-      } as any);
 
       await expect(
         taskContextManager.validateAgentOwnership(taskId, attemptingAgent)
@@ -154,7 +152,6 @@ describe('Agent Ownership Validation', () => {
         isDirectory: () => true,
         mtime: new Date()
       } as fs.Stats);
-      } as any);
 
       await expect(
         taskContextManager.validateAgentOwnership(taskId, attemptingAgent)
@@ -527,7 +524,6 @@ This is a high-priority task for the current sprint.`;
         isDirectory: () => true,
         mtime: new Date()
       } as fs.Stats);
-      } as any);
 
       mockedFs.writeFile.mockResolvedValue();
 

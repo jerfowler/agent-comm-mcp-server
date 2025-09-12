@@ -30,7 +30,6 @@ describe('ServerResourceProvider', () => {
   let provider: ServerResourceProvider;
   let mockEventLogger: jest.Mocked<EventLogger>;
   const mockedFs = fs as jest.Mocked<typeof fs>;
-  const mockedFs = fs as any;
   
   beforeEach(() => {
     jest.clearAllMocks();
