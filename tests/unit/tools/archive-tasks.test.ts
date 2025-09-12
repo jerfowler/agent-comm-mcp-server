@@ -7,6 +7,7 @@ import { archiveTasksTool } from '../../../src/tools/archive-tasks.js';
 import * as taskManager from '../../../src/utils/task-manager.js';
 import * as validation from '../../../src/utils/validation.js';
 import { ServerConfig, ArchiveResult, InvalidTaskError, ArchiveError } from '../../../src/types.js';
+import { testUtils } from '../../utils/testUtils.js';
 
 // Mock modules
 jest.mock('../../../src/utils/task-manager.js');
@@ -22,19 +23,19 @@ describe('Archive Tasks Tool', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockConfig = (global as any).testUtils.createMockConfig();
+    mockConfig = testUtils.createMockConfig();
     mockArchiveResult = {
       archived: {
         completed: 5,
         pending: 2,
         total: 7
       },
-      timestamp: (global as any).testUtils.getTestTimestamp(),
+      timestamp: testUtils.getTestTimestamp(),
       archivePath: '/test/archive/2025-01-01T12-00-00'
     };
 
     // Setup default validation mocks
-    mockValidation.validateArchiveMode.mockImplementation((value) => value as any);
+    mockValidation.validateArchiveMode.mockImplementation((value) => value as unknown as "completed" | "all" | "by-agent" | "by-date");
     mockValidation.validateOptionalString.mockImplementation((value) => value as string | undefined);
     mockValidation.validateBoolean.mockImplementation((value, _name, defaultValue) => 
       value !== undefined ? value as boolean : defaultValue as boolean

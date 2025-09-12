@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
-import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { TaskContextManager, TaskContext, TaskSummary } from '../../../src/core/TaskContextManager.js';
+import { ConnectionManager, Connection } from '../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
 import { AgentOwnershipError } from '../../../src/types.js';
 import fs from '../../../src/utils/fs-extra-safe.js';
@@ -17,7 +17,7 @@ describe('TaskContextManager', () => {
   let connectionManager: ConnectionManager;
   let eventLogger: EventLogger;
   let testDir: string;
-  let mockConnection: any;
+  let mockConnection: Connection;
   
   beforeEach(async () => {
     // Create temporary test directory
@@ -350,13 +350,23 @@ Some additional notes here.
 `;
 
         // This test will FAIL initially because current implementation doesn't support checkbox format
-        const result = (contextManager as any).analyzePlanProgress(planWithCheckboxes);
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const result = contextManagerPrivate.analyzePlanProgress(planWithCheckboxes);
         expect(result).toEqual({ completed: 2, inProgress: 0, pending: 2, blocked: 0 });
       });
 
       it('should handle empty or malformed content gracefully', () => {
         const emptyContent = '';
-        const result1 = (contextManager as any).analyzePlanProgress(emptyContent);
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const result1 = contextManagerPrivate.analyzePlanProgress(emptyContent);
         expect(result1).toEqual({ completed: 0, inProgress: 0, pending: 0, blocked: 0 });
 
         const malformedContent = `# Plan
@@ -364,7 +374,7 @@ Some additional notes here.
 - [ ] **Valid checkbox**: This should work
 - [x] **Another valid**: This should work too`;
         
-        const result2 = (contextManager as any).analyzePlanProgress(malformedContent);
+        const result2 = contextManagerPrivate.analyzePlanProgress(malformedContent);
         expect(result2).toEqual({ completed: 1, inProgress: 0, pending: 1, blocked: 0 });
       });
 
@@ -378,7 +388,12 @@ Regular text line
 ## Section header
 - [x] **Final Valid**: Should count`;
 
-        const result = (contextManager as any).analyzePlanProgress(mixedContent);
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const result = contextManagerPrivate.analyzePlanProgress(mixedContent);
         expect(result).toEqual({ completed: 2, inProgress: 0, pending: 1, blocked: 0 });
       });
     });
@@ -502,7 +517,12 @@ Test graceful handling of missing PLAN.md
 - [ ] **Documentation**: Write user documentation`;
 
         // This will FAIL initially because extractProgressMarkers doesn't exist
-        const markers = (contextManager as any).extractProgressMarkers(planContent);
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
+          extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const markers = contextManagerPrivate.extractProgressMarkers(planContent);
         expect(markers).toEqual({
           completed: ['Database Setup', 'Testing Suite'],
           pending: ['API Implementation', 'Documentation']
@@ -511,7 +531,12 @@ Test graceful handling of missing PLAN.md
 
       it('should handle empty content', () => {
         const emptyContent = '';
-        const markers = (contextManager as any).extractProgressMarkers(emptyContent);
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
+          extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const markers = contextManagerPrivate.extractProgressMarkers(emptyContent);
         expect(markers).toEqual({
           completed: [],
           pending: []
@@ -524,7 +549,12 @@ Test graceful handling of missing PLAN.md
 - [ ] Regular checkbox without bold: Should not be extracted
 - [x] **Another Valid Task**: Should be extracted`;
 
-        const markers = (contextManager as any).extractProgressMarkers(planContent);
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
+          extractProgressMarkers(content: string): { completed: string[]; pending: string[]; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const markers = contextManagerPrivate.extractProgressMarkers(planContent);
         expect(markers).toEqual({
           completed: ['Database Setup', 'Another Valid Task'],
           pending: []
@@ -604,7 +634,12 @@ Test complete end-to-end checkbox progress workflow
         expect(finalPlan).toContain('- [ ] **Phase 3**'); // Still pending
 
         // Step 6: Verify progress analysis still works
-        const progress = (contextManager as any).analyzePlanProgress(finalPlan);
+        // Interface for accessing private methods for testing - don't extend, just define what we need
+        interface TaskContextManagerPrivate {
+          analyzePlanProgress(content: string): { completed: number; inProgress: number; pending: number; blocked: number; };
+        }
+        const contextManagerPrivate = contextManager as unknown as TaskContextManagerPrivate;
+        const progress = contextManagerPrivate.analyzePlanProgress(finalPlan);
         expect(progress).toEqual({ completed: 2, inProgress: 0, pending: 1, blocked: 0 });
       });
     });
@@ -669,6 +704,159 @@ Test complete end-to-end checkbox progress workflow
       expect(task!.status).toBe('new');
       // Progress should be undefined when no PROGRESS.md exists
       expect(task!.progress).toBeUndefined();
+    });
+  });
+
+  describe('Additional Branch Coverage', () => {
+    it('should handle task with PLAN.md but no PROGRESS.md', async () => {
+      const taskId = 'task-with-plan';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      // Create INIT.md and PLAN.md but no PROGRESS.md
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Task With Plan\n## Objective\nTest task with plan\n## Requirements\n- Test requirement'
+      );
+      await fs.writeFile(
+        path.join(taskPath, 'PLAN.md'),
+        '# Implementation Plan\n\n- [ ] Step 1\n- [ ] Step 2'
+      );
+
+      const context = await contextManager.startTask(taskId, mockConnection);
+      
+      expect(context.title).toBe('Task With Plan');
+      expect(context.objective).toBe('Test task with plan');
+      // Progress should be undefined when there's no PROGRESS.md
+      expect(context.currentProgress).toBeUndefined();
+    });
+
+    it('should handle getTaskContext with empty taskId', async () => {
+      // Test with empty taskId - should return empty context
+      const context = await contextManager.getTaskContext('', mockConnection);
+      
+      expect(context.title).toBe('No Active Task');
+      expect(context.objective).toBe('');
+      expect(context.requirements).toEqual([]);
+      expect(context.currentAgent).toBe(mockConnection.agent);
+    });
+
+    it('should handle error in checkAssignedTasks when readdir fails', async () => {
+      // First create the agent directory so readdir will be called
+      const agentDir = path.join(testDir, 'comm', mockConnection.agent);
+      await fs.ensureDir(agentDir);
+      
+      // Create a spy for fs.readdir
+      const readdirSpy = jest.spyOn(fs, 'readdir');
+      readdirSpy.mockRejectedValueOnce(new Error('Read error'));
+      
+      await expect(contextManager.checkAssignedTasks(mockConnection))
+        .rejects.toThrow('Read error');
+      
+      // Restore spy
+      readdirSpy.mockRestore();
+    });
+
+    it('should handle task with DONE.md file', async () => {
+      const taskId = 'completed-task';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Completed Task\n\nThis task is done.'
+      );
+      await fs.writeFile(
+        path.join(taskPath, 'DONE.md'),
+        '# Task Complete\n\nSuccessfully completed.'
+      );
+
+      const result = await contextManager.checkAssignedTasks(mockConnection);
+      const task = result.find(t => t.taskId === taskId);
+      
+      expect(task).toBeDefined();
+      expect(task!.status).toBe('completed');
+    });
+
+    it('should handle task with ERROR.md file', async () => {
+      const taskId = 'error-task';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Error Task\n\nThis task failed.'
+      );
+      await fs.writeFile(
+        path.join(taskPath, 'ERROR.md'),
+        '# Task Failed\n\nError occurred during execution.'
+      );
+
+      const result = await contextManager.checkAssignedTasks(mockConnection);
+      const task = result.find(t => t.taskId === taskId);
+      
+      expect(task).toBeDefined();
+      expect(task!.status).toBe('error');
+    });
+
+    // Removed test for syncTodoCheckboxes - this is a separate tool, not a TaskContextManager method
+
+    // Removed test for progress extraction - startTask doesn't include progress field from PROGRESS.md
+
+    it('should handle malformed task directory names', async () => {
+      const commDir = path.join(testDir, 'comm');
+      const agentDir = path.join(commDir, mockConnection.agent);
+      await fs.ensureDir(agentDir);
+      
+      // Create a malformed directory name
+      const malformedPath = path.join(agentDir, 'not-a-task');
+      await fs.ensureDir(malformedPath);
+      await fs.writeFile(
+        path.join(malformedPath, 'INIT.md'),
+        '# Malformed Task\n\nThis directory name is not valid.'
+      );
+
+      const result = await contextManager.checkAssignedTasks(mockConnection);
+      
+      // Actually, 'not-a-task' is a valid directory name and has INIT.md, so it should be included
+      const malformedTask = result.find(t => t.taskId === 'not-a-task');
+      expect(malformedTask).toBeDefined();
+      expect(malformedTask?.title).toBe('Malformed Task');
+      expect(malformedTask?.status).toBe('new');
+    });
+
+    it('should handle concurrent task operations', async () => {
+      const taskId = 'concurrent-task';
+      const commDir = path.join(testDir, 'comm');
+      const taskPath = path.join(commDir, mockConnection.agent, taskId);
+      await fs.ensureDir(taskPath);
+      
+      await fs.writeFile(
+        path.join(taskPath, 'INIT.md'),
+        '# Concurrent Task\n\nTesting concurrent operations.'
+      );
+
+      // Start multiple operations concurrently
+      const operations = [
+        contextManager.startTask(taskId, mockConnection),
+        contextManager.getTaskContext(taskId, mockConnection), // Fixed: taskId first, then connection
+        contextManager.checkAssignedTasks(mockConnection)
+      ];
+
+      const results = await Promise.all(operations);
+      
+      // Type-safe assertions following TEST-GUIDELINES.md patterns
+      const startTaskResult = results[0] as unknown as TaskContext;
+      const getContextResult = results[1] as unknown as TaskContext;
+      const checkTasksResult = results[2] as unknown as TaskSummary[];
+      
+      // TaskContext doesn't have taskId field - check title instead
+      expect(startTaskResult.title).toBe('Concurrent Task');
+      expect(getContextResult.title).toBe('Concurrent Task');
+      expect(checkTasksResult.length).toBeGreaterThan(0);
     });
   });
 });

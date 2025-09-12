@@ -175,6 +175,49 @@ Agents get clean task descriptions automatically. You never deal with file paths
 **Traditional (Advanced - Full Control):**
 Direct access to all task files and management. Perfect if you need granular control over the process.
 
+### How the Smart Response System Works (NEW)
+
+The **Smart Response System** learns from your agent interactions to provide progressively better guidance over time. It automatically detects common patterns and helps agents complete tasks more effectively.
+
+**What it does for you:**
+
+1. **Detects Incomplete Delegations**: When you create a task for another agent, the system notices if you forget to follow up and provides the exact command to check on it.
+
+2. **Progressive Guidance**: As agents work together more, the system learns their patterns and provides increasingly specific help:
+   - **New agents** get friendly reminders about the workflow
+   - **Experienced agents** get concise, targeted guidance
+   - **Struggling agents** receive more detailed assistance
+
+3. **Automatic Compliance Tracking**: The system quietly tracks how well agents follow the task workflow and adjusts its guidance accordingly—no manual intervention needed.
+
+**Example: Before and After**
+
+**Before Smart Response System:**
+```json
+{
+  "success": true,
+  "taskId": "2025-01-10T10-30-00-implement-feature",
+  "message": "Task created successfully"
+}
+```
+
+**After Smart Response System:**
+```json
+{
+  "success": true,
+  "taskId": "2025-01-10T10-30-00-implement-feature",
+  "message": "Task created successfully",
+  "guidance": {
+    "next_steps": "You've delegated to frontend-engineer. Check their progress with:",
+    "actionable_command": "mcp__agent_comm__track_task_progress(agent=\"frontend-engineer\", taskId=\"2025-01-10T10-30-00-implement-feature\")",
+    "contextual_reminder": "Remember to review their plan before they start implementation",
+    "compliance_level": 85
+  }
+}
+```
+
+The system is **completely automatic**—it's enabled by default and works silently in the background. You'll only notice it when it helps you avoid mistakes or complete tasks more efficiently.
+
 ---
 
 ## What's in the Complete Protocol Guide

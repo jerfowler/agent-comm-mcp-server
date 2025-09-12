@@ -75,13 +75,13 @@ describe('Agent Work Verification Gate', () => {
     mockFs.getStats.mockResolvedValue({
       isDirectory: () => true,
       mtime: new Date('2025-01-01T12:00:00Z')
-    } as any);
+    } as fs.Stats);
     mockFs.readFile.mockResolvedValue('# Test Plan\n- [ ] **Step 1**: Pending\n- [x] **Step 2**: Complete');
     
     // Setup TaskContextManager mock
     mockContextManager = {
       markComplete: jest.fn<() => Promise<CompletionResult>>().mockResolvedValue(mockCompletionResult)
-    } as any;
+    } as unknown as jest.Mocked<TaskContextManager>;
     
     MockTaskContextManager.mockImplementation(() => mockContextManager);
     
@@ -269,7 +269,12 @@ describe('Agent Work Verification Gate', () => {
         success: true,
         confidence: NaN, // INVALID CONFIDENCE
         warnings: [],
-        evidence: {} as any,
+        evidence: {
+          filesModified: 0,
+          testsRun: false,
+          mcpProgress: false,
+          timeSpent: 0
+        },
         recommendation: ''
       });
 

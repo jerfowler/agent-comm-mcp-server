@@ -5,6 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { ping } from '../../../src/tools/ping.js';
 import { ServerConfig } from '../../../src/types.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 describe('ping tool', () => {
   let mockConfig: ServerConfig;
@@ -28,12 +30,12 @@ describe('ping tool', () => {
         getStatistics: jest.fn(),
         getConnectionCount: jest.fn(),
         hasConnection: jest.fn()
-      } as any,
+      } as unknown as ConnectionManager,
       eventLogger: {
         logOperation: jest.fn(),
         logError: jest.fn(),
         getOperationStatistics: jest.fn()
-      } as any
+      } as unknown as EventLogger
     };
 
     // Mock Date.now() to return consistent timestamp

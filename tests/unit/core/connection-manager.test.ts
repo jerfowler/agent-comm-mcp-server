@@ -126,12 +126,12 @@ describe('ConnectionManager', () => {
     });
 
     it('should handle null connection ID gracefully', () => {
-      const result = connectionManager.getConnection(null as any);
+      const result = connectionManager.getConnection(null as unknown as string);
       expect(result).toBeUndefined();
     });
 
     it('should handle undefined connection ID gracefully', () => {
-      const result = connectionManager.getConnection(undefined as any);
+      const result = connectionManager.getConnection(undefined as unknown as string);
       expect(result).toBeUndefined();
     });
   });
@@ -169,13 +169,13 @@ describe('ConnectionManager', () => {
 
     it('should handle null connection ID', () => {
       expect(() => {
-        connectionManager.updateActivity(null as any);
+        connectionManager.updateActivity(null as unknown as string);
       }).not.toThrow();
     });
 
     it('should handle undefined connection ID', () => {
       expect(() => {
-        connectionManager.updateActivity(undefined as any);
+        connectionManager.updateActivity(undefined as unknown as string);
       }).not.toThrow();
     });
 
@@ -284,7 +284,7 @@ describe('ConnectionManager', () => {
     });
 
     it('should handle null connection ID', () => {
-      const result = connectionManager.unregister(null as any);
+      const result = connectionManager.unregister(null as unknown as string);
       expect(result).toBe(false);
     });
   });
@@ -343,7 +343,7 @@ describe('ConnectionManager', () => {
     });
 
     it('should handle null agent name', () => {
-      const result = connectionManager.getConnectionsByAgent(null as any);
+      const result = connectionManager.getConnectionsByAgent(null as unknown as string);
       expect(result).toEqual([]);
     });
 
@@ -700,8 +700,8 @@ describe('ConnectionManager', () => {
     });
 
     it('should handle null and undefined connection IDs', () => {
-      expect(connectionManager.hasConnection(null as any)).toBe(false);
-      expect(connectionManager.hasConnection(undefined as any)).toBe(false);
+      expect(connectionManager.hasConnection(null as unknown as string)).toBe(false);
+      expect(connectionManager.hasConnection(undefined as unknown as string)).toBe(false);
     });
   });
 

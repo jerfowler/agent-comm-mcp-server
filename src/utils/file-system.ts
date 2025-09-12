@@ -70,6 +70,9 @@ import * as fs from './fs-extra-safe.js';
 import * as path from 'path';
 import { Task, TaskMetadata, FileNotFoundError, InvalidTaskError } from '../types.js';
 
+// Re-export Stats type from fs-extra-safe for test compatibility
+export { Stats } from './fs-extra-safe.js';
+
 /**
  * Ensure directory exists
  */
