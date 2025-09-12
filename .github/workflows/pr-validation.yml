@@ -35,7 +35,7 @@ jobs:
           # Check conventional commit format (skip emoji stripping for now)
           CLEANED_TITLE="$PR_TITLE"
           
-          if echo "$CLEANED_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([^)]+\))?(!)?: .+'; then
+          if echo "$CLEANED_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve)(\([^)]+\))?(!)?: .+'; then
             echo "✅ PR title follows conventional commit format"
             echo "valid_title=true" >> $GITHUB_OUTPUT
             
@@ -52,7 +52,7 @@ jobs:
           else
             echo "❌ PR title does not follow conventional commit format"
             echo "Expected format: type(scope): description"
-            echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build"
+            echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, resolve"
             echo "valid_title=false" >> $GITHUB_OUTPUT
           fi
           
@@ -72,7 +72,7 @@ jobs:
             TOTAL_COUNT=$((TOTAL_COUNT + 1))
             echo "Checking: $commit_msg"
             
-            if echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([^)]+\))?(!)?: .+'; then
+            if echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve)(\([^)]+\))?(!)?: .+'; then
               VALID_COUNT=$((VALID_COUNT + 1))
               echo "  ✅ Valid"
             else
@@ -143,7 +143,7 @@ jobs:
           
           **Expected format:** `type(scope): description`
           
-          **Valid types:** feat, fix, docs, style, refactor, perf, test, chore, ci, build
+          **Valid types:** feat, fix, docs, style, refactor, perf, test, chore, ci, build, resolve
           
           **Examples:**
           - `feat: add new MCP tool for task delegation`

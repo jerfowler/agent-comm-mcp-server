@@ -1,14 +1,19 @@
-# TEMPORARILY DISABLED - Comprehensive Testing Workflow
+# Comprehensive Testing Workflow
 # Multi-layered testing strategy to prevent integration failures like fs.readJsonSync
 
-name: DISABLED - Comprehensive Testing
+name: Comprehensive Testing
 
 on:
-  # TEMPORARILY DISABLED FOR REPOSITORY RECOVERY
-  # push:
-  #   branches: [ main, test ]
-  # pull_request:
-  #   branches: [ main, test ]
+  push:
+    branches: [ main, test ]
+  pull_request:
+    branches: [ main, test ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or commit to test'
+        required: false
+        default: 'main'
 
 jobs:
   # Layer 1: Quick validation - fails fast on basic issues
@@ -83,7 +88,7 @@ jobs:
           
   # Layer 3: Integration testing - real MCP protocol validation
   integration-testing:
-    name: MCP Protocol Integration
+    name: MCP Protocol Integration (18, 20, 22)
     runs-on: ubuntu-latest
     needs: quick-validation
     timeout-minutes: 20
