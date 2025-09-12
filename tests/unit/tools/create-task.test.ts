@@ -9,6 +9,8 @@ import * as fs from '../../../src/utils/file-system.js';
 import * as taskManager from '../../../src/utils/task-manager.js';
 import { getConfig } from '../../../src/config.js';
 import { AgentCommError, ServerConfig } from '../../../src/types.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 // Mock dependencies
 jest.mock('../../../src/utils/file-system.js');
@@ -36,13 +38,13 @@ function createMockServerConfig(): ServerConfig {
       cleanupStaleConnections: jest.fn(),
       getStatistics: jest.fn(),
       getConnectionCount: jest.fn(),
-      hasConnection: jest.fn()
-    } as any,
+        hasConnection: jest.fn()
+      } as unknown as ConnectionManager,
     eventLogger: {
       logOperation: jest.fn(),
       logError: jest.fn(),
-      getOperationStatistics: jest.fn()
-    } as any
+        getOperationStatistics: jest.fn()
+      } as unknown as EventLogger
   };
 }
 

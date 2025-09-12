@@ -29,7 +29,7 @@ import * as fs from '../../../../src/utils/fs-extra-safe.js';
 describe('ServerResourceProvider', () => {
   let provider: ServerResourceProvider;
   let mockEventLogger: jest.Mocked<EventLogger>;
-  const mockedFs = fs as any;
+  const mockedFs = fs as jest.Mocked<typeof fs>;
   
   beforeEach(() => {
     jest.clearAllMocks();

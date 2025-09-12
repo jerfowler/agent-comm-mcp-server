@@ -16,7 +16,7 @@ const mockArchiveTasksModule = archiveTasksModule as jest.Mocked<typeof archiveT
 
 describe('Archive Completed Tasks Tool', () => {
   let mockConfig: ServerConfig;
-  let mockArchiveResult: any;
+  let mockArchiveResult: ArchiveResult;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -27,22 +27,12 @@ describe('Archive Completed Tasks Tool', () => {
     mockArchiveResult = {
       timestamp: '2025-01-01T12:00:00Z',
       archived: {
+        completed: 5,
+        pending: 0,
         total: 5,
-        agents: [
-          { agent: 'test-agent', tasks: 3 },
-          { agent: 'other-agent', tasks: 2 }
-        ]
+        agents: ['test-agent', 'other-agent']
       },
-      remaining: {
-        total: 2,
-        agents: [
-          { agent: 'active-agent', tasks: 2 }
-        ]
-      },
-      skipped: {
-        total: 0,
-        reasons: []
-      }
+      archivePath: '/path/to/archive'
     };
 
     mockArchiveTasksModule.archiveTasksTool.mockResolvedValue(mockArchiveResult);
@@ -90,7 +80,7 @@ describe('Archive Completed Tasks Tool', () => {
     it('should handle zero completed tasks', async () => {
       const emptyResult = {
         ...mockArchiveResult,
-        archived: { total: 0, agents: [] }
+        archived: { completed: 0, pending: 0, total: 0, agents: [] }
       };
       
       mockArchiveTasksModule.archiveTasksTool.mockResolvedValue(emptyResult);
@@ -108,7 +98,7 @@ describe('Archive Completed Tasks Tool', () => {
     it('should handle large number of completed tasks', async () => {
       const largeResult = {
         ...mockArchiveResult,
-        archived: { total: 1000, agents: [] }
+        archived: { completed: 1000, pending: 0, total: 1000, agents: [] }
       };
       
       mockArchiveTasksModule.archiveTasksTool.mockResolvedValue(largeResult);
@@ -197,7 +187,7 @@ describe('Archive Completed Tasks Tool', () => {
     it('should handle complex error objects', async () => {
       const complexError = new Error('Complex error');
       complexError.name = 'CustomError';
-      (complexError as any).code = 'EACCESS';
+      (complexError as unknown as { code: string }).code = 'EACCESS';
       
       mockArchiveTasksModule.archiveTasksTool.mockRejectedValue(complexError);
 
@@ -244,7 +234,7 @@ describe('Archive Completed Tasks Tool', () => {
     it('should handle null config', async () => {
       mockArchiveTasksModule.archiveTasksTool.mockRejectedValue(new Error('Config cannot be null'));
       
-      await expect(archiveCompletedTasks(null as any))
+      await expect(archiveCompletedTasks(null as unknown as ServerConfig))
         .resolves.toMatchObject({
           success: false,
           archivedCount: 0,
@@ -255,7 +245,7 @@ describe('Archive Completed Tasks Tool', () => {
     it('should handle undefined config', async () => {
       mockArchiveTasksModule.archiveTasksTool.mockRejectedValue(new Error('Config cannot be undefined'));
       
-      await expect(archiveCompletedTasks(undefined as any))
+      await expect(archiveCompletedTasks(undefined as unknown as ServerConfig))
         .resolves.toMatchObject({
           success: false,
           archivedCount: 0,
@@ -264,7 +254,7 @@ describe('Archive Completed Tasks Tool', () => {
     });
 
     it('should handle null args parameter', async () => {
-      await archiveCompletedTasks(mockConfig, null as any);
+      await archiveCompletedTasks(mockConfig, null as unknown as Record<string, unknown>);
 
       expect(mockArchiveTasksModule.archiveTasksTool).toHaveBeenCalledWith(mockConfig, {
         mode: 'completed',
@@ -283,7 +273,7 @@ describe('Archive Completed Tasks Tool', () => {
 
     it('should handle non-object args parameter', async () => {
       // The spread operator will spread string characters as properties
-      await archiveCompletedTasks(mockConfig, 'abc' as any);
+      await archiveCompletedTasks(mockConfig, 'abc' as unknown as Record<string, unknown>);
 
       expect(mockArchiveTasksModule.archiveTasksTool).toHaveBeenCalledWith(mockConfig, {
         mode: 'completed',
@@ -345,7 +335,7 @@ describe('Archive Completed Tasks Tool', () => {
 
   describe('async operation handling', () => {
     it('should handle delayed archive operations', async () => {
-      let resolveArchive: (value: any) => void;
+      let resolveArchive: (value: ArchiveResult) => void;
       const delayedPromise = new Promise<ArchiveResult>((resolve) => {
         resolveArchive = resolve;
       });
@@ -425,7 +415,7 @@ describe('Archive Completed Tasks Tool', () => {
     it('should ensure archived count is always non-negative', async () => {
       const negativeResult = {
         ...mockArchiveResult,
-        archived: { total: -5, agents: [] }
+        archived: { completed: -5, pending: 0, total: -5, agents: [] }
       };
       
       mockArchiveTasksModule.archiveTasksTool.mockResolvedValue(negativeResult);
@@ -439,7 +429,7 @@ describe('Archive Completed Tasks Tool', () => {
     it('should handle non-numeric archived totals', async () => {
       const invalidResult = {
         ...mockArchiveResult,
-        archived: { total: 'invalid', agents: [] }
+        archived: { completed: 0, pending: 0, total: 'invalid' as unknown as number, agents: [] }
       };
       
       mockArchiveTasksModule.archiveTasksTool.mockResolvedValue(invalidResult);

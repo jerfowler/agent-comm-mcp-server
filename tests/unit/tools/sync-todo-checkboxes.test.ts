@@ -8,6 +8,8 @@ import { syncTodoCheckboxes } from '../../../src/tools/sync-todo-checkboxes.js';
 import * as fs from '../../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import { AgentCommError, ServerConfig } from '../../../src/types.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 // Mock fs-extra with factory function - proper TypeScript pattern
 jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
@@ -51,13 +53,13 @@ function createMockServerConfig(): ServerConfig {
       cleanupStaleConnections: jest.fn(),
       getStatistics: jest.fn(),
       getConnectionCount: jest.fn(),
-      hasConnection: jest.fn()
-    } as any,
+        hasConnection: jest.fn()
+      } as unknown as ConnectionManager,
     eventLogger: {
       logOperation: jest.fn(),
       logError: jest.fn(),
-      getOperationStatistics: jest.fn()
-    } as any
+        getOperationStatistics: jest.fn()
+      } as unknown as EventLogger
   };
 }
 

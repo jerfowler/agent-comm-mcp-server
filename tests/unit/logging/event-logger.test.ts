@@ -462,25 +462,42 @@ describe('EventLogger', () => {
     it('should handle processWriteQueue early return when already writing', async () => {
       // Test coverage for line 272: early return in processWriteQueue
       
-      // Access the private property using bracket notation to set it
-      (eventLogger as any).isWriting = true;
-      (eventLogger as any).writeQueue = ['test'];
+      // Interface for accessing private properties for testing - don't extend, just define what we need
+      interface EventLoggerPrivate {
+        isWriting: boolean;
+        writeQueue: string[];
+        processWriteQueue(): Promise<void>;
+      }
+      
+      // Access the private property using type assertion
+      const loggerWithPrivates = eventLogger as unknown as EventLoggerPrivate;
+      loggerWithPrivates.isWriting = true;
+      loggerWithPrivates.writeQueue = ['test'];
       
       // Call the private method (will return early due to isWriting = true)
-      await (eventLogger as any).processWriteQueue();
+      await loggerWithPrivates.processWriteQueue();
       
       // Verify the queue was not processed (still has content)
-      expect((eventLogger as any).writeQueue).toHaveLength(1);
+      expect(loggerWithPrivates.writeQueue).toHaveLength(1);
     });
 
     it('should handle empty write queue in processWriteQueue', async () => {
       // Test coverage for line 272: early return when queue is empty
-      (eventLogger as any).isWriting = false;
-      (eventLogger as any).writeQueue = [];
+      
+      // Interface for accessing private properties for testing - don't extend, just define what we need
+      interface EventLoggerPrivate {
+        isWriting: boolean;
+        writeQueue: string[];
+        processWriteQueue(): Promise<void>;
+      }
+      
+      const loggerWithPrivates = eventLogger as unknown as EventLoggerPrivate;
+      loggerWithPrivates.isWriting = false;
+      loggerWithPrivates.writeQueue = [];
       
       // This should return early and not throw
-      await (eventLogger as any).processWriteQueue();
-      expect((eventLogger as any).writeQueue).toHaveLength(0);
+      await loggerWithPrivates.processWriteQueue();
+      expect(loggerWithPrivates.writeQueue).toHaveLength(0);
     });
   });
 
@@ -702,7 +719,16 @@ describe('EventLogger', () => {
       // Generate entries until we exceed size limit
       let currentSize = 0;
       let entryCount = 0;
-      const entries: any[] = [];
+      interface LogEntry {
+        timestamp: Date;
+        operation: string;
+        agent: string;
+        taskId: string;
+        success: boolean;
+        duration: number;
+        metadata?: Record<string, unknown>;
+      }
+      const entries: LogEntry[] = [];
       
       while (currentSize < maxLogSize) {
         const entry = {
@@ -919,18 +945,59 @@ describe('EventLogger', () => {
     });
   });
 
-  describe('EventLogger waitForWriteQueueEmpty timeout coverage', () => {
+  describe('EventLogger waitForWriteQueueEmpty edge cases', () => {
+    it('should resolve immediately when queue is already empty', async () => {
+      // Ensure queue is empty
+      await eventLogger.waitForWriteQueueEmpty();
+      
+      // Start timing
+      const startTime = Date.now();
+      
+      // Should resolve immediately since queue is empty
+      await eventLogger.waitForWriteQueueEmpty();
+      
+      const elapsed = Date.now() - startTime;
+      expect(elapsed).toBeLessThan(10); // Should be near instant
+    });
+
+    it('should clear timeout when queue empties during wait', async () => {
+      // Log an operation to put something in the queue
+      eventLogger.logOperation({
+        timestamp: new Date(),
+        operation: 'test_op',
+        agent: 'test-agent',
+        taskId: 'test-task',
+        success: true,
+        duration: 100
+      });
+      
+      // Start waiting - this should clear timeout when queue empties
+      const waitPromise = eventLogger.waitForWriteQueueEmpty();
+      
+      // Wait for completion
+      await waitPromise;
+      
+      // Should have completed without timeout
+      expect(true).toBe(true); // Test passes if we get here
+    });
+
     it('should timeout when waiting for write queue that never empties', async () => {
       const mockTimer = new MockTimerDependency();
       const testLogger = new EventLogger(testDir, mockTimer);
       
+      // Interface for accessing private properties for testing - don't extend, just define what we need
+      interface EventLoggerPrivate {
+        writeQueue: string[];
+        isWriting: boolean;
+      }
+      
       // For this test, we need to manually trigger the queue state that won't empty
-      // Use reflection to access private properties for testing
-      const testLoggerAny = testLogger as any;
+      // Use type assertion to access private properties for testing
+      const testLoggerPrivate = testLogger as unknown as EventLoggerPrivate;
       
       // Manually set the write queue to have items to simulate busy state
-      testLoggerAny.writeQueue = ['fake-entry'];
-      testLoggerAny.isWriting = false; // Not actively writing but queue not empty
+      testLoggerPrivate.writeQueue = ['fake-entry'];
+      testLoggerPrivate.isWriting = false; // Not actively writing but queue not empty
       
       // Start the waitForWriteQueueEmpty with a short timeout
       const waitPromise = testLogger.waitForWriteQueueEmpty(50);

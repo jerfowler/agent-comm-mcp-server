@@ -5,6 +5,7 @@
 import * as fs from '../../src/utils/fs-extra-safe.js';
 import * as path from 'path';
 import * as os from 'os';
+import { testUtils } from '../utils/testUtils.js';
 // jest utilities if needed
 
 // Import tools for direct testing

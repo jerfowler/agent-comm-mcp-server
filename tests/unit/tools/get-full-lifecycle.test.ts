@@ -11,9 +11,10 @@ import { testUtils } from '../../utils/testUtils.js';
 
 // This import should FAIL initially until we implement the tool
 import { getFullLifecycle } from '../../../src/tools/get-full-lifecycle.js';
+import { ServerConfig, GetFullLifecycleArgs } from '../../../src/types.js';
 
 describe('get_full_lifecycle Tool (TDD)', () => {
-  let config: any;
+  let config: ServerConfig;
   let tempDir: string;
   let testDir: string;
 
@@ -242,14 +243,14 @@ describe('get_full_lifecycle Tool (TDD)', () => {
       await expect(
         getFullLifecycle(config, {
           // Missing agent and task_id
-        } as any)
+        } as unknown as GetFullLifecycleArgs)
       ).rejects.toThrow();
 
       await expect(
         getFullLifecycle(config, {
           agent: 'test-agent'
           // Missing task_id
-        } as any)
+        } as unknown as GetFullLifecycleArgs)
       ).rejects.toThrow();
     });
   });

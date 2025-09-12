@@ -29,7 +29,7 @@ describe('listResourcesHandler', () => {
       registerProvider: jest.fn(),
       getResourceMetadata: jest.fn(),
       searchResources: jest.fn()
-    } as any;
+    } as unknown as jest.Mocked<ResourceManager>;
     
     // Create handler
     handler = listResourcesHandler(mockResourceManager);
@@ -192,7 +192,7 @@ describe('listResourcesHandler', () => {
       const invalidRequest = {
         method: 'invalid/method',
         params: {}
-      } as any;
+      } as unknown as ListResourcesRequest;
 
       // Act & Assert
       await expect(handler(invalidRequest)).rejects.toThrow('Invalid request method');
