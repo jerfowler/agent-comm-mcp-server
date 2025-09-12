@@ -1,4 +1,4 @@
-# TEMPORARILY DISABLED - Test Validation Workflow  
+# Test Validation Workflow  
 # Comprehensive validation for develop branch before promotion
 
 name: Test Branch Validation
