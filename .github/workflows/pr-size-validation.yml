@@ -190,7 +190,7 @@ jobs:
           - [ ] **Test thoroughly** before merging
           
           ### Enhanced Quality Checks:
-          - **'any' type violations**: ${{ steps.validation.outputs.ANY_VIOLATIONS || 'Not checked' }} (threshold: 5)
+          - **'any' type violations**: ${{ steps.validation.outputs.ANY_VIOLATIONS || 'Not checked' }}
           - **TypeScript check**: ${{ steps.validation.outputs.TYPE_CHECK || 'Not run' }}
           - **ESLint status**: ${{ steps.validation.outputs.LINT_CHECK || 'Not run' }}
           - **Test suite**: ${{ steps.validation.outputs.COMPREHENSIVE_TEST && 'Comprehensive (unit + integration)' || steps.validation.outputs.SMOKE_TEST || 'Not run' }}
@@ -202,7 +202,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enhanced quality gate enforcement
-        if: steps.validation.outputs.ANY_VIOLATIONS > 5 || steps.validation.outputs.TYPE_CHECK == 'failed' || steps.validation.outputs.LINT_CHECK == 'failed' || steps.validation.outputs.SMOKE_TEST == 'failed'
+        if: steps.validation.outputs.ANY_VIOLATIONS > 0 || steps.validation.outputs.TYPE_CHECK == 'failed' || steps.validation.outputs.LINT_CHECK == 'failed' || steps.validation.outputs.SMOKE_TEST == 'failed'
         run: |
           echo "❌ Quality gates failed - PR cannot be merged"
           
@@ -213,7 +213,7 @@ jobs:
           This PR has validation failures that must be resolved before merging:
           
           ### Failures Detected:
-          ${{ steps.validation.outputs.ANY_VIOLATIONS > 5 && format('- **{0} ''any'' type violations** (threshold: 5) - Use specific types or ''unknown''', steps.validation.outputs.ANY_VIOLATIONS) || '' }}
+          ${{ steps.validation.outputs.ANY_VIOLATIONS > 0 && format('- **{0} ''any'' type violations** - Use specific types or ''unknown''', steps.validation.outputs.ANY_VIOLATIONS) || '' }}
           ${{ steps.validation.outputs.TYPE_CHECK == 'failed' && '- **TypeScript compilation failed** - Fix type errors' || '' }}
           ${{ steps.validation.outputs.LINT_CHECK == 'failed' && '- **ESLint violations** - Fix code style issues' || '' }}
           ${{ steps.validation.outputs.SMOKE_TEST == 'failed' && '- **Smoke tests failed** - Critical functionality broken' || '' }}
@@ -237,7 +237,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Success summary  
-        if: steps.analysis.outputs.PR_SIZE == 'acceptable' && steps.validation.outputs.ANY_VIOLATIONS <= 5
+        if: steps.analysis.outputs.PR_SIZE == 'acceptable' && steps.validation.outputs.ANY_VIOLATIONS == 0
         run: |
           echo "✅ PR size and quality validation passed"
           
@@ -255,7 +255,7 @@ jobs:
           - **TypeScript**: ✅ Passed
           - **ESLint**: ✅ Passed  
           - **Smoke tests**: ✅ Passed
-          - **'any' types**: ✅ ${{ steps.validation.outputs.ANY_VIOLATIONS || '0' }} (threshold: 5)
+          - **'any' types**: ✅ None detected
           
           Ready for review! 🚀
           EOF
