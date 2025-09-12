@@ -255,7 +255,7 @@ describe('MCP Metadata Handler Compliance', () => {
       obj['circular'] = obj;
 
       // Should not throw, should handle gracefully
-      expect(() => validateMCPMeta(obj as Record<string, unknown>)).not.toThrow();
+      expect(() => validateMCPMeta(obj)).not.toThrow();
     });
 
     it('should handle very large metadata objects', () => {

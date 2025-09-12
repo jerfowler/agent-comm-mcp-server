@@ -63,6 +63,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
         isDirectory: () => true,
         mtime
       } as fs.Stats);
+      } as any);
     });
     mockedFs.readFile.mockResolvedValue('- [ ] **Step 1**: Test step\n  - Action: Do something');
     mockedFs.writeFile.mockResolvedValue(undefined);
@@ -78,6 +79,7 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       waitForWriteQueueEmpty: jest.fn().mockResolvedValue(undefined),
       close: jest.fn().mockResolvedValue(undefined)
     } as unknown as EventLogger;
+    } as any;
     
     config = {
       commDir: './test-comm',
