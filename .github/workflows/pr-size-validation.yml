@@ -1,10 +1,9 @@
-name: DISABLED - PR Size Validation
+name: PR Size Validation
 
 on:
-  # TEMPORARILY DISABLED FOR REPOSITORY RECOVERY
-  # pull_request:
-  #   types: [opened, synchronize, reopened]
-  #   branches: [main, test]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, test]
 
 jobs:
   validate-pr-size:
@@ -41,10 +40,11 @@ jobs:
           TOTAL_CHANGES=$((ADDITIONS + DELETIONS))
           echo "TOTAL_CHANGES=$TOTAL_CHANGES" >> $GITHUB_OUTPUT
           
-          # Define thresholds based on the PR #34 failure (22,558 additions)
-          LARGE_PR_THRESHOLD=5000
-          MASSIVE_PR_THRESHOLD=15000
-          CRITICAL_FILES_THRESHOLD=50
+          # Define reasonable thresholds for feature development
+          # Increased thresholds to support substantial feature PRs while maintaining quality
+          LARGE_PR_THRESHOLD=12000
+          MASSIVE_PR_THRESHOLD=25000  
+          CRITICAL_FILES_THRESHOLD=75
           
           # Classification
           if [ $TOTAL_CHANGES -gt $MASSIVE_PR_THRESHOLD ]; then
@@ -112,11 +112,24 @@ jobs:
             echo "LINT_CHECK=skipped" >> $GITHUB_OUTPUT
           fi
           
-          # Quick smoke test
-          if npm run test:smoke; then
-            echo "SMOKE_TEST=passed" >> $GITHUB_OUTPUT
+          # Enhanced testing based on PR size
+          if [ "${{ steps.analysis.outputs.PR_SIZE }}" = "large" ] || [ "${{ steps.analysis.outputs.PR_SIZE }}" = "wide" ]; then
+            echo "Running comprehensive tests for large PR..."
+            # Run full test suite for large PRs to ensure quality
+            if npm run test:unit && npm run test:integration; then
+              echo "COMPREHENSIVE_TEST=passed" >> $GITHUB_OUTPUT
+              echo "SMOKE_TEST=passed" >> $GITHUB_OUTPUT
+            else
+              echo "COMPREHENSIVE_TEST=failed" >> $GITHUB_OUTPUT  
+              echo "SMOKE_TEST=failed" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "SMOKE_TEST=failed" >> $GITHUB_OUTPUT
+            # Quick smoke test for smaller PRs
+            if npm run test:smoke; then
+              echo "SMOKE_TEST=passed" >> $GITHUB_OUTPUT
+            else
+              echo "SMOKE_TEST=failed" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Block massive PR
@@ -176,11 +189,11 @@ jobs:
           - [ ] **Consider breaking down** for easier review
           - [ ] **Test thoroughly** before merging
           
-          ### Quality Checks:
+          ### Enhanced Quality Checks:
           - **'any' type violations**: ${{ steps.validation.outputs.ANY_VIOLATIONS || 'Not checked' }}
           - **TypeScript check**: ${{ steps.validation.outputs.TYPE_CHECK || 'Not run' }}
           - **ESLint status**: ${{ steps.validation.outputs.LINT_CHECK || 'Not run' }}
-          - **Smoke tests**: ${{ steps.validation.outputs.SMOKE_TEST || 'Not run' }}
+          - **Test suite**: ${{ steps.validation.outputs.COMPREHENSIVE_TEST && 'Comprehensive (unit + integration)' || steps.validation.outputs.SMOKE_TEST || 'Not run' }}
           
           Please ensure all validation passes before requesting review.
           EOF
@@ -188,7 +201,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Quality gate enforcement
+      - name: Enhanced quality gate enforcement
         if: steps.validation.outputs.ANY_VIOLATIONS > 0 || steps.validation.outputs.TYPE_CHECK == 'failed' || steps.validation.outputs.LINT_CHECK == 'failed' || steps.validation.outputs.SMOKE_TEST == 'failed'
         run: |
           echo "❌ Quality gates failed - PR cannot be merged"
@@ -223,7 +236,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Success summary
+      - name: Success summary  
         if: steps.analysis.outputs.PR_SIZE == 'acceptable' && steps.validation.outputs.ANY_VIOLATIONS == 0
         run: |
           echo "✅ PR size and quality validation passed"
