@@ -21,10 +21,10 @@ Usage:
 import sys
 import json
 import os
+import re
 import subprocess
 import shutil
 import time
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
@@ -66,55 +66,6 @@ class OperationAnalyzer:
     """Analyze operations for destructive patterns and risk levels"""
     
     def __init__(self):
-        # Explicitly safe operations that should NEVER be blocked
-        self.safe_patterns = [
-            # Testing operations
-            r'npm\s+test(?:\s|$)',
-            r'npm\s+run\s+test(?::|[\s$])',
-            r'jest(?:\s|$)',
-            r'npx\s+jest(?:\s|$)',
-            
-            # Linting and type checking
-            r'npm\s+run\s+lint(?:\s|$)',
-            r'npm\s+run\s+type-check(?:\s|$)',
-            r'eslint(?:\s|$)',
-            r'npx\s+eslint(?:\s|$)',
-            r'tsc\s+--noEmit(?:\s|$)',
-            r'npx\s+tsc(?:\s|$)',
-            
-            # Build operations (read-only or safe)
-            r'npm\s+run\s+build(?:\s|$)',
-            r'npm\s+run\s+dev(?:\s|$)',
-            r'tsc(?:\s|$)',
-            
-            # Package management (installation)
-            r'npm\s+install(?:\s|$)',
-            r'npm\s+ci(?:\s|$)',
-            r'npm\s+update(?:\s|$)',
-            
-            # Git read operations
-            r'git\s+status(?:\s|$)',
-            r'git\s+log(?:\s|$)',
-            r'git\s+diff(?:\s|$)',
-            r'git\s+show(?:\s|$)',
-            r'git\s+branch(?:\s+--show-current|\s+-l|\s+$)',
-            r'git\s+remote(?:\s+-v|\s+$)',
-            
-            # File system read operations
-            r'ls(?:\s|$)',
-            r'find\s+.*(?:-name|-type)(?:\s|$)',
-            r'cat(?:\s|$)',
-            r'head(?:\s|$)',
-            r'tail(?:\s|$)',
-            r'grep(?:\s|$)',
-            r'rg(?:\s|$)',
-            
-            # Version checks
-            r'node\s+--version(?:\s|$)',
-            r'npm\s+--version(?:\s|$)',
-            r'git\s+--version(?:\s|$)',
-        ]
-        
         self.critical_patterns = [
             # Git operations that will definitely lose data
             (r'git\s+reset\s+--hard', "Git hard reset - WILL LOSE all uncommitted changes", 
@@ -200,13 +151,7 @@ class OperationAnalyzer:
         
         command_lower = command.lower()
         
-        # Check safe patterns FIRST - if it matches safe patterns, it's safe regardless
-        for safe_pattern in self.safe_patterns:
-            if re.search(safe_pattern, command_lower, re.IGNORECASE):
-                log_debug(f"Command '{command}' matched safe pattern: {safe_pattern}")
-                return RiskLevel.SAFE, [], []
-        
-        # Check critical patterns
+        # Check critical patterns first
         for pattern, description, alts in self.critical_patterns:
             if re.search(pattern, command_lower, re.IGNORECASE):
                 violations.append(description)
@@ -608,56 +553,13 @@ def format_safety_report(report: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 def main():
-    """Main CLI interface with hook support"""
+    """Main CLI interface"""
     import argparse
+    import re
     
-    # Handle case where Claude Code calls this as a hook without proper arguments
-    if len(sys.argv) == 1:
-        # Called without arguments - likely as a hook, read from stdin
-        try:
-            # Try to read hook data from stdin
-            hook_data = sys.stdin.read().strip()
-            if hook_data:
-                try:
-                    # Parse JSON hook data if provided
-                    data = json.loads(hook_data)
-                    command = data.get('command', '')
-                    if command:
-                        # Quick safety check for hook mode
-                        protocol = SafetyProtocol()
-                        safety_report = protocol.check_operation_safety(command, False)
-                        
-                        if safety_report['risk_level'] in ['dangerous', 'critical']:
-                            log_error(f"Blocked {safety_report['risk_level']} operation: {command}")
-                            log_error(f"Violations: {'; '.join(safety_report['violations'])}")
-                            sys.exit(1)
-                        else:
-                            log_debug(f"Approved {safety_report['risk_level']} operation: {command}")
-                            sys.exit(0)
-                except json.JSONDecodeError:
-                    # Not JSON, treat as plain command
-                    protocol = SafetyProtocol()
-                    safety_report = protocol.check_operation_safety(hook_data, False)
-                    
-                    if safety_report['risk_level'] in ['dangerous', 'critical']:
-                        log_error(f"Blocked {safety_report['risk_level']} operation: {hook_data}")
-                        sys.exit(1)
-                    else:
-                        sys.exit(0)
-            
-            # No input provided, allow operation
-            sys.exit(0)
-            
-        except Exception as e:
-            log_debug(f"Hook mode error: {e}")
-            # If hook mode fails, default to allowing operation
-            sys.exit(0)
-    
-    # Normal CLI mode with arguments
     parser = argparse.ArgumentParser(description='Destructive Operation Guard - Data Loss Prevention')
-    parser.add_argument('action', nargs='?', default='check',
-                       choices=['check', 'protect', 'create-backup', 'verify-safety'],
-                       help='Action to perform (default: check)')
+    parser.add_argument('action', choices=['check', 'protect', 'create-backup', 'verify-safety'],
+                       help='Action to perform')
     parser.add_argument('command', nargs='?', help='Command to analyze or protect')
     parser.add_argument('--interactive', action='store_true', default=True,
                        help='Enable interactive mode (default)')
@@ -666,26 +568,7 @@ def main():
     parser.add_argument('--backup-type', choices=['git_stash', 'git_branch', 'directory_copy', 'full_repository'],
                        help='Specific backup type to create')
     
-    try:
-        args = parser.parse_args()
-    except SystemExit:
-        # Handle case where command is provided as first argument without action
-        if len(sys.argv) >= 2 and sys.argv[1] not in ['check', 'protect', 'create-backup', 'verify-safety']:
-            # Treat first argument as command, default action to 'check'
-            command = ' '.join(sys.argv[1:])
-            protocol = SafetyProtocol()
-            safety_report = protocol.check_operation_safety(command, False)
-            
-            if safety_report['risk_level'] in ['dangerous', 'critical']:
-                log_error(f"Blocked {safety_report['risk_level']} operation: {command}")
-                log_error(f"Violations: {'; '.join(safety_report['violations'])}")
-                sys.exit(1)
-            else:
-                log_debug(f"Approved {safety_report['risk_level']} operation: {command}")
-                sys.exit(0)
-        else:
-            # Re-raise the SystemExit for genuine argument parsing errors
-            raise
+    args = parser.parse_args()
     
     protocol = SafetyProtocol()
     
@@ -790,9 +673,6 @@ def main():
 
 def claude_hook_mode():
     """Handle when called as a Claude Code hook"""
-    import json
-    
-    # Check if we have hook input from Claude Code
     try:
         # Read from stdin for hook data
         if not sys.stdin.isatty():
@@ -805,27 +685,21 @@ def claude_hook_mode():
                 protocol = SafetyProtocol()
                 safety_report = protocol.check_operation_safety(command, False)
                 
-                # Allow safe operations
-                if safety_report['risk_level'] == 'safe':
-                    sys.exit(0)
-                
-                # Block dangerous/critical operations
+                # Block critical/dangerous operations
                 if safety_report['risk_level'] in ['dangerous', 'critical']:
                     log_error(f"Blocked {safety_report['risk_level']} operation: {command}")
                     log_error("Use: python3 .claude/hooks/destructive-operation-guard.py protect \"command\" for safe execution")
                     sys.exit(1)
                 
-                # Allow risky operations with warning
-                if safety_report['risk_level'] == 'risky':
-                    log_warning(f"Risky operation detected: {command}")
-                    sys.exit(0)
+                # Allow safe and risky operations
+                sys.exit(0)
             
         # Not a bash operation or no command, allow
         sys.exit(0)
         
     except (json.JSONDecodeError, KeyError):
-        # Not valid hook input, treat as CLI mode
-        main()
+        # Not valid hook input, allow operation to proceed
+        sys.exit(0)
     except Exception as e:
         # On any error in hook mode, allow operation to proceed
         log_debug(f"Hook error, allowing operation: {e}")
@@ -837,5 +711,5 @@ if __name__ == "__main__":
         # CLI mode with arguments
         main()
     else:
-        # Hook mode - called by Claude Code
+        # Hook mode - called by Claude Code without arguments
         claude_hook_mode()

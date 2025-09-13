@@ -165,7 +165,7 @@ async function findActiveTaskPath(
     }
   }
 
-  return activeTaskPath as string | null;
+  return activeTaskPath;
 }
 
 /**

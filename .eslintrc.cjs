@@ -8,7 +8,7 @@ module.exports = {
   plugins: ['@typescript-eslint'],
   extends: [
     'eslint:recommended',
-    'plugin:@typescript-eslint/recommended-type-checked',
+    'plugin:@typescript-eslint/strict-type-checked',
     'plugin:@typescript-eslint/stylistic-type-checked'
   ],
   root: true,
@@ -70,12 +70,6 @@ module.exports = {
         message: 'Function parameter type "any" is banned. Use specific types or unknown instead.'
       }
     ],
-    
-    // Disable rules that require strictNullChecks (which is disabled in tsconfig)
-    '@typescript-eslint/prefer-nullish-coalescing': 'off',
-    
-    // Disable dot-notation rule to avoid conflicts with exactOptionalPropertyTypes
-    '@typescript-eslint/dot-notation': 'off',
     
     // General code quality
     'prefer-const': 'error',

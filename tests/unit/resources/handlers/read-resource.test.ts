@@ -29,7 +29,7 @@ describe('readResourceHandler', () => {
       registerProvider: jest.fn(),
       getResourceMetadata: jest.fn(),
       searchResources: jest.fn()
-    } as unknown as jest.Mocked<ResourceManager>;
+    } as any;
     
     // Create handler
     handler = readResourceHandler(mockResourceManager);
@@ -164,7 +164,7 @@ describe('readResourceHandler', () => {
       const request = {
         method: 'resources/read',
         params: {}
-      } as unknown as ReadResourceRequest;
+      } as any;
 
       // Act & Assert
       await expect(handler(request)).rejects.toThrow('URI parameter is required');
@@ -197,7 +197,7 @@ describe('readResourceHandler', () => {
         params: {
           uri: 'agent://agent-1/tasks/task-123'
         }
-      } as unknown as ReadResourceRequest;
+      } as any;
 
       // Act & Assert
       await expect(handler(invalidRequest)).rejects.toThrow('Invalid request method');

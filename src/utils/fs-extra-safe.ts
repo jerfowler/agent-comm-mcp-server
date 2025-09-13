@@ -317,14 +317,7 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback
-    try {
-      await nodeFs.mkdir(dirPath, { recursive: true });
-    } catch (error) {
-      // EEXIST is fine - directory already exists
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-        throw error;
-      }
-    }
+    await nodeFs.mkdir(dirPath, { recursive: true });
   }
 
   async appendFile(filePath: string, data: string): Promise<void> {
@@ -356,17 +349,7 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback - rename is atomic move operation
-    try {
-      await nodeFs.rename(src, dest);
-    } catch (error) {
-      // Handle cross-device moves by copying then removing
-      if ((error as NodeJS.ErrnoException).code === 'EXDEV') {
-        await nodeFs.copyFile(src, dest);
-        await nodeFs.unlink(src);
-      } else {
-        throw error;
-      }
-    }
+    await nodeFs.rename(src, dest);
   }
 
   async copy(src: string, dest: string, options?: Record<string, unknown>): Promise<void> {
@@ -382,15 +365,7 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback - copy file
-    try {
-      await nodeFs.copyFile(src, dest);
-    } catch (error) {
-      // EISDIR means we're trying to copy a directory - re-throw with clear message
-      if ((error as NodeJS.ErrnoException).code === 'EISDIR') {
-        throw error; // Directory copying not supported in Node.js fallback
-      }
-      throw error;
-    }
+    await nodeFs.copyFile(src, dest);
   }
 
 
@@ -424,10 +399,10 @@ class SafeFileSystem implements SafeFsInterface {
     // Node.js built-in fallback
     if (typeof options === 'object' && options !== null) {
       // options is MakeDirectoryOptions
-      await nodeFs.mkdir(dirPath, { recursive: true, ...options });
+      await nodeFs.mkdir(dirPath, { recursive: true, ...options } as MakeDirectoryOptions);
     } else if (options !== null && options !== undefined) {
       // options is a Mode (string/number)
-      await nodeFs.mkdir(dirPath, { recursive: true, mode: options as Mode });
+      await nodeFs.mkdir(dirPath, { recursive: true, mode: options } as MakeDirectoryOptions);
     } else {
       // options is null/undefined
       await nodeFs.mkdir(dirPath, { recursive: true });
@@ -512,15 +487,8 @@ export const readJSON = async (filePath: string): Promise<unknown> => {
   return JSON.parse(content);
 };
 export const readJson = readJSON; // Alias
-interface WriteJsonOptions {
-  spaces?: number | string;
-  replacer?: ((this: unknown, key: string, value: unknown) => unknown) | null;
-}
-
-export const writeJSON = async (filePath: string, data: unknown, options?: WriteJsonOptions): Promise<void> => {
-  const spaces = options?.spaces ?? 2;
-  const replacer = options?.replacer ?? undefined;
-  const jsonStr = JSON.stringify(data, replacer, spaces);
+export const writeJSON = async (filePath: string, data: unknown): Promise<void> => {
+  const jsonStr = JSON.stringify(data, null, 2);
   await writeFile(filePath, jsonStr);
 };
 export const writeJson = writeJSON; // Alias
