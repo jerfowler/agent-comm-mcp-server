@@ -387,7 +387,8 @@ export class ResourceManager {
   private async getServerVersion(): Promise<string> {
     try {
       const fs = await import('../utils/fs-extra-safe.js');
-      const packageJson = await fs.readJSON('./package.json') as { version?: string };
+      const content = await fs.readFile('./package.json', 'utf8');
+      const packageJson = JSON.parse(content) as { version?: string };
       return packageJson.version ?? '0.0.0';
     } catch {
       return '0.0.0';

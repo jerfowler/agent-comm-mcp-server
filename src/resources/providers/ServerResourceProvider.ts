@@ -295,7 +295,8 @@ export class ServerResourceProvider implements ResourceProvider {
 
     try {
       const packageJsonPath = path.resolve(process.cwd(), 'package.json');
-      const packageJson = await fs.readJSON(packageJsonPath);
+      const content = await fs.readFile(packageJsonPath, 'utf8');
+      const packageJson = JSON.parse(content);
       const version = (packageJson as { version?: string }).version || '0.0.0';
       
       // Update cache

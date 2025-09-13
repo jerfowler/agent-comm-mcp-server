@@ -289,7 +289,8 @@ export class DelegationTracker {
       for (const file of files) {
         if (file.endsWith('.json')) {
           const filePath = path.join(this.delegationsDir, file);
-          const record = await fs.readJson(filePath) as DelegationRecord;
+          const content = await fs.readFile(filePath, 'utf8');
+          const record = JSON.parse(content) as DelegationRecord;
           
           // Convert string date to Date object if needed
           const createdAt = new Date(record.createdAt);
@@ -322,7 +323,8 @@ export class DelegationTracker {
         if (file.endsWith('.json')) {
           try {
             const filePath = path.join(this.delegationsDir, file);
-            const record = await fs.readJson(filePath) as DelegationRecord;
+            const content = await fs.readFile(filePath, 'utf8');
+          const record = JSON.parse(content) as DelegationRecord;
             
             // Convert string dates to Date objects
             record.createdAt = new Date(record.createdAt);
@@ -359,7 +361,8 @@ export class DelegationTracker {
     
     try {
       if (await fs.pathExists(recordPath)) {
-        const record = await fs.readJson(recordPath) as DelegationRecord;
+        const content = await fs.readFile(recordPath, 'utf8');
+        const record = JSON.parse(content) as DelegationRecord;
         record.createdAt = new Date(record.createdAt);
         this.delegations.set(taskId, record);
         return record;
@@ -378,7 +381,8 @@ export class DelegationTracker {
   private async saveDelegationRecord(record: DelegationRecord): Promise<void> {
     try {
       const recordPath = path.join(this.delegationsDir, `${record.taskId}.json`);
-      await fs.writeJson(recordPath, record);
+      const jsonStr = JSON.stringify(record, null, 2);
+      await fs.writeFile(recordPath, jsonStr);
     } catch (error) {
       // Error saving delegation - silently continue
       void error; // Acknowledge but don't log
