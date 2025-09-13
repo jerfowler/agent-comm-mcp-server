@@ -88,13 +88,6 @@ export interface ServerConfig extends BaseServerConfig {
   // Core Components - injected at runtime
   connectionManager: import('./core/ConnectionManager.js').ConnectionManager;
   eventLogger: import('./logging/EventLogger.js').EventLogger;
-  
-  // Smart Response System Components (Issue #12)
-  responseEnhancer?: import('./core/ResponseEnhancer.js').ResponseEnhancer;
-  complianceTracker?: import('./core/ComplianceTracker.js').ComplianceTracker;
-  delegationTracker?: import('./core/DelegationTracker.js').DelegationTracker;
-  promptManager?: import('./prompts/PromptManager.js').PromptManager;
-  smartResponseConfig?: SmartResponseConfig;
 }
 
 export interface ToolResponse {
@@ -148,13 +141,6 @@ export interface CreateTaskResponse {
   tracking: {
     progress_command: string;
     lifecycle_command: string;
-  };
-  guidance?: {
-    next_steps: string;
-    contextual_reminder: string;
-    compliance_level?: number;
-    actionable_command?: string;
-    delegation_template?: string;
   };
 }
 
@@ -285,80 +271,6 @@ export interface MultiTaskState {
     completed: number;
     error: number;
   };
-}
-
-// ========================
-// Smart Response System Types (Issue #12)
-// ========================
-
-export interface EnhancementContext {
-  toolName: string;
-  agent: string;
-  toolResponse: unknown;
-  promptManager?: import('./prompts/PromptManager.js').PromptManager;
-  complianceTracker?: import('./core/ComplianceTracker.js').ComplianceTracker;
-  delegationTracker?: import('./core/DelegationTracker.js').DelegationTracker;
-}
-
-export interface EnhancedResponse {
-  [key: string]: unknown; // Original response fields
-  guidance?: {
-    next_steps: string;
-    contextual_reminder: string;
-    compliance_level?: number;
-    actionable_command?: string;
-    delegation_template?: string;
-  };
-}
-
-export interface ToolEnhancer {
-  enhance(context: EnhancementContext): Promise<EnhancedResponse['guidance']>;
-}
-
-export interface AgentComplianceRecord {
-  agent: string;
-  tasksCreated: number;
-  delegationsCompleted: number;
-  todoWriteUsage: number;
-  planSubmissions: number;
-  progressReports: number;
-  completions: number;
-  lastActivity: Date;
-  complianceScore: number; // 0-100
-  escalationLevel: number; // 1-4
-}
-
-export interface ComplianceActivity {
-  type: 'task_created' | 'delegation_completed' | 'todowrite_used' | 
-        'plan_submitted' | 'progress_reported' | 'task_completed';
-  taskId: string;
-  taskType?: string;
-  timestamp: Date;
-}
-
-export interface DelegationRecord {
-  taskId: string;
-  targetAgent: string;
-  createdAt: Date;
-  taskToolInvoked: boolean;
-  subagentStarted: boolean;
-  completionStatus: 'pending' | 'complete' | 'abandoned';
-}
-
-export interface DelegationStats {
-  totalDelegations: number;
-  completedDelegations: number;
-  pendingDelegations: number;
-  abandonedDelegations: number;
-  completionRate: number;
-  averageCompletionTime?: number;
-}
-
-export interface SmartResponseConfig {
-  enabled: boolean;
-  enhancementLevel: 'none' | 'basic' | 'full';
-  complianceTracking: boolean;
-  delegationTracking: boolean;
 }
 
 // ========================

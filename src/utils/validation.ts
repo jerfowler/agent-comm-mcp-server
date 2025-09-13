@@ -164,9 +164,11 @@ export function validateRequiredConfig(config: ServerConfig): void {
   // ESLint is disabled here because we need runtime validation for potentially malformed configs in tests
   /* eslint-disable @typescript-eslint/no-unnecessary-condition */
   const hasConnectionManager = Object.prototype.hasOwnProperty.call(config, 'connectionManager') && 
-                               config.connectionManager != null;
+                               config.connectionManager !== undefined && 
+                               config.connectionManager !== null;
   const hasEventLogger = Object.prototype.hasOwnProperty.call(config, 'eventLogger') && 
-                        config.eventLogger != null;
+                        config.eventLogger !== undefined && 
+                        config.eventLogger !== null;
   /* eslint-enable @typescript-eslint/no-unnecessary-condition */
   
   if (!hasConnectionManager || !hasEventLogger) {

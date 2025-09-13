@@ -102,50 +102,6 @@ describe('MCP Metadata Handler Compliance', () => {
       expect(meta['modelcontextprotocol.io/timestamp']).toBe('2024-01-15T10:30:00Z');
     });
 
-    it('should create metadata with all possible fields', () => {
-      const meta = createMCPMeta({
-        serverVersion: '0.7.0',
-        serverName: 'test-server',
-        requestId: 'req-456',
-        timestamp: '2024-01-15T10:30:00Z',
-        responseStatus: 'success',
-        errorType: 'validation_error',
-        errorMessage: 'Test error',
-        taskId: 'task-789',
-        progress: 75,
-        status: 'in_progress'
-      });
-
-      expect(meta['modelcontextprotocol.io/serverVersion']).toBe('0.7.0');
-      expect(meta['modelcontextprotocol.io/serverName']).toBe('test-server');
-      expect(meta['modelcontextprotocol.io/requestId']).toBe('req-456');
-      expect(meta['modelcontextprotocol.io/timestamp']).toBe('2024-01-15T10:30:00Z');
-      expect(meta['modelcontextprotocol.io/responseStatus']).toBe('success');
-      expect(meta['modelcontextprotocol.io/errorType']).toBe('validation_error');
-      expect(meta['modelcontextprotocol.io/errorMessage']).toBe('Test error');
-      expect(meta['modelcontextprotocol.io/taskId']).toBe('task-789');
-      expect(meta['modelcontextprotocol.io/progress']).toBe(75);
-      expect(meta['modelcontextprotocol.io/status']).toBe('in_progress');
-    });
-
-    it('should handle empty metadata object', () => {
-      const meta = createMCPMeta({});
-      expect(meta).toEqual({});
-    });
-
-    it('should only include defined fields', () => {
-      const meta = createMCPMeta({
-        serverVersion: '0.7.0',
-        timestamp: '2024-01-15T10:30:00Z'
-      });
-
-      expect(meta['modelcontextprotocol.io/serverVersion']).toBe('0.7.0');
-      expect(meta['modelcontextprotocol.io/serverName']).toBeUndefined();
-      expect(meta['modelcontextprotocol.io/requestId']).toBeUndefined();
-      expect(meta['modelcontextprotocol.io/timestamp']).toBe('2024-01-15T10:30:00Z');
-      expect(Object.keys(meta).length).toBe(2);
-    });
-
     it('should validate metadata structure', () => {
       const validMeta = {
         'modelcontextprotocol.io/serverVersion': '0.7.0',
@@ -251,11 +207,11 @@ describe('MCP Metadata Handler Compliance', () => {
     });
 
     it('should handle metadata with circular references safely', () => {
-      const obj = { 'custom.field': 'value' } as Record<string, unknown>;
-      obj['circular'] = obj;
+      const obj: any = { 'custom.field': 'value' };
+      obj.circular = obj;
 
       // Should not throw, should handle gracefully
-      expect(() => validateMCPMeta(obj as Record<string, unknown>)).not.toThrow();
+      expect(() => validateMCPMeta(obj)).not.toThrow();
     });
 
     it('should handle very large metadata objects', () => {

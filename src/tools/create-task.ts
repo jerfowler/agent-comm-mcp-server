@@ -4,7 +4,7 @@
  * that prevents duplicate folder bugs and provides consistent PROTOCOL_CONTEXT
  */
 
-import { ServerConfig, CreateTaskResponse, EnhancementContext } from '../types.js';
+import { ServerConfig, CreateTaskResponse } from '../types.js';
 import { initializeTask } from '../utils/task-manager.js';
 import { validateRequiredString, validateOptionalString, validateContent } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
@@ -387,65 +387,5 @@ export async function createTaskTool(
     ...(sourceAgent && { sourceAgent })
   };
   
-  // Create the task
-  const response = await createTask(config, options);
-  
-  // Apply Smart Response System enhancement if available
-  if (config.responseEnhancer && config.smartResponseConfig?.enabled) {
-    try {
-      // Track compliance if this is a task creation
-      if (config.complianceTracker && response.taskCreated) {
-        await config.complianceTracker.recordActivity(sourceAgent ?? agent, {
-          type: 'task_created',
-          taskId: response.taskId,
-          taskType: taskType,
-          timestamp: new Date()
-        });
-      }
-      
-      // Track delegation if this is a delegation task
-      if (config.delegationTracker && taskType === 'delegation' && response.taskCreated) {
-        await config.delegationTracker.recordDelegation({
-          taskId: response.taskId,
-          targetAgent: agent,
-          createdAt: new Date(),
-          taskToolInvoked: true,
-          subagentStarted: false,
-          completionStatus: 'pending'
-        });
-      }
-      
-      // Enhance response with Smart Response guidance
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (config.responseEnhancer) {
-        const enhancementContext: EnhancementContext = {
-          toolName: 'create_task',
-          agent: sourceAgent ?? agent,
-          toolResponse: response
-        };
-        
-        // Only add optional properties if they are defined
-        if (config.promptManager !== undefined) {
-          enhancementContext.promptManager = config.promptManager;
-        }
-        if (config.complianceTracker !== undefined) {
-          enhancementContext.complianceTracker = config.complianceTracker;
-        }
-        if (config.delegationTracker !== undefined) {
-          enhancementContext.delegationTracker = config.delegationTracker;
-        }
-        
-        const enhancedResponse = await config.responseEnhancer.enhance(enhancementContext);
-        // The enhance method returns the full enhanced response
-        // We need to ensure it has all required CreateTaskResponse properties
-        return enhancedResponse as unknown as CreateTaskResponse;
-      }
-    } catch (error) {
-      // Smart Response System errors are handled silently
-      // The tool continues to work without enhancement
-      void error; // Acknowledge error without logging
-    }
-  }
-  
-  return response;
+  return await createTask(config, options);
 }

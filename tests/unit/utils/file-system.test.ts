@@ -40,21 +40,17 @@ jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
 
 // Import fs-extra after mocking to get the mocked functions
 import fs from '../../../src/utils/fs-extra-safe.js';
-import type { Stats } from 'fs';
-
-type MockFsType = {
-  ensureDir: jest.MockedFunction<(path: string) => Promise<void>>,
-  pathExists: jest.MockedFunction<(path: string) => Promise<boolean>>,
-  readFile: jest.MockedFunction<(path: string, encoding: string) => Promise<string>>,
-  writeFile: jest.MockedFunction<(path: string, content: string, options?: unknown) => Promise<void>>,
-  move: jest.MockedFunction<(src: string, dest: string, options?: { overwrite?: boolean }) => Promise<void>>,
-  copy: jest.MockedFunction<(src: string, dest: string, options?: { overwrite?: boolean }) => Promise<void>>,
-  remove: jest.MockedFunction<(path: string) => Promise<void>>,
-  readdir: jest.MockedFunction<(path: string) => Promise<string[]>>,
-  stat: jest.MockedFunction<(path: string) => Promise<Stats>>
-};
-
-const mockFs = fs as unknown as jest.Mocked<MockFsType>;
+const mockFs = fs as any as jest.Mocked<{
+  ensureDir: jest.MockedFunction<any>,
+  pathExists: jest.MockedFunction<any>,
+  readFile: jest.MockedFunction<any>,
+  writeFile: jest.MockedFunction<any>,
+  move: jest.MockedFunction<any>,
+  copy: jest.MockedFunction<any>,
+  remove: jest.MockedFunction<any>,
+  readdir: jest.MockedFunction<any>,
+  stat: jest.MockedFunction<any>
+}>;
 
 describe('File System Utilities', () => {
   beforeEach(() => {
@@ -220,8 +216,8 @@ describe('File System Utilities', () => {
         isFile: () => true,
         birthtime: new Date(),
         mtime: new Date()
-      } as Stats;
-      mockFs.stat.mockResolvedValue(mockStats);
+      };
+      mockFs.stat.mockResolvedValue(mockStats as any);
       
       const result = await getStats('/test/file.md');
       
@@ -233,7 +229,7 @@ describe('File System Utilities', () => {
   describe('isDirectory', () => {
     it('should return true for directory', async () => {
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.stat.mockResolvedValue({ isDirectory: () => true } as Stats);
+      mockFs.stat.mockResolvedValue({ isDirectory: () => true } as any);
       
       const result = await isDirectory('/test/dir');
       
@@ -242,7 +238,7 @@ describe('File System Utilities', () => {
 
     it('should return false for file', async () => {
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.stat.mockResolvedValue({ isDirectory: () => false } as Stats);
+      mockFs.stat.mockResolvedValue({ isDirectory: () => false } as any);
       
       const result = await isDirectory('/test/file.md');
       
@@ -261,7 +257,7 @@ describe('File System Utilities', () => {
   describe('isFile', () => {
     it('should return true for file', async () => {
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.stat.mockResolvedValue({ isFile: () => true } as Stats);
+      mockFs.stat.mockResolvedValue({ isFile: () => true } as any);
       
       const result = await isFile('/test/file.md');
       
@@ -270,7 +266,7 @@ describe('File System Utilities', () => {
 
     it('should return false for directory', async () => {
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.stat.mockResolvedValue({ isFile: () => false } as Stats);
+      mockFs.stat.mockResolvedValue({ isFile: () => false } as any);
       
       const result = await isFile('/test/dir');
       
@@ -300,8 +296,8 @@ describe('File System Utilities', () => {
       const mockStats = {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T13:00:00Z')
-      } as Stats;
-      mockFs.stat.mockResolvedValue(mockStats);
+      };
+      mockFs.stat.mockResolvedValue(mockStats as any);
       
       const result = await getTaskInfo(taskPath, 'test-agent');
       
