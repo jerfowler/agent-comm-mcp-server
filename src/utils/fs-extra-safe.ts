@@ -514,7 +514,7 @@ export const readJSON = async (filePath: string): Promise<unknown> => {
 export const readJson = readJSON; // Alias
 interface WriteJsonOptions {
   spaces?: number | string;
-  replacer?: ((this: any, key: string, value: any) => any) | null;
+  replacer?: ((this: unknown, key: string, value: unknown) => unknown) | null;
 }
 
 export const writeJSON = async (filePath: string, data: unknown, options?: WriteJsonOptions): Promise<void> => {
