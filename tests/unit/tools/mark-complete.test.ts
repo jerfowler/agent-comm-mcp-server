@@ -69,7 +69,7 @@ describe('Mark Complete Tool', () => {
     // Setup TaskContextManager mock
     mockContextManager = {
       markComplete: jest.fn<() => Promise<CompletionResult>>().mockResolvedValue(mockCompletionResult)
-    } as any;
+    } as unknown as jest.Mocked<TaskContextManager>;
     
     MockTaskContextManager.mockImplementation(() => mockContextManager);
   });
@@ -351,7 +351,7 @@ describe('Mark Complete Tool', () => {
       const invalidConfig = { 
         ...mockConfig, 
         connectionManager: undefined 
-      } as any;
+      } as unknown as ServerConfig;
 
       const args = {
         status: 'DONE',
@@ -359,7 +359,7 @@ describe('Mark Complete Tool', () => {
         agent: 'test-agent'
       };
 
-      await expect(markComplete(invalidConfig, args))
+      await expect(markComplete(invalidConfig as ServerConfig, args))
         .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
     });
 
@@ -367,7 +367,7 @@ describe('Mark Complete Tool', () => {
       const invalidConfig = { 
         ...mockConfig, 
         eventLogger: undefined 
-      } as any;
+      } as unknown as ServerConfig;
 
       const args = {
         status: 'DONE',
@@ -375,7 +375,7 @@ describe('Mark Complete Tool', () => {
         agent: 'test-agent'
       };
 
-      await expect(markComplete(invalidConfig, args))
+      await expect(markComplete(invalidConfig as ServerConfig, args))
         .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
     });
 
@@ -384,7 +384,7 @@ describe('Mark Complete Tool', () => {
         ...mockConfig, 
         connectionManager: undefined,
         eventLogger: undefined
-      } as any;
+      } as unknown as ServerConfig;
 
       const args = {
         status: 'DONE',
@@ -392,7 +392,7 @@ describe('Mark Complete Tool', () => {
         agent: 'test-agent'
       };
 
-      await expect(markComplete(invalidConfig, args))
+      await expect(markComplete(invalidConfig as ServerConfig, args))
         .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
     });
 

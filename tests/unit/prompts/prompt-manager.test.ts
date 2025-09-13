@@ -41,7 +41,7 @@ describe('PromptManager', () => {
     // Create prompt manager
     promptManager = new PromptManager(mockConfig);
     // Replace engine with mock
-    (promptManager as any).engine = mockEngine;
+    (promptManager as unknown as { engine: typeof mockEngine }).engine = mockEngine;
   });
 
   describe('listPrompts', () => {
@@ -83,7 +83,7 @@ describe('PromptManager', () => {
 
     it('should log operation to EventLogger', async () => {
       const mockLogOperation = jest.fn();
-      (mockConfig.eventLogger.logOperation as any) = mockLogOperation;
+      (mockConfig.eventLogger.logOperation as unknown) = mockLogOperation;
       
       await promptManager.listPrompts();
       
@@ -158,7 +158,7 @@ describe('PromptManager', () => {
 
     it('should log operation to EventLogger', async () => {
       const mockLogOperation = jest.fn();
-      (mockConfig.eventLogger.logOperation as any) = mockLogOperation;
+      (mockConfig.eventLogger.logOperation as unknown) = mockLogOperation;
       
       const mockContent: PromptContent = {
         messages: [{
@@ -273,7 +273,7 @@ describe('PromptManager', () => {
 
     it('should validate argument types', async () => {
       await expect(
-        promptManager.getPrompt('task-workflow-guide', { agent: 123 as any })
+        promptManager.getPrompt('task-workflow-guide', { agent: 123 as unknown })
       ).rejects.toThrow('Invalid argument type for agent: expected string');
     });
 

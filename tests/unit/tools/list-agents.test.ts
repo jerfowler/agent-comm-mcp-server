@@ -440,8 +440,8 @@ describe('List Agents Tool', () => {
       // This simulates data corruption or incomplete agent objects
       const corruptedAgent = {
         name: 'partially-corrupt-agent',
-        taskCount: null as any,
-        completedCount: undefined as any,
+        taskCount: null as unknown as number,
+        completedCount: undefined as unknown as number,
         pendingCount: 5,
         errorCount: 2
       };

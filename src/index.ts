@@ -13,10 +13,14 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
   ListPromptsRequestSchema,
-  GetPromptRequestSchema
+  GetPromptRequestSchema,
+  CallToolRequest,
+  ListResourcesRequest,
+  ReadResourceRequest,
+  GetPromptRequest
 } from '@modelcontextprotocol/sdk/types.js';
 import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
-import { AgentCommError, ServerConfig } from './types.js';
+import { AgentCommError, ServerConfig, GetFullLifecycleArgs, TrackTaskProgressArgs } from './types.js';
 import * as fs from './utils/fs-extra-safe.js';
 
 // Import core components
@@ -117,17 +121,17 @@ export function createMCPServer(): Server {
 /**
  * Set up server request handlers
  */
-function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager): void {
+function setupServerHandlers(server: Server, config: ServerConfig, resourceManager: ResourceManager): void {
   // Tool call handler
   server.setRequestHandler(
     CallToolRequestSchema,
-    async (request: any) => {
+    async (request: CallToolRequest) => {
       try {
         const { name, arguments: args } = request.params;
         
         switch (name) {
           case 'check_tasks': {
-            const result = await checkTasks(config, args || {});
+            const result = await checkTasks(config, args ?? {});
             return { 
               content: [
                 {
@@ -139,7 +143,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'read_task': {
-            const result = await readTask(config, args || {});
+            const result = await readTask(config, args ?? {});
             return { 
               content: [
                 {
@@ -151,7 +155,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'write_task': {
-            const result = await writeTask(config, args || {});
+            const result = await writeTask(config, args ?? {});
             return { 
               content: [
                 {
@@ -164,7 +168,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
             
             
           case 'create_task': {
-            const result = await createTaskTool(config, args || {});
+            const result = await createTaskTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -188,7 +192,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'archive_tasks': {
-            const result = await archiveTasksTool(config, args || {});
+            const result = await archiveTasksTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -200,7 +204,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
             
           case 'restore_tasks': {
-            const result = await restoreTasksTool(config, args || {});
+            const result = await restoreTasksTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -214,7 +218,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Context-based tools
           case 'get_task_context': {
-            const result = await getTaskContext(config, args || {});
+            const result = await getTaskContext(config, args ?? {});
             return { 
               content: [
                 {
@@ -226,7 +230,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'submit_plan': {
-            const result = await submitPlan(config, args || {});
+            const result = await submitPlan(config, args ?? {});
             return { 
               content: [
                 {
@@ -238,7 +242,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'report_progress': {
-            const result = await reportProgress(config, args || {});
+            const result = await reportProgress(config, args ?? {});
             return { 
               content: [
                 {
@@ -250,7 +254,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'mark_complete': {
-            const result = await markComplete(config, args || {});
+            const result = await markComplete(config, args ?? {});
             return { 
               content: [
                 {
@@ -262,7 +266,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'archive_completed_tasks': {
-            const result = await archiveCompletedTasks(config, args || {});
+            const result = await archiveCompletedTasks(config, args ?? {});
             return { 
               content: [
                 {
@@ -275,7 +279,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Diagnostic tools (v0.4.0)
           case 'get_full_lifecycle': {
-            const result = await getFullLifecycle(config, args || {});
+            const result = await getFullLifecycle(config, (args ?? {}) as unknown as GetFullLifecycleArgs);
             return { 
               content: [
                 {
@@ -287,7 +291,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'track_task_progress': {
-            const result = await trackTaskProgress(config, args || {});
+            const result = await trackTaskProgress(config, (args ?? {}) as unknown as TrackTaskProgressArgs);
             return { 
               content: [
                 {
@@ -300,7 +304,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Best practice tools
           case 'get_server_info': {
-            const result = await getServerInfoTool(config, args || {});
+            const result = await getServerInfoTool(config, args ?? {});
             return { 
               content: [
                 {
@@ -312,7 +316,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'ping': {
-            const result = await ping(config, args || {});
+            const result = await ping(config, args ?? {});
             return { 
               content: [
                 {
@@ -324,7 +328,7 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
           }
 
           case 'sync_todo_checkboxes': {
-            const result = await syncTodoCheckboxes(config, args || {});
+            const result = await syncTodoCheckboxes(config, args ?? {});
             return { 
               content: [
                 {
@@ -750,14 +754,16 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
   // Resource handlers
   server.setRequestHandler(
     ListResourcesRequestSchema,
-    async (request: any) => {
-      return resourceManager.listResources(request.params);
+    async (request: ListResourcesRequest) => {
+      // Handle the optional params with proper type narrowing for exactOptionalPropertyTypes
+      const options = request.params?.cursor ? { cursor: request.params.cursor } : undefined;
+      return resourceManager.listResources(options);
     }
   );
   
   server.setRequestHandler(
     ReadResourceRequestSchema,
-    async (request: any) => {
+    async (request: ReadResourceRequest) => {
       if (!request.params?.uri) {
         throw new AgentCommError('URI parameter is required', 'INVALID_PARAMS');
       }
@@ -782,10 +788,10 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
   // Prompts get handler
   server.setRequestHandler(
     GetPromptRequestSchema,
-    async (request: any) => {
+    async (request: GetPromptRequest) => {
       try {
         const { name, arguments: args } = request.params;
-        const result = await promptManager.getPrompt(name, args || {});
+        const result = await promptManager.getPrompt(name, args ?? {});
         return {
           description: result.description,
           messages: result.messages

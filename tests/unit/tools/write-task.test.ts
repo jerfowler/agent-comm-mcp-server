@@ -27,7 +27,7 @@ describe('Write Task Tool', () => {
 
     // Setup default validation mocks
     mockValidation.validateRequiredString.mockImplementation((value) => value as string);
-    mockValidation.validateEnum.mockImplementation((value) => value as any);
+    mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown) => value as T);
     mockValidation.validateContent.mockImplementation(() => {});
 
     // Setup default file system mocks
@@ -183,7 +183,7 @@ describe('Write Task Tool', () => {
         mockFileSystem.ensureDirectory.mockResolvedValue();
         mockFileSystem.writeFile.mockResolvedValue();
         mockValidation.validateRequiredString.mockImplementation((value) => value as string);
-        mockValidation.validateEnum.mockImplementation((value) => value as any);
+        mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown) => value as T);
         mockValidation.validateContent.mockImplementation(() => {});
       }
     });
@@ -352,11 +352,11 @@ describe('Write Task Tool', () => {
           return value as string;
         });
         
-        mockValidation.validateEnum.mockImplementation((value, name) => {
+        mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown, name: string) => {
           if (name === 'file' && value === null) {
             throw new InvalidTaskError('file must be one of: PLAN, DONE, ERROR', 'file');
           }
-          return value as any;
+          return value as T;
         });
         
         await expect(writeTask(mockConfig, testCase.args))
@@ -382,11 +382,11 @@ describe('Write Task Tool', () => {
           return value as string;
         });
         
-        mockValidation.validateEnum.mockImplementation((value, name) => {
+        mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown, name: string) => {
           if (name === 'file' && typeof value !== 'string') {
             throw new InvalidTaskError('file must be one of: PLAN, DONE, ERROR', 'file');
           }
-          return value as any;
+          return value as T;
         });
         
         await expect(writeTask(mockConfig, testCase.args))
@@ -690,7 +690,7 @@ console.log(code);
         mockFileSystem.ensureDirectory.mockResolvedValue();
         mockFileSystem.writeFile.mockResolvedValue();
         mockValidation.validateRequiredString.mockImplementation((value) => value as string);
-        mockValidation.validateEnum.mockImplementation((value) => value as any);
+        mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown) => value as T);
         mockValidation.validateContent.mockImplementation(() => {});
       }
     });
@@ -721,7 +721,7 @@ console.log(code);
         mockFileSystem.ensureDirectory.mockResolvedValue();
         mockFileSystem.writeFile.mockResolvedValue();
         mockValidation.validateRequiredString.mockImplementation((value) => value as string);
-        mockValidation.validateEnum.mockImplementation((value) => value as any);
+        mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown) => value as T);
         mockValidation.validateContent.mockImplementation(() => {});
       }
     });
@@ -812,7 +812,7 @@ console.log(code);
         mockFileSystem.ensureDirectory.mockResolvedValue();
         mockFileSystem.writeFile.mockResolvedValue();
         mockValidation.validateRequiredString.mockImplementation((value) => value as string);
-        mockValidation.validateEnum.mockImplementation((value) => value as any);
+        mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown) => value as T);
         mockValidation.validateContent.mockImplementation(() => {});
       }
     });

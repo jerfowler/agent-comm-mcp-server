@@ -9,6 +9,7 @@ import * as validation from '../../../src/utils/validation.js';
 import { ServerConfig, TaskMetadata, InvalidTaskError, FileNotFoundError } from '../../../src/types.js';
 import { testUtils } from '../../utils/testUtils.js';
 import * as path from 'path';
+import type { Stats } from 'fs';
 
 // Mock modules
 jest.mock('../../../src/utils/file-system.js');
@@ -19,7 +20,7 @@ const mockValidation = validation as jest.Mocked<typeof validation>;
 
 describe('Read Task Tool', () => {
   let mockConfig: ServerConfig;
-  let mockStats: any;
+  let mockStats: Stats;
   let mockMetadata: TaskMetadata;
 
   beforeEach(() => {
@@ -35,7 +36,7 @@ describe('Read Task Tool', () => {
 
     // Setup default validation mocks
     mockValidation.validateRequiredString.mockImplementation((value) => value as string);
-    mockValidation.validateTaskFileType.mockImplementation((value) => value as any);
+    mockValidation.validateTaskFileType.mockImplementation((value) => value as unknown as "INIT" | "PLAN" | "DONE" | "ERROR");
 
     // Setup default file system mocks
     mockFileSystem.readFile.mockResolvedValue(testUtils.sampleTaskContent);
@@ -292,7 +293,7 @@ describe('Read Task Tool', () => {
           if (value === null) {
             throw new InvalidTaskError('file must be one of: INIT, PLAN, DONE, ERROR', 'file');
           }
-          return value as any;
+          return value as unknown as "INIT" | "PLAN" | "DONE" | "ERROR";
         });
         
         await expect(readTask(mockConfig, testCase.args))
@@ -336,7 +337,7 @@ describe('Read Task Tool', () => {
           if (typeof value !== 'string') {
             throw new InvalidTaskError('file must be one of: INIT, PLAN, DONE, ERROR', 'file');
           }
-          return value as any;
+          return value as unknown as "INIT" | "PLAN" | "DONE" | "ERROR";
         });
         
         await expect(readTask(mockConfig, testCase.args))
@@ -534,7 +535,7 @@ describe('Read Task Tool', () => {
         file: 'INIT'
       };
       
-      mockFileSystem.parseTaskMetadata.mockReturnValue(undefined as any);
+      mockFileSystem.parseTaskMetadata.mockReturnValue(undefined as unknown as TaskMetadata | undefined);
       
       const result = await readTask(mockConfig, args);
 
@@ -595,7 +596,7 @@ describe('Read Task Tool', () => {
         source: 'extra-source',
         unknownField: 'unknown-value',
         anotherField: 123
-      } as any;
+      } as unknown as TaskMetadata;
       
       const args = {
         agent: 'test-agent',
@@ -747,13 +748,13 @@ describe('Read Task Tool', () => {
       };
       
       let resolveRead: (value: string) => void;
-      let resolveStats: (value: any) => void;
+      let resolveStats: (value: Stats) => void;
       
       const delayedRead = new Promise<string>((resolve) => {
         resolveRead = resolve;
       });
       
-      const delayedStats = new Promise<any>((resolve) => {
+      const delayedStats = new Promise<Stats>((resolve) => {
         resolveStats = resolve;
       });
       

@@ -11,9 +11,10 @@ import { testUtils } from '../../utils/testUtils.js';
 
 // This import should FAIL initially until we implement the tool
 import { trackTaskProgress } from '../../../src/tools/track-task-progress.js';
+import { ServerConfig, TrackTaskProgressArgs } from '../../../src/types.js';
 
 describe('track_task_progress Tool (TDD)', () => {
-  let config: any;
+  let config: ServerConfig;
   let tempDir: string;
   let testDir: string;
 
@@ -241,14 +242,14 @@ describe('track_task_progress Tool (TDD)', () => {
       await expect(
         trackTaskProgress(config, {
           // Missing agent and task_id
-        } as any)
+        } as unknown as TrackTaskProgressArgs)
       ).rejects.toThrow();
 
       await expect(
         trackTaskProgress(config, {
           agent: 'test-agent'
           // Missing task_id
-        } as any)
+        } as unknown as TrackTaskProgressArgs)
       ).rejects.toThrow();
     });
   });

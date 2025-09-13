@@ -13,7 +13,7 @@ import {
 import { ConnectionManager } from '../../core/ConnectionManager.js';
 import { TaskContextManager } from '../../core/TaskContextManager.js';
 import { EventLogger } from '../../logging/EventLogger.js';
-import { AgentCommError, ServerConfig } from '../../types.js';
+import { AgentCommError, ServerConfig, Task } from '../../types.js';
 import { getAllAgents, getAgentTasks } from '../../utils/task-manager.js';
 
 /**
@@ -127,7 +127,11 @@ export class AgentResourceProvider implements ResourceProvider {
   /**
    * Get agent status information
    */
-  private async getAgentStatus(agent: string): Promise<any> {
+  private async getAgentStatus(agent: string): Promise<{
+    connectionStatus: { connected: boolean; lastActivity: Date | null };
+    taskStats: { total: number; pending: number; completed: number; error: number };
+    currentTask: string | null;
+  }> {
     try {
       // Get connection status - for now just return basic info
       const connectionStatus = { connected: false, lastActivity: null };
@@ -146,22 +150,19 @@ export class AgentResourceProvider implements ResourceProvider {
       // Calculate task statistics based on flags (tasks don't have a status field)
       const taskStats = {
         total: tasks.length,
-        pending: tasks.filter((t: any) => t.hasInit || t.hasPlan).length,
-        completed: tasks.filter((t: any) => t.hasDone).length,
-        error: tasks.filter((t: any) => t.hasError).length
+        pending: tasks.filter((t: Task) => t.hasInit || t.hasPlan).length,
+        completed: tasks.filter((t: Task) => t.hasDone).length,
+        error: tasks.filter((t: Task) => t.hasError).length
       };
 
       // Get current active task (tasks with PLAN.md but not DONE/ERROR)
-      const activeTasks = tasks.filter((t: any) => t.hasPlan && !t.hasDone && !t.hasError);
+      const activeTasks = tasks.filter((t: Task) => t.hasPlan && !t.hasDone && !t.hasError);
       const activeTask = activeTasks.length > 0 ? activeTasks[0] : null;
 
       return {
-        agent,
-        connected: connectionStatus.connected,
-        lastActivity: connectionStatus.lastActivity || null,
-        activeTask: activeTask ? activeTask.name : null,
-        taskStatistics: taskStats,
-        timestamp: new Date().toISOString()
+        connectionStatus,
+        taskStats,
+        currentTask: activeTask ? activeTask.name : null
       };
     } catch (error) {
       await this.config.eventLogger.logOperation('error', 'system', {

@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { Stats } from 'fs';
 import {
   getAgentTasks,
   getAllAgents,
@@ -13,6 +14,8 @@ import {
 } from '../../../src/utils/task-manager.js';
 import { ServerConfig, Task, ArchiveOptions } from '../../../src/types.js';
 import * as fs from '../../../src/utils/file-system.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
 
 // Mock file system utilities
 jest.mock('../../../src/utils/file-system.js', () => ({
@@ -48,13 +51,13 @@ const testConfig: ServerConfig = {
     cleanupStaleConnections: jest.fn(),
     getStatistics: jest.fn(),
     getConnectionCount: jest.fn(),
-    hasConnection: jest.fn()
-  } as any,
+        hasConnection: jest.fn()
+      } as unknown as ConnectionManager,
   eventLogger: {
     logOperation: jest.fn(),
     logError: jest.fn(),
-    getOperationStatistics: jest.fn()
-  } as any
+        getOperationStatistics: jest.fn()
+      } as unknown as EventLogger
 };
 
 describe('Task Manager - fs.readdir Critical Tests', () => {
@@ -102,7 +105,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:30:00Z'),
         mtime: new Date('2025-01-01T12:35:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as any);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'test-agent');
 
@@ -181,7 +184,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as any);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'test-agent');
 
@@ -524,7 +527,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as any);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'special-chars-agent');
 
@@ -562,7 +565,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as any);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'symlink-agent');
 
@@ -614,7 +617,7 @@ describe('Task Manager - fs.readdir Critical Tests', () => {
         birthtime: new Date('2025-01-01T12:00:00Z'),
         mtime: new Date('2025-01-01T12:05:00Z')
       };
-      mockFs.getStats.mockResolvedValue(mockStats as any);
+      mockFs.getStats.mockResolvedValue(mockStats as unknown as Stats);
 
       const result = await getAgentTasks(testConfig, 'memory-pressure-agent');
 

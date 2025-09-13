@@ -54,7 +54,7 @@ describe('Report Progress Tool', () => {
     
     mockContextManager = {
       reportProgress: jest.fn<() => Promise<ProgressReportResult>>().mockResolvedValue(mockProgressResult)
-    } as any;
+    } as unknown as jest.Mocked<TaskContextManager>;
     
     MockTaskContextManager.mockImplementation(() => mockContextManager);
   });
@@ -255,7 +255,7 @@ describe('Report Progress Tool', () => {
       const invalidConfig = { 
         ...mockConfig, 
         connectionManager: undefined 
-      } as any;
+      } as unknown as ServerConfig;
 
       const args = {
         agent: 'test-agent',
@@ -268,7 +268,7 @@ describe('Report Progress Tool', () => {
         ]
       };
 
-      await expect(reportProgress(invalidConfig, args))
+      await expect(reportProgress(invalidConfig as ServerConfig, args))
         .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
     });
 
@@ -276,7 +276,7 @@ describe('Report Progress Tool', () => {
       const invalidConfig = { 
         ...mockConfig, 
         eventLogger: undefined 
-      } as any;
+      } as unknown as ServerConfig;
 
       const args = {
         agent: 'test-agent',
@@ -289,7 +289,7 @@ describe('Report Progress Tool', () => {
         ]
       };
 
-      await expect(reportProgress(invalidConfig, args))
+      await expect(reportProgress(invalidConfig as ServerConfig, args))
         .rejects.toThrow('Configuration missing required components: connectionManager and eventLogger');
     });
   });

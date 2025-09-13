@@ -52,8 +52,6 @@ temp/
 tmp/
 
 # Temporary documentation files (prevent clutter)
-*TEST*.md
-*TESTING*.md
 COMPREHENSIVE-*.md
 MCP-COMPLIANCE-*.md
 *ANALYSIS*.md
@@ -75,4 +73,3 @@ pnpm-lock.yaml
 
 # Agent Communication Directories (never commit task folders)
 comm/
-.serena/cache/

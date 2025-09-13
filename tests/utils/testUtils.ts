@@ -40,12 +40,33 @@ export const testUtils = {
     ...overrides
   }),
 
-  // Create mock file stats
+  // Create mock file stats - complete Stats object
   createMockStats: (overrides = {}) => ({
     birthtime: new Date('2025-01-01T12:00:00Z'),
     mtime: new Date('2025-01-01T12:05:00Z'),
+    atime: new Date('2025-01-01T12:05:00Z'),
+    ctime: new Date('2025-01-01T12:00:00Z'),
+    birthtimeMs: 1735732800000,
+    mtimeMs: 1735733100000,
+    atimeMs: 1735733100000,
+    ctimeMs: 1735732800000,
+    dev: 0,
+    ino: 0,
+    mode: 33188,
+    nlink: 1,
+    uid: 1000,
+    gid: 1000,
+    rdev: 0,
+    size: 1024,
+    blksize: 4096,
+    blocks: 8,
     isDirectory: () => false,
     isFile: () => true,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isSymbolicLink: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
     ...overrides
   }),
 

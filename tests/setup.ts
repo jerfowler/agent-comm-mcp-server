@@ -5,12 +5,61 @@
 
 import { jest } from '@jest/globals';
 import { ConnectionManager } from '../src/core/ConnectionManager.js';
+import type { EventLogger } from '../src/logging/EventLogger.js';
 
 // Extend Jest timeout for slower operations
 jest.setTimeout(10000);
 
+// Define test utility types
+interface TestUtils {
+  createMockConfig: (overrides?: Record<string, unknown>) => {
+    commDir: string;
+    archiveDir: string;
+    logDir: string;
+    enableArchiving: boolean;
+    connectionManager: ConnectionManager;
+    eventLogger: Partial<EventLogger>;
+    [key: string]: unknown;
+  };
+  createMockTask: (overrides?: Record<string, unknown>) => {
+    name: string;
+    agent: string;
+    path: string;
+    hasInit: boolean;
+    hasPlan: boolean;
+    hasDone: boolean;
+    hasError: boolean;
+    [key: string]: unknown;
+  };
+  createMockStats: (overrides?: Record<string, unknown>) => {
+    birthtime: Date;
+    mtime: Date;
+    isDirectory: () => boolean;
+    isFile: () => boolean;
+    [key: string]: unknown;
+  };
+  getTestTimestamp: () => string;
+  sampleTaskContent: string;
+  samplePlanContent: string;
+  validationTestCases: {
+    validStrings: string[];
+    invalidStrings: (string | null | undefined | number | boolean | Record<string, unknown>)[];
+    validNumbers: number[];
+    invalidNumbers: (string | null | undefined | number | Record<string, unknown>)[];
+    validBooleans: boolean[];
+    invalidBooleans: (string | number | null | undefined | Record<string, unknown>)[];
+    pathTraversalAttempts: string[];
+    specialCharacters: string[];
+    longStrings: string;
+    emptyContent: string[];
+  };
+}
+
+// Global interface is already declared in tests/types/global.d.ts
+// No need to redeclare here
+
 // Global test utilities
-(global as any).testUtils = {
+(global as unknown as { testUtils: TestUtils }).testUtils = {
   // Create mock ServerConfig
   createMockConfig: (overrides = {}) => ({
     commDir: './test/comm',
@@ -20,10 +69,10 @@ jest.setTimeout(10000);
     // Core components - mocked for testing
     connectionManager: new ConnectionManager(),
     eventLogger: {
-      logOperation: jest.fn() as any,
-      getLogEntries: jest.fn() as any,
-      getOperationStatistics: jest.fn() as any,
-      clearLogs: jest.fn() as any
+      logOperation: jest.fn() as unknown as jest.MockedFunction<EventLogger['logOperation']>,
+      getLogEntries: jest.fn() as jest.MockedFunction<EventLogger['getLogEntries']>,
+      getOperationStatistics: jest.fn() as jest.MockedFunction<EventLogger['getOperationStatistics']>,
+      clearLogs: jest.fn() as jest.MockedFunction<EventLogger['clearLogs']>
     },
     ...overrides
   }),

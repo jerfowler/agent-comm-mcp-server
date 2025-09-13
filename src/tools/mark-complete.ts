@@ -39,7 +39,7 @@ interface ReconciledCompletion {
 function extractUncheckedItems(content: string): string[] {
   const uncheckedRegex = /^- \[ \] \*\*([^:]+)\*\*:/gm;
   const matches = content.match(uncheckedRegex) ?? [];
-  return matches.map(match => {
+  return matches.map((match: string) => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
   });
@@ -51,7 +51,7 @@ function extractUncheckedItems(content: string): string[] {
 function extractCheckedItems(content: string): string[] {
   const checkedRegex = /^- \[x\] \*\*([^:]+)\*\*:/gmi;
   const matches = content.match(checkedRegex) ?? [];
-  return matches.map(match => {
+  return matches.map((match: string) => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
   });
@@ -206,7 +206,7 @@ ${summary}`,
 
 ### Variance Report
 ${validation.uncheckedItems.map(item => {
-  const explanation = explanations[item] || 'Completed via alternative approach';
+  const explanation = explanations[item] ?? 'Completed via alternative approach';
   return `- **${item}**: ${explanation}`;
 }).join('\n')}
 

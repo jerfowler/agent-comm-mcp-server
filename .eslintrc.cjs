@@ -8,7 +8,7 @@ module.exports = {
   plugins: ['@typescript-eslint'],
   extends: [
     'eslint:recommended',
-    'plugin:@typescript-eslint/strict-type-checked',
+    'plugin:@typescript-eslint/recommended-type-checked',
     'plugin:@typescript-eslint/stylistic-type-checked'
   ],
   root: true,
@@ -26,13 +26,13 @@ module.exports = {
       ignoreRestSiblings: true 
     }],
     
-    // TEMPORARILY DISABLED STRICT ENFORCEMENT for repository recovery
-    // '@typescript-eslint/no-explicit-any': 'error',
-    // '@typescript-eslint/no-unsafe-argument': 'error',
-    // '@typescript-eslint/no-unsafe-assignment': 'error',
-    // '@typescript-eslint/no-unsafe-call': 'error',
-    // '@typescript-eslint/no-unsafe-member-access': 'error',
-    // '@typescript-eslint/no-unsafe-return': 'error',
+    // STRICT ENFORCEMENT: Ban 'any' types completely
+    '@typescript-eslint/no-explicit-any': 'error',
+    '@typescript-eslint/no-unsafe-argument': 'error',
+    '@typescript-eslint/no-unsafe-assignment': 'error',
+    '@typescript-eslint/no-unsafe-call': 'error',
+    '@typescript-eslint/no-unsafe-member-access': 'error',
+    '@typescript-eslint/no-unsafe-return': 'error',
     '@typescript-eslint/prefer-as-const': 'error',
     '@typescript-eslint/no-unnecessary-type-assertion': 'error',
     
@@ -46,30 +46,36 @@ module.exports = {
       ]
     }],
     
-    // TEMPORARILY DISABLED - Ban specific TypeScript language features
-    // 'no-restricted-syntax': [
-    //   'error',
-    //   // Ban 'any' type annotations completely
-    //   {
-    //     selector: 'TSTypeAnnotation > TSAnyKeyword',
-    //     message: 'The "any" type is banned. Use specific types or unknown instead.'
-    //   },
-    //   // Ban 'any' in type assertions
-    //   {
-    //     selector: 'TSTypeAssertion > TSAnyKeyword',
-    //     message: 'Type assertion to "any" is banned. Use specific types or unknown instead.'
-    //   },
-    //   // Ban 'any' in generic type parameters
-    //   {
-    //     selector: 'TSTypeParameter > TSTypeAnnotation > TSAnyKeyword',
-    //     message: 'Generic type parameter "any" is banned. Use specific types or unknown instead.'
-    //   },
-    //   // Ban 'any' in function parameters
-    //   {
-    //     selector: 'FunctionDeclaration Parameter > TSTypeAnnotation > TSAnyKeyword',
-    //     message: 'Function parameter type "any" is banned. Use specific types or unknown instead.'
-    //   }
-    // ],
+    // Ban specific TypeScript language features
+    'no-restricted-syntax': [
+      'error',
+      // Ban 'any' type annotations completely
+      {
+        selector: 'TSTypeAnnotation > TSAnyKeyword',
+        message: 'The "any" type is banned. Use specific types or unknown instead.'
+      },
+      // Ban 'any' in type assertions
+      {
+        selector: 'TSTypeAssertion > TSAnyKeyword',
+        message: 'Type assertion to "any" is banned. Use specific types or unknown instead.'
+      },
+      // Ban 'any' in generic type parameters
+      {
+        selector: 'TSTypeParameter > TSTypeAnnotation > TSAnyKeyword',
+        message: 'Generic type parameter "any" is banned. Use specific types or unknown instead.'
+      },
+      // Ban 'any' in function parameters
+      {
+        selector: 'FunctionDeclaration Parameter > TSTypeAnnotation > TSAnyKeyword',
+        message: 'Function parameter type "any" is banned. Use specific types or unknown instead.'
+      }
+    ],
+    
+    // Disable rules that require strictNullChecks (which is disabled in tsconfig)
+    '@typescript-eslint/prefer-nullish-coalescing': 'off',
+    
+    // Disable dot-notation rule to avoid conflicts with exactOptionalPropertyTypes
+    '@typescript-eslint/dot-notation': 'off',
     
     // General code quality
     'prefer-const': 'error',
@@ -85,10 +91,10 @@ module.exports = {
         jest: true
       },
       rules: {
-        // TEMPORARILY DISABLED STRICT ENFORCEMENT: Even tests must use proper types
-        // '@typescript-eslint/no-explicit-any': 'error',
-        // '@typescript-eslint/no-unsafe-assignment': 'error', 
-        // '@typescript-eslint/no-unsafe-member-access': 'error',
+        // STRICT ENFORCEMENT: Even tests must use proper types
+        '@typescript-eslint/no-explicit-any': 'error',
+        '@typescript-eslint/no-unsafe-assignment': 'error', 
+        '@typescript-eslint/no-unsafe-member-access': 'error',
         
         // Allow mock variables but still ban 'any'
         '@typescript-eslint/no-unused-vars': ['error', { 
