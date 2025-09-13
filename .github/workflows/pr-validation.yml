@@ -72,7 +72,11 @@ jobs:
             TOTAL_COUNT=$((TOTAL_COUNT + 1))
             echo "Checking: $commit_msg"
             
-            if echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve)(\([^)]+\))?(!)?: .+'; then
+            # Skip merge commits
+            if echo "$commit_msg" | grep -qE '^Merge (branch|pull request)'; then
+              echo "  ⏭️ Skipping merge commit"
+              VALID_COUNT=$((VALID_COUNT + 1))
+            elif echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve)(\([^)]+\))?(!)?: .+'; then
               VALID_COUNT=$((VALID_COUNT + 1))
               echo "  ✅ Valid"
             else
