@@ -101,9 +101,10 @@ describe('Smoke Tests - Basic Functionality', () => {
       const jsonFile = path.join(tempDir, 'test.json');
       const data = { test: true, value: 123 };
       
-      // This will catch fs.readJsonSync vs fs.readJson issues
-      await fs.writeJson(jsonFile, data);
-      const readData = await fs.readJson(jsonFile);
+      // This will catch fs.readFile vs fs.writeFile issues with JSON
+      await fs.writeFile(jsonFile, JSON.stringify(data, null, 2));
+      const readContent = await fs.readFile(jsonFile, 'utf-8');
+      const readData = JSON.parse(readContent) as typeof data;
       
       expect(readData).toEqual(data);
     });

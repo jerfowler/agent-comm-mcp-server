@@ -359,7 +359,7 @@ class SafeFileSystem implements SafeFsInterface {
     try {
       await nodeFs.rename(src, dest);
     } catch (error) {
-      // Handle cross-device moves by copying then removing
+      // If cross-device link error, fallback to copy + remove
       if ((error as NodeJS.ErrnoException).code === 'EXDEV') {
         await nodeFs.copyFile(src, dest);
         await nodeFs.unlink(src);
@@ -506,24 +506,6 @@ export const ensureDir = (dirPath: string) => safeFs.ensureDir(dirPath);
 export const appendFile = (filePath: string, data: string) => safeFs.appendFile(filePath, data);
 export const move = (src: string, dest: string, options?: Record<string, unknown>) => safeFs.move(src, dest, options);
 export const copy = (src: string, dest: string, options?: Record<string, unknown>) => safeFs.copy(src, dest, options);
-// JSON utility functions - always use Node.js built-in JSON methods
-export const readJSON = async (filePath: string): Promise<unknown> => {
-  const content = await readFile(filePath, 'utf8');
-  return JSON.parse(content);
-};
-export const readJson = readJSON; // Alias
-interface WriteJsonOptions {
-  spaces?: number | string;
-  replacer?: ((this: unknown, key: string, value: unknown) => unknown) | null;
-}
-
-export const writeJSON = async (filePath: string, data: unknown, options?: WriteJsonOptions): Promise<void> => {
-  const spaces = options?.spaces ?? 2;
-  const replacer = options?.replacer ?? undefined;
-  const jsonStr = JSON.stringify(data, replacer, spaces);
-  await writeFile(filePath, jsonStr);
-};
-export const writeJson = writeJSON; // Alias
 export const mkdtemp = (prefix: string) => safeFs.mkdtemp(prefix);
 export const mkdir = (dirPath: string, options?: Mode | MakeDirectoryOptions | null) => safeFs.mkdir(dirPath, options);
 export const chmod = (filePath: string, mode: string | number) => safeFs.chmod(filePath, mode);

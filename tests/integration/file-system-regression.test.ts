@@ -326,16 +326,16 @@ describe('File System Operations Regression Test', () => {
     });
 
     describe('JSON file operations', () => {
-      it('REGRESSION: should use fs.readJson and fs.writeJson correctly', async () => {
+      it('REGRESSION: should use fs.readFile and fs.writeFile with JSON.parse/stringify correctly', async () => {
         const jsonFile = path.join(testDir, 'test.json');
         const testData = { name: 'test', version: '1.0.0', items: [1, 2, 3] };
         
-        // This would fail with "fs.writeJson is not a function" if import is wrong
-        // Note: fs-extra-safe writeJson doesn't support options parameter
-        await fs.writeJson(jsonFile, testData);
+        // This would fail with "fs.writeFile is not a function" if import is wrong
+        await fs.writeFile(jsonFile, JSON.stringify(testData, null, 2));
         
-        // This would fail with "fs.readJson is not a function" if import is wrong
-        const readData = await fs.readJson(jsonFile);
+        // This would fail with "fs.readFile is not a function" if import is wrong
+        const readContent = await fs.readFile(jsonFile, 'utf8');
+        const readData = JSON.parse(readContent) as typeof testData;
         expect(readData).toEqual(testData);
       });
     });
@@ -367,8 +367,8 @@ describe('File System Operations Regression Test', () => {
       expect(typeof fs.pathExists).toBe('function');
       expect(typeof fs.stat).toBe('function');
       expect(typeof fs.remove).toBe('function');
-      expect(typeof fs.readJson).toBe('function');
-      expect(typeof fs.writeJson).toBe('function');
+      expect(typeof fs.readFile).toBe('function');
+      expect(typeof fs.writeFile).toBe('function');
       expect(typeof fs.copy).toBe('function');
       
       // All fs-extra operations are available and properly imported

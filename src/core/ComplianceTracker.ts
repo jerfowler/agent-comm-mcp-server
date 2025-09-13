@@ -166,7 +166,8 @@ export class ComplianceTracker {
     
     try {
       if (await fs.pathExists(recordPath)) {
-        const record = await fs.readJson(recordPath) as AgentComplianceRecord;
+        const content = await fs.readFile(recordPath, 'utf8');
+        const record = JSON.parse(content) as AgentComplianceRecord;
         // Convert string dates back to Date objects
         record.lastActivity = new Date(record.lastActivity);
         this.records.set(agent, record);
@@ -201,7 +202,8 @@ export class ComplianceTracker {
   private async saveAgentRecord(record: AgentComplianceRecord): Promise<void> {
     try {
       const recordPath = path.join(this.complianceDir, `${record.agent}.json`);
-      await fs.writeJson(recordPath, record);
+      const jsonStr = JSON.stringify(record, null, 2);
+      await fs.writeFile(recordPath, jsonStr);
     } catch (error) {
       // Error saving compliance record - silently continue
       void error; // Acknowledge but don't log

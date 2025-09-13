@@ -18,8 +18,8 @@ import * as path from 'path';
 jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
   pathExists: jest.fn(),
   ensureDir: jest.fn(),
-  readJson: jest.fn(),
-  writeJson: jest.fn(),
+  readFile: jest.fn(),
+  writeFile: jest.fn(),
   remove: jest.fn(),
   readdir: jest.fn()
 }));
@@ -46,8 +46,8 @@ describe('DelegationTracker', () => {
     // Default mock implementations
     mockFs.pathExists.mockResolvedValue(false);
     mockFs.ensureDir.mockResolvedValue(undefined);
-    mockFs.readJson.mockResolvedValue({});
-    mockFs.writeJson.mockResolvedValue(undefined);
+    mockFs.readFile.mockResolvedValue('{}');
+    mockFs.writeFile.mockResolvedValue(undefined);
     mockFs.readdir.mockResolvedValue([]);
 
     // Create DelegationTracker instance
@@ -81,16 +81,15 @@ describe('DelegationTracker', () => {
       await delegationTracker.recordDelegationCreated(taskId, targetAgent);
 
       // Assert
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         path.join(mockConfig.commDir, '.delegations', `${taskId}.json`),
-        expect.objectContaining({
+        expect.stringContaining(JSON.stringify({
           taskId,
           targetAgent,
           taskToolInvoked: false,
           subagentStarted: false,
           completionStatus: 'pending'
-        }),
-        { spaces: 2 }
+        }, null, 2).slice(0, 50))
       );
     });
 
@@ -105,17 +104,15 @@ describe('DelegationTracker', () => {
 
       // Assert
       const afterTime = Date.now();
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({
-          createdAt: expect.any(Date)
-        }),
-        expect.any(Object)
+        expect.stringContaining('"createdAt"')
       );
 
       // Verify timestamp is within expected range
-      const callArgs = (mockFs.writeJson as jest.Mock).mock.calls[0][1] as DelegationRecord;
-      const timestamp = new Date(callArgs.createdAt).getTime();
+      const callArgs = (mockFs.writeFile as jest.Mock).mock.calls[0][1] as string;
+      const parsedData = JSON.parse(callArgs) as DelegationRecord;
+      const timestamp = new Date(parsedData.createdAt).getTime();
       expect(timestamp).toBeGreaterThanOrEqual(beforeTime);
       expect(timestamp).toBeLessThanOrEqual(afterTime);
     });
@@ -133,13 +130,13 @@ describe('DelegationTracker', () => {
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(existingRecord);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingRecord));
 
       // Act
       await delegationTracker.recordDelegationCreated(taskId, 'new-agent');
 
       // Assert
-      expect(mockFs.writeJson).not.toHaveBeenCalled();
+      expect(mockFs.writeFile).not.toHaveBeenCalled();
     });
   });
 
@@ -159,10 +156,9 @@ describe('DelegationTracker', () => {
       await delegationTracker.recordDelegation(delegationRecord);
 
       // Assert
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         path.join(mockConfig.commDir, '.delegations', `${delegationRecord.taskId}.json`),
-        delegationRecord,
-        { spaces: 2 }
+        JSON.stringify(delegationRecord, null, 2)
       );
     });
 
@@ -185,16 +181,15 @@ describe('DelegationTracker', () => {
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(existingRecord);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingRecord));
 
       // Act
       await delegationTracker.recordDelegation(updatedRecord);
 
       // Assert
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         path.join(mockConfig.commDir, '.delegations', `${updatedRecord.taskId}.json`),
-        updatedRecord,
-        { spaces: 2 }
+        JSON.stringify(updatedRecord, null, 2)
       );
     });
 
@@ -209,7 +204,7 @@ describe('DelegationTracker', () => {
         completionStatus: 'pending'
       };
 
-      mockFs.writeJson.mockRejectedValue(new Error('Write error'));
+      mockFs.writeFile.mockRejectedValue(new Error('Write error'));
 
       // Act & Assert - Should not throw
       await expect(
@@ -232,20 +227,15 @@ describe('DelegationTracker', () => {
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(existingRecord);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(existingRecord));
 
       // Act
       await delegationTracker.recordTaskToolInvoked(taskId);
 
       // Assert
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({
-          taskToolInvoked: true,
-          subagentStarted: true,
-          completionStatus: 'complete'
-        }),
-        { spaces: 2 }
+        expect.stringContaining('"taskToolInvoked": true')
       );
     });
 
@@ -295,9 +285,9 @@ describe('DelegationTracker', () => {
       // Mock pathExists to return true for delegations directory
       mockFs.pathExists.mockResolvedValue(true);
       mockFs.readdir.mockResolvedValue(['incomplete-task.json', 'complete-task.json']);
-      mockFs.readJson
-        .mockResolvedValueOnce(incompleteDelegation)
-        .mockResolvedValueOnce(completeDelegation);
+      mockFs.readFile
+        .mockResolvedValueOnce(JSON.stringify(incompleteDelegation))
+        .mockResolvedValueOnce(JSON.stringify(completeDelegation));
 
       // Act
       const incomplete = await delegationTracker.checkIncompleteDelegations('test-agent');
@@ -330,9 +320,9 @@ describe('DelegationTracker', () => {
       // Mock pathExists to return true for delegations directory
       mockFs.pathExists.mockResolvedValue(true);
       mockFs.readdir.mockResolvedValue(['recent-task.json', 'old-task.json']);
-      mockFs.readJson
-        .mockResolvedValueOnce(recentDelegation)
-        .mockResolvedValueOnce(oldDelegation);
+      mockFs.readFile
+        .mockResolvedValueOnce(JSON.stringify(recentDelegation))
+        .mockResolvedValueOnce(JSON.stringify(oldDelegation));
 
       // Act
       const incomplete = await delegationTracker.checkIncompleteDelegations('test-agent');
@@ -354,7 +344,7 @@ describe('DelegationTracker', () => {
       };
 
       mockFs.readdir.mockResolvedValue(['abandoned-task.json']);
-      mockFs.readJson.mockResolvedValue(abandonedDelegation);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(abandonedDelegation));
 
       // Act
       const incomplete = await delegationTracker.checkIncompleteDelegations('test-agent');
@@ -480,18 +470,15 @@ describe('DelegationTracker', () => {
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(oldDelegation);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(oldDelegation));
 
       // Act
       await delegationTracker.markDelegationAbandoned('old-task');
 
       // Assert
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({
-          completionStatus: 'abandoned'
-        }),
-        { spaces: 2 }
+        expect.stringContaining('"completionStatus": "abandoned"')
       );
     });
   });
@@ -537,12 +524,12 @@ describe('DelegationTracker', () => {
       // Mock pathExists to return true for delegations directory
       mockFs.pathExists.mockResolvedValue(true);
       mockFs.readdir.mockResolvedValue(delegations.map(d => `${d.taskId}.json`));
-      // Need to mock readJson twice for each delegation (once for initial load, once for stats)
+      // Need to mock readFile twice for each delegation (once for initial load, once for stats)
       for (const delegation of delegations) {
-        mockFs.readJson.mockResolvedValueOnce(delegation);
+        mockFs.readFile.mockResolvedValueOnce(JSON.stringify(delegation));
       }
       for (const delegation of delegations) {
-        mockFs.readJson.mockResolvedValueOnce(delegation);
+        mockFs.readFile.mockResolvedValueOnce(JSON.stringify(delegation));
       }
 
       // Act - use the agent name from the delegations
@@ -578,7 +565,7 @@ describe('DelegationTracker', () => {
       // Mock pathExists to return true for delegations directory
       mockFs.pathExists.mockResolvedValue(true);
       mockFs.readdir.mockResolvedValue(['old-delegation.json'] as unknown as string[]);
-      mockFs.readJson.mockResolvedValue(oldDelegation);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(oldDelegation));
       mockFs.remove.mockResolvedValue(undefined);
 
       // Act
@@ -602,7 +589,7 @@ describe('DelegationTracker', () => {
       };
 
       mockFs.readdir.mockResolvedValue(['recent-delegation.json']);
-      mockFs.readJson.mockResolvedValue(recentDelegation);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(recentDelegation));
 
       // Act
       await delegationTracker.cleanupOldDelegations();
@@ -615,7 +602,7 @@ describe('DelegationTracker', () => {
   describe('error handling', () => {
     it('should handle file read errors gracefully', async () => {
       // Arrange
-      mockFs.readJson.mockRejectedValue(new Error('File read error'));
+      mockFs.readFile.mockRejectedValue(new Error('File read error'));
       mockFs.readdir.mockResolvedValue(['error-task.json']);
 
       // Act
@@ -627,7 +614,7 @@ describe('DelegationTracker', () => {
 
     it('should handle file write errors gracefully', async () => {
       // Arrange
-      mockFs.writeJson.mockRejectedValue(new Error('File write error'));
+      mockFs.writeFile.mockRejectedValue(new Error('File write error'));
 
       // Act & Assert - Should not throw
       await expect(

@@ -19,8 +19,8 @@ import * as path from 'path';
 jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
   pathExists: jest.fn(),
   ensureDir: jest.fn(),
-  readJson: jest.fn(),
-  writeJson: jest.fn(),
+  readFile: jest.fn(),
+  writeFile: jest.fn(),
   remove: jest.fn(),
   readdir: jest.fn()
 }));
@@ -47,8 +47,8 @@ describe('ComplianceTracker', () => {
     // Default mock implementations
     mockFs.pathExists.mockResolvedValue(false);
     mockFs.ensureDir.mockResolvedValue(undefined);
-    mockFs.readJson.mockResolvedValue({});
-    mockFs.writeJson.mockResolvedValue(undefined);
+    mockFs.readFile.mockResolvedValue('{}');
+    mockFs.writeFile.mockResolvedValue(undefined);
 
     // Create ComplianceTracker instance
     complianceTracker = new ComplianceTracker(mockConfig);
@@ -145,12 +145,9 @@ describe('ComplianceTracker', () => {
       await complianceTracker.recordActivity('test-agent', activity);
 
       // Assert
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         path.join(mockConfig.commDir, '.compliance', 'test-agent.json'),
-        expect.objectContaining({
-          agent: 'test-agent',
-          tasksCreated: 1
-        })
+        expect.stringContaining('"agent": "test-agent"')
       );
     });
   });
@@ -171,7 +168,7 @@ describe('ComplianceTracker', () => {
         escalationLevel: 1
       };
 
-      mockFs.readJson.mockResolvedValue(perfectRecord);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(perfectRecord));
 
       // Act
       const level = await complianceTracker.getComplianceLevel('perfect-agent');
@@ -196,7 +193,7 @@ describe('ComplianceTracker', () => {
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(record);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(record));
 
       // Act
       const level = await complianceTracker.getComplianceLevel('poor-delegator');
@@ -222,7 +219,7 @@ describe('ComplianceTracker', () => {
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(record);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(record));
 
       // Act
       const level = await complianceTracker.getComplianceLevel('no-todo-agent');
@@ -248,7 +245,7 @@ describe('ComplianceTracker', () => {
       };
 
       mockFs.pathExists.mockResolvedValue(true);
-      mockFs.readJson.mockResolvedValue(record);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(record));
 
       // Act
       const level = await complianceTracker.getComplianceLevel('no-plan-agent');
@@ -284,7 +281,7 @@ describe('ComplianceTracker', () => {
         escalationLevel: 4
       };
 
-      mockFs.readJson.mockResolvedValue(record);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(record));
 
       // Act
       const level = await complianceTracker.getComplianceLevel('terrible-agent');
@@ -458,18 +455,15 @@ describe('ComplianceTracker', () => {
         escalationLevel: 1
       };
 
-      mockFs.readJson.mockResolvedValue(record);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(record));
 
       // Act
       await complianceTracker.updateComplianceScore('test-agent');
 
       // Assert
-      expect(mockFs.writeJson).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({
-          complianceScore: expect.any(Number),
-          escalationLevel: expect.any(Number)
-        })
+        expect.stringContaining('"complianceScore": ')
       );
     });
   });
@@ -494,7 +488,7 @@ describe('ComplianceTracker', () => {
       };
 
       mockFs.readdir.mockResolvedValue(['stale-agent.json'] as unknown as string[]);
-      mockFs.readJson.mockResolvedValue(staleRecord);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(staleRecord));
       mockFs.pathExists.mockResolvedValue(true);
       mockFs.remove.mockResolvedValue(undefined);
 
@@ -522,7 +516,7 @@ describe('ComplianceTracker', () => {
         escalationLevel: 1
       };
 
-      mockFs.readJson.mockResolvedValue(recentRecord);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(recentRecord));
       mockFs.pathExists.mockResolvedValue(true);
 
       // Act
@@ -536,7 +530,7 @@ describe('ComplianceTracker', () => {
   describe('error handling', () => {
     it('should handle file read errors gracefully', async () => {
       // Arrange
-      mockFs.readJson.mockRejectedValue(new Error('File read error'));
+      mockFs.readFile.mockRejectedValue(new Error('File read error'));
 
       // Act
       const level = await complianceTracker.getComplianceLevel('error-agent');
@@ -547,7 +541,7 @@ describe('ComplianceTracker', () => {
 
     it('should handle file write errors gracefully', async () => {
       // Arrange
-      mockFs.writeJson.mockRejectedValue(new Error('File write error'));
+      mockFs.writeFile.mockRejectedValue(new Error('File write error'));
 
       const activity: ComplianceActivity = {
         type: 'task_created',

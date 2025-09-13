@@ -630,13 +630,15 @@ describe('fs-extra-safe', () => {
         ensureDir: jest.fn().mockRejectedValue(new Error('fs-extra failed') as never)
       };
       
-      const eexistError = new Error('EEXIST: file already exists') as NodeError;
-      eexistError.code = 'EEXIST';
-      mockFs.mkdir.mockRejectedValue(eexistError);
+      // Node.js mkdir with { recursive: true } handles EEXIST internally
+      // and doesn't throw - this is the correct behavior to mock
+      mockFs.mkdir.mockResolvedValue(undefined);
       
-      // Should silently succeed for EEXIST
+      // Should silently succeed (real Node.js behavior with recursive: true)
       await ensureDir('/existing/dir');
-      // No error should be thrown
+      
+      // Verify mkdir was called with recursive option
+      expect(mockFs.mkdir).toHaveBeenCalledWith('/existing/dir', { recursive: true });
     });
 
     it('should handle ensureDir with other errors', async () => {

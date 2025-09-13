@@ -9,11 +9,8 @@ import { AgentCommError } from '../../../../src/types.js';
 
 // Mock fs-extra-safe with factory pattern
 jest.mock('../../../../src/utils/fs-extra-safe.js', () => ({
-  readJSON: jest.fn(),
+  readFile: jest.fn(),
   pathExists: jest.fn(),
-  readJson: jest.fn(),
-  writeJSON: jest.fn(),
-  writeJson: jest.fn(),
   mkdtemp: jest.fn(),
   mkdir: jest.fn(),
   chmod: jest.fn(),
@@ -35,7 +32,7 @@ describe('ServerResourceProvider', () => {
     jest.clearAllMocks();
     
     // Setup fs-extra mocks with default behavior
-    mockedFs.readJSON.mockResolvedValue({ version: '1.0.0' });
+    mockedFs.readFile.mockResolvedValue(JSON.stringify({ version: '1.0.0' }));
     mockedFs.pathExists.mockResolvedValue(true);
     
     // Create mock EventLogger using working pattern
@@ -85,7 +82,7 @@ describe('ServerResourceProvider', () => {
   describe('readResource', () => {
     beforeEach(() => {
       // Setup default mock for package.json
-      mockedFs.readJSON.mockResolvedValue({ version: '1.2.3' });
+      mockedFs.readFile.mockResolvedValue(JSON.stringify({ version: '1.2.3' }));
     });
     
     describe('server://info', () => {
@@ -203,16 +200,16 @@ describe('ServerResourceProvider', () => {
   describe('version caching', () => {
     it('should cache version reads', async () => {
       // Reset mock to ensure clean state
-      mockedFs.readJSON.mockClear();
-      mockedFs.readJSON.mockResolvedValue({ version: '1.2.3' });
+      mockedFs.readFile.mockClear();
+      mockedFs.readFile.mockResolvedValue(JSON.stringify({ version: '1.2.3' }));
       
       // First call
       await provider.readResource('server://info');
-      const firstCallCount = mockedFs.readJSON.mock.calls.length;
+      const firstCallCount = mockedFs.readFile.mock.calls.length;
       
       // Second call - should use cache
       await provider.readResource('server://info');
-      const secondCallCount = mockedFs.readJSON.mock.calls.length;
+      const secondCallCount = mockedFs.readFile.mock.calls.length;
       
       // Should not have made additional calls
       expect(secondCallCount).toBe(firstCallCount);

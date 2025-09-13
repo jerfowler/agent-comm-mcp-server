@@ -17,7 +17,7 @@ import * as fileSystem from '../../../src/utils/file-system.js';
 
 // Mock dependencies
 jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
-  readJSON: jest.fn(),
+  readFile: jest.fn(),
   pathExists: jest.fn(),
   readdir: jest.fn(),
   stat: jest.fn()
@@ -275,7 +275,7 @@ describe('ResourceManager', () => {
     it('should read server version resource', async () => {
       // Arrange
       const versionUri = 'server://version';
-      (mockedFs.readJSON as jest.Mock).mockResolvedValue({ version: '1.0.0' });
+      (mockedFs.readFile as jest.Mock).mockResolvedValue(JSON.stringify({ version: '1.0.0' }));
 
       // Act
       const result = await resourceManager.readResource(versionUri);
