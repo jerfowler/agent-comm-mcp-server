@@ -5,6 +5,21 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-09-13
+
+### ✨ Features
+
+- restore Smart Response System from backup
+- implement Smart Response System with strict validation (#43)
+- implement comprehensive validation system remediation
+
+### 🐛 Bug Fixes
+
+- complete TypeScript strict mode sync with main
+- resolve version management and prevent false feature detection [force-patch]
+- implement agent work verification gate (Issue #11 - 0.6.1) (#18)
+- resolve fs-extra runtime errors with safe wrapper (0.6.1) (#17)
+
 ## [0.7.0] - 2025-09-09
 
 ### ✨ Major Features
