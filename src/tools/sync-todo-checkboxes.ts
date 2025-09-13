@@ -166,7 +166,7 @@ function levenshteinDistance(str1: string, str2: string): number {
  * Find best matching checkbox for a todo title
  */
 function findBestCheckboxMatch(todoTitle: string, checkboxTitles: string[]): { title: string; score: number } | null {
-  let bestMatch = null;
+  let bestMatch: { title: string; score: number } | null = null;
   let bestScore = 0;
   
   for (const checkboxTitle of checkboxTitles) {
@@ -187,10 +187,13 @@ function findBestCheckboxMatch(todoTitle: string, checkboxTitles: string[]): { t
 function extractCheckboxTitles(planContent: string): string[] {
   const checkboxRegex = /^- \[[ ~x]\] \*\*([^:*]+)\*\*/gm;
   const titles: string[] = [];
-  let match;
+  let match: RegExpExecArray | null;
   
   while ((match = checkboxRegex.exec(planContent)) !== null) {
-    titles.push(match[1].trim());
+    const title = match[1];
+    if (title) {
+      titles.push(title.trim());
+    }
   }
   
   return titles;
@@ -240,7 +243,7 @@ export async function syncTodoCheckboxes(
   const todoUpdatesArray = args['todoUpdates'];
   
   // Optional taskId parameter for targeting specific tasks
-  const taskId = args['taskId'];
+  const taskId = args['taskId'] as string | undefined;
   if (taskId !== undefined && (typeof taskId !== 'string' || taskId.trim() === '')) {
     throw new AgentCommError('taskId must be a string', 'INVALID_INPUT');
   }
@@ -294,7 +297,7 @@ export async function syncTodoCheckboxes(
   
   if (taskId) {
     // Use specific task if taskId provided
-    const taskPath = path.join(agentDir, taskId as string);
+    const taskPath = path.join(agentDir, taskId);
     if (!await pathExists(taskPath)) {
       return {
         success: false,
@@ -321,7 +324,7 @@ export async function syncTodoCheckboxes(
       };
     }
     
-    targetTaskDir = taskId as string;
+    targetTaskDir = taskId;
   } else {
     // Find first active task (backward compatibility)
     const taskDirs = await readdir(agentDir);
