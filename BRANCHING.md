@@ -149,19 +149,116 @@ gh pr create --fill --assignee @me
 - **Merge Commit** - Only for multi-commit features that need history
 - **Rebase and Merge** - For well-structured commit sequences
 
-## 🚦 Branch Protection Rules
+## 🚦 Multi-Layer Git Protection System
 
-### Main Branch Protection
-- ✅ Require pull request reviews (min 1 approval)
-- ✅ Dismiss stale PR approvals when new commits pushed
-- ✅ Require status checks to pass:
+### 🛡️ Protection Architecture Overview
+
+This repository implements a **comprehensive multi-layer protection system** that prevents unauthorized changes to the main branch while ensuring code quality at every step.
+
+#### Layer 1: Local Pre-Commit Protection 🔒
+- **Pre-commit hook** actively **BLOCKS** any attempts to commit directly to `main` branch
+- Provides clear, helpful error messages with step-by-step workflow guidance
+- Includes comprehensive quality gates:
+  - TypeScript strict mode validation
+  - ESLint strict enforcement (zero 'any' types)
+  - Complete test suite execution (unit, smoke, integration, lifecycle, e2e)
+  - Build validation
+  - Critical file validation (banned patterns, imports)
+
+**Error Message Example:**
+```bash
+🚫 BLOCKED: Direct commits to main branch are not allowed
+📋 Git Feature Branch Workflow Required:
+   1. git checkout -b feature/your-feature-name
+   2. Make changes and commit to feature branch
+   3. git push -u origin feature/your-feature-name
+   4. gh pr create --fill --assignee @me
+📖 See BRANCHING.md for complete workflow documentation
+```
+
+#### Layer 2: GitHub Branch Protection 🌐
+- **Admin enforcement enabled** (`enforce_admins: true`)
+- Even repository administrators **cannot** bypass protection rules
+- **Required status checks** must pass:
   - `Comprehensive Testing / Quick Validation`
   - `Comprehensive Testing / Server Lifecycle Testing`
-  - `Comprehensive Testing / MCP Protocol Integration` (all Node versions)
+  - `Comprehensive Testing / MCP Protocol Integration` (Node 18, 20, 22)
   - `Comprehensive Testing / Security & Dependency Scan`
-- ✅ Require branches to be up to date before merging
-- ✅ Include administrators in restrictions
-- ✅ Restrict pushes to main branch
+- **Required pull request reviews** (minimum 1 approval)
+- **Up-to-date branch requirement** before merging
+- **Linear history enforcement**
+
+### 🎯 Protection Scope
+
+#### ✅ **Allowed Workflows**
+- **Feature Branch Development**: `feature/*`, `fix/*`, `docs/*`, etc.
+- **Pull Request Process**: Only path to main branch
+- **Automated Workflows**: GitHub Actions can merge approved PRs
+- **Emergency Procedures**: Via feature branch → urgent PR
+
+#### ❌ **Blocked Actions**
+- **Direct main commits**: Impossible via pre-commit hook
+- **Direct main pushes**: Blocked by GitHub admin enforcement
+- **Bypassing reviews**: No exceptions, even for admins
+- **Force pushes to main**: Completely prohibited
+- **Status check bypass**: All checks must pass
+
+### 🔧 Implementation Details
+
+#### Pre-Commit Hook Location
+- **Active**: `.git/hooks/pre-commit` (installed locally)
+- **Comprehensive validation**: 6-phase quality gate system
+- **Helpful guidance**: Clear error messages with workflow steps
+- **Performance**: Sub-second branch validation, comprehensive test execution
+
+#### GitHub API Configuration
+```json
+{
+  "enforce_admins": true,
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "Quick Validation (Unit + Smoke)",
+      "Server Lifecycle Testing", 
+      "MCP Protocol Integration (18, 20, 22)",
+      "Security & Dependency Scan"
+    ]
+  },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1
+  },
+  "required_linear_history": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+```
+
+### 🧪 Verification & Testing
+
+#### Protection System Tests
+- **Local blocking test**: ✅ Pre-commit hook prevents main commits
+- **Quality gate test**: ✅ All validation phases execute correctly  
+- **GitHub protection test**: ✅ Admin enforcement active
+- **Workflow test**: ✅ Feature branch → PR → main process works
+
+#### Emergency Procedures
+If protection needs to be bypassed in extreme emergencies:
+
+1. **Create emergency feature branch**:
+   ```bash
+   git checkout -b hotfix/emergency-fix
+   ```
+
+2. **Make minimal changes and test thoroughly**
+
+3. **Create urgent PR with proper labels**:
+   ```bash
+   gh pr create --label urgent --assignee @jerfowler
+   ```
+
+4. **Request immediate review and merge**
+
+**Note**: There are no backdoors or bypass mechanisms - all changes must go through PR process.
 
 ### Status Check Requirements
 All branches must pass comprehensive testing:

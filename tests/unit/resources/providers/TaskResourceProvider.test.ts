@@ -4,22 +4,21 @@
  * Following MCP 2025-06-18 specification
  */
 
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { TaskResourceProvider } from '../../../../src/resources/providers/TaskResourceProvider.js';
 import { TaskContextManager } from '../../../../src/core/TaskContextManager.js';
+import { ConnectionManager } from '../../../../src/core/ConnectionManager.js';
 import { EventLogger } from '../../../../src/logging/EventLogger.js';
-import type { Resource } from '@modelcontextprotocol/sdk/types.js';
+// Resource type is used for type checking in tests
 
 // Mock dependencies
-jest.mock('../../../../src/utils/fs-extra-safe.js', () => ({
-  pathExists: jest.fn(),
-  readdir: jest.fn(),
-  stat: jest.fn()
-}));
+jest.mock('../../../../src/utils/fs-extra-safe.js');
 jest.mock('../../../../src/core/TaskContextManager.js');
 jest.mock('../../../../src/logging/EventLogger.js');
 
 // Import fs-extra after mocking
 import * as fs from '../../../../src/utils/fs-extra-safe.js';
+
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('TaskResourceProvider', () => {
@@ -31,18 +30,29 @@ describe('TaskResourceProvider', () => {
     jest.clearAllMocks();
     
     // Setup mocks
-    mockEventLogger = new EventLogger('/test/logs') as jest.Mocked<EventLogger>;
-    mockEventLogger.logOperation = jest.fn().mockResolvedValue(undefined);
+    mockEventLogger = new EventLogger('/test/logs') as unknown as jest.Mocked<EventLogger>;
+    (mockEventLogger.logOperation as unknown as jest.Mock) = jest.fn().mockResolvedValue(undefined as never);
+    
+    const mockConnectionManager = new ConnectionManager() as unknown as jest.Mocked<ConnectionManager>;
     
     mockTaskContextManager = new TaskContextManager(
-      { eventLogger: mockEventLogger } as any
-    ) as jest.Mocked<TaskContextManager>;
+      { 
+        eventLogger: mockEventLogger, 
+        connectionManager: mockConnectionManager,
+        commDir: "./test-comm" 
+      }
+    ) as unknown as jest.Mocked<TaskContextManager>;
     
     // Create provider instance
     provider = new TaskResourceProvider({
       taskContextManager: mockTaskContextManager,
       eventLogger: mockEventLogger
     });
+    
+    // Reset all mocks to avoid type issues
+    (mockedFs.pathExists as unknown as jest.Mock).mockReset();
+    (mockedFs.readdir as unknown as jest.Mock).mockReset();
+    (mockedFs.stat as unknown as jest.Mock).mockReset();
   });
 
   describe('getScheme', () => {
@@ -54,21 +64,22 @@ describe('TaskResourceProvider', () => {
   describe('listResources', () => {
     it('should list all task resources with agent:// URI format', async () => {
       // Arrange
-      (mockedFs.pathExists as jest.Mock).mockResolvedValue(true);
+      (mockedFs.pathExists as unknown as jest.Mock).mockResolvedValue(true as never);
       (mockedFs.readdir as unknown as jest.Mock)
-        .mockResolvedValueOnce(['senior-backend-engineer', 'qa-test-automation-engineer', '.archive']) // comm dir
-        .mockResolvedValueOnce(['2025-01-09T10-00-00-implement-feature', '2025-01-09T11-00-00-fix-bug']) // senior-backend-engineer
-        .mockResolvedValueOnce(['2025-01-09T12-00-00-write-tests']); // qa-test-automation-engineer
+        .mockResolvedValueOnce(['senior-backend-engineer', 'qa-test-automation-engineer', '.archive'] as never) // comm dir
+        .mockResolvedValueOnce(['2025-01-09T10-00-00-implement-feature', '2025-01-09T11-00-00-fix-bug'] as never) // senior-backend-engineer
+        .mockResolvedValueOnce(['2025-01-09T12-00-00-write-tests'] as never); // qa-test-automation-engineer
       
-      (mockedFs.stat as unknown as jest.Mock).mockResolvedValue({ isDirectory: () => true });
+      (mockedFs.stat as unknown as jest.Mock).mockResolvedValue({ isDirectory: () => true } as never);
       
       // Mock file existence checks for status determination
-      (mockedFs.pathExists as jest.Mock).mockImplementation((path: string) => {
-        if (path.includes('2025-01-09T10-00-00-implement-feature/PLAN.md')) return Promise.resolve(true);
-        if (path.includes('2025-01-09T11-00-00-fix-bug/DONE.md')) return Promise.resolve(true);
-        if (path.includes('ERROR.md') || path.includes('DONE.md') || path.includes('PLAN.md')) return Promise.resolve(false);
+      (mockedFs.pathExists as unknown as jest.Mock).mockImplementation(((path: unknown) => {
+        const pathStr = path as string;
+        if (pathStr.includes('2025-01-09T10-00-00-implement-feature/PLAN.md')) return Promise.resolve(true);
+        if (pathStr.includes('2025-01-09T11-00-00-fix-bug/DONE.md')) return Promise.resolve(true);
+        if (pathStr.includes('ERROR.md') || pathStr.includes('DONE.md') || pathStr.includes('PLAN.md')) return Promise.resolve(false);
         return Promise.resolve(true); // Default for directories
-      });
+      }) as jest.Mock);
 
       // Act
       const resources = await provider.listResources();
@@ -76,7 +87,7 @@ describe('TaskResourceProvider', () => {
       // Assert
       expect(resources).toHaveLength(3);
       expect(resources).toContainEqual(
-        expect.objectContaining<Resource>({
+        expect.objectContaining({
           uri: 'agent://senior-backend-engineer/tasks/2025-01-09T10-00-00-implement-feature',
           name: 'Task: implement-feature (PLAN)',
           mimeType: 'application/json',
@@ -84,7 +95,7 @@ describe('TaskResourceProvider', () => {
         })
       );
       expect(resources).toContainEqual(
-        expect.objectContaining<Resource>({
+        expect.objectContaining({
           uri: 'agent://senior-backend-engineer/tasks/2025-01-09T11-00-00-fix-bug',
           name: 'Task: fix-bug (DONE)',
           mimeType: 'application/json',
@@ -92,7 +103,7 @@ describe('TaskResourceProvider', () => {
         })
       );
       expect(resources).toContainEqual(
-        expect.objectContaining<Resource>({
+        expect.objectContaining({
           uri: 'agent://qa-test-automation-engineer/tasks/2025-01-09T12-00-00-write-tests',
           name: 'Task: write-tests (INIT)',
           mimeType: 'application/json',
@@ -103,8 +114,8 @@ describe('TaskResourceProvider', () => {
 
     it('should handle empty task list gracefully', async () => {
       // Arrange
-      (mockedFs.pathExists as jest.Mock).mockResolvedValue(true);
-      (mockedFs.readdir as unknown as jest.Mock).mockResolvedValue(['.archive', '.logs']); // Only hidden dirs
+      (mockedFs.pathExists as unknown as jest.Mock).mockResolvedValue(true as never);
+      (mockedFs.readdir as unknown as jest.Mock).mockResolvedValue(['.archive', '.logs'] as never); // Only hidden dirs
 
       // Act
       const resources = await provider.listResources();
@@ -115,19 +126,20 @@ describe('TaskResourceProvider', () => {
 
     it('should include task metadata in resource description', async () => {
       // Arrange
-      (mockedFs.pathExists as jest.Mock).mockResolvedValue(true);
+      (mockedFs.pathExists as unknown as jest.Mock).mockResolvedValue(true as never);
       (mockedFs.readdir as unknown as jest.Mock)
-        .mockResolvedValueOnce(['agent-1'])
-        .mockResolvedValueOnce(['2025-01-09T10-00-00-complex-task']);
+        .mockResolvedValueOnce(['agent-1'] as never)
+        .mockResolvedValueOnce(['2025-01-09T10-00-00-complex-task'] as never);
       
-      (mockedFs.stat as unknown as jest.Mock).mockResolvedValue({ isDirectory: () => true });
+      (mockedFs.stat as unknown as jest.Mock).mockResolvedValue({ isDirectory: () => true } as never);
       
       // Mock PLAN.md exists
-      (mockedFs.pathExists as jest.Mock).mockImplementation((path: string) => {
-        if (path.includes('PLAN.md')) return Promise.resolve(true);
-        if (path.includes('ERROR.md') || path.includes('DONE.md')) return Promise.resolve(false);
+      (mockedFs.pathExists as unknown as jest.Mock).mockImplementation(((path: unknown) => {
+        const pathStr = path as string;
+        if (pathStr.includes('PLAN.md')) return Promise.resolve(true);
+        if (pathStr.includes('ERROR.md') || pathStr.includes('DONE.md')) return Promise.resolve(false);
         return Promise.resolve(true);
-      });
+      }) as jest.Mock);
 
       // Act
       const resources = await provider.listResources();
@@ -140,7 +152,7 @@ describe('TaskResourceProvider', () => {
     it('should handle errors during listing', async () => {
       // Arrange
       const error = new Error('Database connection failed');
-      (mockedFs.pathExists as jest.Mock).mockRejectedValue(error);
+      (mockedFs.pathExists as unknown as jest.Mock).mockRejectedValue(error as never);
 
       // Act & Assert
       await expect(provider.listResources()).rejects.toThrow('Failed to list task resources');
@@ -169,12 +181,12 @@ describe('TaskResourceProvider', () => {
       };
       
       // Mock getTaskContext - it expects (taskId, connection) not (agent, taskId)
-      mockTaskContextManager.getTaskContext = jest.fn().mockImplementation((taskId: string, _connection: any) => {
+      (mockTaskContextManager.getTaskContext as unknown as jest.Mock) = jest.fn().mockImplementation(((taskId: unknown, _connection: unknown) => {
         if (taskId === '2025-01-09T10-00-00-implement-feature') {
           return Promise.resolve(mockTaskContext);
         }
         return Promise.resolve(null);
-      });
+      }) as jest.Mock);
 
       // Act
       const result = await provider.readResource(uri);
@@ -204,7 +216,7 @@ describe('TaskResourceProvider', () => {
     it('should handle task not found', async () => {
       // Arrange
       const uri = 'agent://agent-1/tasks/nonexistent-task';
-      mockTaskContextManager.getTaskContext = jest.fn().mockResolvedValue(null);
+      (mockTaskContextManager.getTaskContext as unknown as jest.Mock) = jest.fn().mockResolvedValue(null as never);
 
       // Act & Assert
       await expect(provider.readResource(uri)).rejects.toThrow('Task not found');
@@ -239,10 +251,10 @@ describe('TaskResourceProvider', () => {
         }
       ];
       
-      mockTaskContextManager.getTaskContext = jest.fn().mockResolvedValue({
+      (mockTaskContextManager.getTaskContext as unknown as jest.Mock) = jest.fn().mockResolvedValue({
         taskId: 'test',
         status: 'INIT'
-      });
+      } as never);
 
       // Act & Assert
       for (const testCase of testCases) {
@@ -290,10 +302,10 @@ describe('TaskResourceProvider', () => {
       
       for (const testCase of testCases) {
         const uri = `agent://agent-1/tasks/task-${testCase.status}`;
-        mockTaskContextManager.getTaskContext = jest.fn().mockResolvedValue({
+        (mockTaskContextManager.getTaskContext as unknown as jest.Mock) = jest.fn().mockResolvedValue({
           context: { taskId: `task-${testCase.status}`, status: testCase.status },
           contextId: 'ctx-test'
-        });
+        } as never);
 
         // Act
         const result = await provider.readResource(uri);
@@ -343,7 +355,7 @@ describe('TaskResourceProvider', () => {
         updatedAt: '2025-01-09T11:00:00Z'
       };
       
-      mockTaskContextManager.getTaskContext = jest.fn().mockResolvedValue(mockContext);
+      (mockTaskContextManager.getTaskContext as unknown as jest.Mock) = jest.fn().mockResolvedValue(mockContext as never);
 
       // Act
       const metadata = await provider.getResourceMetadata(uri);

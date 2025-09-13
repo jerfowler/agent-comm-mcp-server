@@ -151,7 +151,7 @@ export class ResourceManager {
       throw new AgentCommError(
         'Failed to list resources',
         'INTERNAL_ERROR',
-        { originalError: error }
+        { originalError: error as Error }
       );
     }
   }
@@ -227,7 +227,7 @@ export class ResourceManager {
       throw new AgentCommError(
         'Resource not found',
         'RESOURCE_NOT_FOUND',
-        { uri, originalError: error }
+        { uri, originalError: error as Error }
       );
     }
   }

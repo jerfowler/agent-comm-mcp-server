@@ -378,7 +378,7 @@ export class DelegationTracker {
   private async saveDelegationRecord(record: DelegationRecord): Promise<void> {
     try {
       const recordPath = path.join(this.delegationsDir, `${record.taskId}.json`);
-      await fs.writeJson(recordPath, record);
+      await fs.writeJson(recordPath, record, { spaces: 2 });
     } catch (error) {
       // Error saving delegation - silently continue
       void error; // Acknowledge but don't log
