@@ -5,6 +5,7 @@
 
 import { createMCPServer } from '../../src/index.js';
 import { TestEnvironment } from '../shared/race-condition-helpers.js';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 describe('E2E - Complete Workflow Tests', () => {
   let testEnv: TestEnvironment;
@@ -76,7 +77,7 @@ describe('E2E - Complete Workflow Tests', () => {
 
   describe('Performance and Scale', () => {
     it('should handle rapid server creation/destruction', () => {
-      const servers = [];
+      const servers: Server[] = [];
       
       // Create multiple servers quickly
       for (let i = 0; i < 5; i++) {
