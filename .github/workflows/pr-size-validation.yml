@@ -73,6 +73,10 @@ jobs:
         if: steps.analysis.outputs.PR_SIZE != 'massive'
         run: npm ci
 
+      - name: Generate version files
+        if: steps.analysis.outputs.PR_SIZE != 'massive'
+        run: npm run prebuild
+
       - name: Critical validation checks
         id: validation
         if: steps.analysis.outputs.PR_SIZE != 'massive'
