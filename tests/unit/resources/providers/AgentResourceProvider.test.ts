@@ -36,10 +36,11 @@ describe('AgentResourceProvider', () => {
       connectionManager: mockConnectionManager,
       eventLogger: mockEventLogger
     } as any) as jest.Mocked<TaskContextManager>;
-    mockEventLogger = new EventLogger('/test/logs') as jest.Mocked<EventLogger>;
-
-    // Setup default mocks
-    mockEventLogger.logOperation = jest.fn().mockResolvedValue(undefined);
+    mockEventLogger = {
+      logOperation: jest.fn()
+    } as unknown as jest.Mocked<EventLogger>;
+    
+    (mockEventLogger.logOperation as jest.Mock).mockImplementation(() => Promise.resolve());
 
     provider = new AgentResourceProvider({
       connectionManager: mockConnectionManager,
@@ -126,7 +127,8 @@ describe('AgentResourceProvider', () => {
         {
           name: 'task-1',
           agent: 'test-agent',
-          created: new Date().toISOString(),
+          path: '/test/comm/test-agent/task-1',
+          created: new Date(),
           hasInit: true,
           hasPlan: true,
           hasDone: false,
@@ -143,11 +145,10 @@ describe('AgentResourceProvider', () => {
       expect(result.mimeType).toBe('application/json');
       
       const status = JSON.parse(result.text!);
-      expect(status.agent).toBe('test-agent');
-      expect(status.connected).toBe(false);
-      expect(status.lastActivity).toBe(null);
-      expect(status.activeTask).toBe('task-1');
-      expect(status.taskStatistics).toEqual({
+      expect(status.connectionStatus.connected).toBe(false);
+      expect(status.connectionStatus.lastActivity).toBe(null);
+      expect(status.currentTask).toBe('task-1');
+      expect(status.taskStats).toEqual({
         total: 1,
         pending: 1,
         completed: 0,
@@ -160,7 +161,8 @@ describe('AgentResourceProvider', () => {
         {
           name: 'completed-task',
           agent: 'test-agent',
-          created: new Date().toISOString(),
+          path: '/test/comm/test-agent/completed-task',
+          created: new Date(),
           hasInit: true,
           hasPlan: true,
           hasDone: true,
@@ -171,9 +173,9 @@ describe('AgentResourceProvider', () => {
       const result = await provider.readResource('agent://test-agent/status');
       const status = JSON.parse(result.text!);
 
-      expect(status.activeTask).toBe(null);
-      expect(status.taskStatistics.completed).toBe(1);
-      expect(status.taskStatistics.pending).toBe(1); // Has init/plan
+      expect(status.currentTask).toBe(null);
+      expect(status.taskStats.completed).toBe(1);
+      expect(status.taskStats.pending).toBe(1); // Has init/plan
     });
 
     it('should handle error tasks correctly', async () => {
@@ -181,7 +183,8 @@ describe('AgentResourceProvider', () => {
         {
           name: 'error-task',
           agent: 'test-agent',
-          created: new Date().toISOString(),
+          path: '/test/comm/test-agent/error-task',
+          created: new Date(),
           hasInit: false,
           hasPlan: false,
           hasDone: false,
@@ -192,8 +195,8 @@ describe('AgentResourceProvider', () => {
       const result = await provider.readResource('agent://test-agent/status');
       const status = JSON.parse(result.text!);
 
-      expect(status.activeTask).toBe(null);
-      expect(status.taskStatistics.error).toBe(1);
+      expect(status.currentTask).toBe(null);
+      expect(status.taskStats.error).toBe(1);
     });
 
     it('should throw error for non-status URIs', async () => {
@@ -222,7 +225,8 @@ describe('AgentResourceProvider', () => {
         {
           name: 'active-task-1',
           agent: 'test-agent',
-          created: new Date().toISOString(),
+          path: '/test/comm/test-agent/active-task-1',
+          created: new Date(),
           hasInit: true,
           hasPlan: true,
           hasDone: false,
@@ -231,7 +235,8 @@ describe('AgentResourceProvider', () => {
         {
           name: 'active-task-2',
           agent: 'test-agent',
-          created: new Date().toISOString(),
+          path: '/test/comm/test-agent/active-task-2',
+          created: new Date(),
           hasInit: true,
           hasPlan: true,
           hasDone: false,
@@ -243,7 +248,7 @@ describe('AgentResourceProvider', () => {
       const status = JSON.parse(result.text!);
 
       // Should return the first active task
-      expect(status.activeTask).toBe('active-task-1');
+      expect(status.currentTask).toBe('active-task-1');
     });
 
     it('should handle empty task list', async () => {
@@ -252,8 +257,8 @@ describe('AgentResourceProvider', () => {
       const result = await provider.readResource('agent://test-agent/status');
       const status = JSON.parse(result.text!);
 
-      expect(status.activeTask).toBe(null);
-      expect(status.taskStatistics).toEqual({
+      expect(status.currentTask).toBe(null);
+      expect(status.taskStats).toEqual({
         total: 0,
         pending: 0,
         completed: 0,
@@ -271,8 +276,8 @@ describe('AgentResourceProvider', () => {
       expect(metadata.name).toBe('test-agent Status');
       expect(metadata.mimeType).toBe('application/json');
       expect(metadata.description).toBe('Current status and activity for test-agent');
-      expect(metadata.dynamic).toBe(true);
-      expect(metadata.agent).toBe('test-agent');
+      expect(metadata['dynamic']).toBe(true);
+      expect(metadata['agent']).toBe('test-agent');
       expect(metadata.lastModified).toBeDefined();
     });
 

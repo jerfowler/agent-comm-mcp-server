@@ -168,8 +168,6 @@ describe('MCP Metadata Handler Additional Coverage', () => {
     it('should not include explicitly undefined fields', () => {
       const meta: MCPStandardMeta = {
         serverVersion: '1.0.0',
-        serverName: undefined,
-        requestId: undefined,
         timestamp: '2024-01-01T00:00:00.000Z'
       };
       const result = createMCPMeta(meta);
