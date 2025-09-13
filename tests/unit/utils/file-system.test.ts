@@ -393,6 +393,28 @@ describe('File System Utilities', () => {
       const result = parseTaskMetadata(content);
       expect(result).toBeUndefined();
     });
+
+    it('should parse metadata with parent task field (lines 238-239)', () => {
+      const content = `# Task
+
+## Metadata
+- Agent: test-agent
+- Created: 2024-01-01T10:00:00Z
+- Source: subtask
+- Parent Task: parent-task-20240101-100000
+
+# Subtask Content
+This is a subtask.`;
+
+      const result = parseTaskMetadata(content);
+      
+      expect(result).toEqual({
+        agent: 'test-agent',
+        created: '2024-01-01T10:00:00Z',
+        source: 'subtask',
+        parentTask: 'parent-task-20240101-100000'
+      });
+    });
   });
 
   describe('generateTimestamp', () => {

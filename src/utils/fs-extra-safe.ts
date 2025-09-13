@@ -399,10 +399,10 @@ class SafeFileSystem implements SafeFsInterface {
     // Node.js built-in fallback
     if (typeof options === 'object' && options !== null) {
       // options is MakeDirectoryOptions
-      await nodeFs.mkdir(dirPath, { recursive: true, ...options } as MakeDirectoryOptions);
+      await nodeFs.mkdir(dirPath, { recursive: true, ...options });
     } else if (options !== null && options !== undefined) {
       // options is a Mode (string/number)
-      await nodeFs.mkdir(dirPath, { recursive: true, mode: options } as MakeDirectoryOptions);
+      await nodeFs.mkdir(dirPath, { recursive: true, mode: options });
     } else {
       // options is null/undefined
       await nodeFs.mkdir(dirPath, { recursive: true });

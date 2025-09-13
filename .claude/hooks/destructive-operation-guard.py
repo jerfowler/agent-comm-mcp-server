@@ -21,7 +21,6 @@ Usage:
 import sys
 import json
 import os
-import re
 import subprocess
 import shutil
 import time
@@ -671,45 +670,5 @@ def main():
         
         sys.exit(0 if safety_report['safety_score'] >= 0.8 else 1)
 
-def claude_hook_mode():
-    """Handle when called as a Claude Code hook"""
-    try:
-        # Read from stdin for hook data
-        if not sys.stdin.isatty():
-            hook_input = json.loads(sys.stdin.read())
-            tool_name = hook_input.get('tool', {}).get('name', '')
-            command = hook_input.get('tool', {}).get('parameters', {}).get('command', '')
-            
-            # Only guard destructive bash operations
-            if tool_name == 'Bash' and command:
-                protocol = SafetyProtocol()
-                safety_report = protocol.check_operation_safety(command, False)
-                
-                # Block critical/dangerous operations
-                if safety_report['risk_level'] in ['dangerous', 'critical']:
-                    log_error(f"Blocked {safety_report['risk_level']} operation: {command}")
-                    log_error("Use: python3 .claude/hooks/destructive-operation-guard.py protect \"command\" for safe execution")
-                    sys.exit(1)
-                
-                # Allow safe and risky operations
-                sys.exit(0)
-            
-        # Not a bash operation or no command, allow
-        sys.exit(0)
-        
-    except (json.JSONDecodeError, KeyError):
-        # Not valid hook input, allow operation to proceed
-        sys.exit(0)
-    except Exception as e:
-        # On any error in hook mode, allow operation to proceed
-        log_debug(f"Hook error, allowing operation: {e}")
-        sys.exit(0)
-
 if __name__ == "__main__":
-    # Check if we have CLI arguments (excluding just the script name)
-    if len(sys.argv) > 1:
-        # CLI mode with arguments
-        main()
-    else:
-        # Hook mode - called by Claude Code without arguments
-        claude_hook_mode()
+    main()
