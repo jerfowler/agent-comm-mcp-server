@@ -298,6 +298,7 @@ export interface EnhancementContext {
   promptManager?: import('./prompts/PromptManager.js').PromptManager;
   complianceTracker?: import('./core/ComplianceTracker.js').ComplianceTracker;
   delegationTracker?: import('./core/DelegationTracker.js').DelegationTracker;
+  accountabilityTracker?: import('./core/AccountabilityTracker.js').AccountabilityTracker;
 }
 
 export interface EnhancedResponse {
@@ -308,6 +309,7 @@ export interface EnhancedResponse {
     compliance_level?: number;
     actionable_command?: string;
     delegation_template?: string;
+    urgency_level?: 'gentle' | 'firm' | 'critical';
   };
 }
 
