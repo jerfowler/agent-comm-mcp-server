@@ -294,7 +294,7 @@ export async function syncTodoCheckboxes(
   
   if (taskId) {
     // Use specific task if taskId provided
-    const taskPath = path.join(agentDir, taskId);
+    const taskPath = path.join(agentDir, taskId as string);
     if (!await pathExists(taskPath)) {
       return {
         success: false,
@@ -321,7 +321,7 @@ export async function syncTodoCheckboxes(
       };
     }
     
-    targetTaskDir = taskId;
+    targetTaskDir = taskId as string;
   } else {
     // Find first active task (backward compatibility)
     const taskDirs = await readdir(agentDir);

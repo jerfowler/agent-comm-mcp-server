@@ -427,7 +427,7 @@ class SafeFileSystem implements SafeFsInterface {
       await nodeFs.mkdir(dirPath, { recursive: true, ...options });
     } else if (options !== null && options !== undefined) {
       // options is a Mode (string/number)
-      await nodeFs.mkdir(dirPath, { recursive: true, mode: options });
+      await nodeFs.mkdir(dirPath, { recursive: true, mode: options as Mode });
     } else {
       // options is null/undefined
       await nodeFs.mkdir(dirPath, { recursive: true });
