@@ -188,6 +188,62 @@ Detailed description of what needs to be accomplished.
 This plan meets all format requirements with >50 characters, proper structure, and clear progress markers.`;
 ```
 
+### **Debug Package Integration Requirements**
+
+All new source code MUST include debug package integration:
+
+#### Mandatory Debug Integration
+- **Required Package**: debug@^4.4.3 with @types/debug
+- **Namespace Structure**: Follow `agent-comm:category:component` hierarchy
+- **Import Pattern**: `import debug from 'debug'`
+- **Instance Creation**: `const log = debug('agent-comm:category:component')`
+
+#### Namespace Hierarchy for New Code
+```typescript
+// Core system components
+'agent-comm:core:NEW_COMPONENT'     // New core components
+'agent-comm:core:NEW_COMPONENT:perf' // Performance timing
+
+// Tool system components
+'agent-comm:tools:NEW_TOOL'         // New MCP tools
+'agent-comm:tools:NEW_TOOL:perf'    // Tool performance timing
+
+// Utility components
+'agent-comm:utils:NEW_UTILITY'      // New utility functions
+'agent-comm:resources:NEW_RESOURCE' // New resource providers
+```
+
+#### Required Debug Statements
+1. **Entry/Exit Points**: Log function entry and successful completion
+2. **Error Conditions**: Log all errors with context before throwing
+3. **Performance Timing**: Log timing for operations >100ms expected duration
+4. **State Changes**: Log significant state transitions
+5. **External Interactions**: Log calls to external systems/files
+
+#### Example Implementation Pattern
+```typescript
+import debug from 'debug';
+const log = debug('agent-comm:tools:my-new-tool');
+
+export async function myNewTool(params: ToolParams): Promise<ToolResult> {
+  const startTime = Date.now();
+  log('executing tool with params: %O', params);
+
+  try {
+    const result = await performOperation(params);
+    const duration = Date.now() - startTime;
+
+    log('tool execution completed in %dms', duration);
+
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    log('tool failed after %dms: %O', duration, error);
+    throw error;
+  }
+}
+```
+
 ### **Test Setup and Mocking**
 
 #### ❌ BANNED: Incomplete Mock Setup

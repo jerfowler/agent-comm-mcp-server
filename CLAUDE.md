@@ -585,6 +585,92 @@ gh workflow run release.yml --ref main     # Trigger release workflow
 - **`get_server_info`** - Server metadata and capabilities
 - **`ping`** - Health check and connectivity
 
+## Enhanced Logging System (Issue #50 Implementation)
+
+### Logging Infrastructure
+
+The project implements a comprehensive three-tier logging system:
+
+1. **EventLogger**: Production audit trails and operational logs
+2. **ErrorLogger**: Centralized error capture and analysis
+3. **Debug Package**: Development debugging and performance monitoring
+
+### Error Tracking Capabilities
+
+**ErrorLogger System:**
+- Captures all MCP server response errors
+- Tracks tool execution failures with context
+- Logs runtime exceptions and validation errors
+- Provides error pattern analysis for agent training
+- Integrates with ResponseEnhancer and AccountabilityTracker
+
+**Error Log Format**: JSON Lines (.jsonl) in `./comm/.logs/error.log`
+
+**Error Sources Tracked:**
+- MCP server response errors
+- Tool execution failures
+- Runtime exceptions
+- Validation failures
+- Network/connection issues
+
+### Debug Package Integration
+
+**Package**: debug@^4.4.3 with comprehensive namespace hierarchy
+
+**Namespace Structure:**
+```typescript
+// Core system debugging
+'agent-comm:core:accountability'     // AccountabilityTracker operations
+'agent-comm:core:compliance'         // ComplianceTracker operations
+'agent-comm:core:connection'         // ConnectionManager operations
+'agent-comm:core:response'           // ResponseEnhancer operations
+'agent-comm:core:context'            // TaskContextManager operations
+
+// Tool system debugging
+'agent-comm:tools:create-task'       // Task creation operations
+'agent-comm:tools:archive'           // Archive operations
+'agent-comm:tools:progress'          // Progress tracking
+'agent-comm:tools:sync'              // Synchronization operations
+
+// Logging system debugging
+'agent-comm:logging:event'           // EventLogger operations
+'agent-comm:logging:error'           // ErrorLogger operations
+
+// Utility debugging
+'agent-comm:utils:validation'        // Input validation
+'agent-comm:utils:file-system'       // File operations
+'agent-comm:utils:lock-manager'      // Lock management
+```
+
+**Environment Variable Control:**
+```bash
+# Development - verbose debugging
+DEBUG=agent-comm:* npm start
+
+# Production troubleshooting - errors only
+DEBUG=agent-comm:logging:error npm start
+
+# Component-specific debugging
+DEBUG=agent-comm:core:response,agent-comm:tools:create-task npm start
+
+# Performance monitoring
+DEBUG=agent-comm:*:perf npm start
+```
+
+**Performance Timing**: All critical operations include timing instrumentation with alerts for slow operations.
+
+### Integration with Existing Systems
+
+**ResponseEnhancer Integration:**
+- Uses error history for response improvement
+- Analyzes error patterns for agent training recommendations
+- Provides structured error context in enhanced responses
+
+**AccountabilityTracker Integration:**
+- Tracks error attribution by agent
+- Includes error metrics in compliance scoring
+- Provides error-based red flag detection
+
 ## TodoWrite Hook Integration
 
 ### Hook Location

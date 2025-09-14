@@ -37,6 +37,16 @@ Think of this as a **mission control** for AI agents. Instead of trying to do ev
 
 **⚡ **Non-Blocking**: All agents can work simultaneously while you stay productive**
 
+### New Features (v0.9.0)
+
+**🔍 **Zero-Trust Verification** (Issue #49)**: Advanced accountability system with red flag detection prevents agent deception through evidence-based verification
+
+**📊 **Enhanced Error Logging** (Issue #50)**: Comprehensive error tracking with ErrorLogger class, pattern analysis, and agent error rate monitoring
+
+**🐛 **Debug Integration** (Issue #50)**: Full debug package integration across 49 source files with namespace hierarchy for granular debugging control
+
+**🚦 **Parallel Execution Support** (Issue #49)**: Multi-agent coordination with concurrent tool calls and automatic evidence tracking
+
 ---
 
 ## Quick Start
