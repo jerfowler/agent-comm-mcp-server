@@ -35,9 +35,9 @@ describe('AccountabilityTracker', () => {
 
       expect(mockEventLogger.logOperation).toHaveBeenCalledWith(
         'accountability_claim_recorded',
+        'senior-backend-engineer',
         expect.objectContaining({
           taskId: 'task-123',
-          agent: 'senior-backend-engineer',
           claim: 'Implemented parallel execution',
           hasEvidence: true
         })

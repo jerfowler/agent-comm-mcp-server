@@ -20,6 +20,7 @@ import type {
 } from '../../../src/types.js';
 import type { ConnectionManager } from '../../../src/core/ConnectionManager.js';
 import type { EventLogger } from '../../../src/logging/EventLogger.js';
+import { AccountabilityTracker } from '../../../src/core/AccountabilityTracker.js';
 
 // Mock dependencies
 jest.mock('../../../src/core/ComplianceTracker.js');
@@ -32,6 +33,7 @@ describe('ResponseEnhancer - All Tools Integration', () => {
   let mockDelegationTracker: jest.Mocked<DelegationTracker>;
   let mockPromptManager: jest.Mocked<PromptManager>;
   let mockConfig: ServerConfig;
+  let mockAccountabilityTracker: jest.Mocked<AccountabilityTracker>;
 
   beforeEach(() => {
     // Reset mocks
@@ -41,6 +43,17 @@ describe('ResponseEnhancer - All Tools Integration', () => {
     mockComplianceTracker = new ComplianceTracker({} as ServerConfig) as jest.Mocked<ComplianceTracker>;
     mockDelegationTracker = new DelegationTracker({} as ServerConfig) as jest.Mocked<DelegationTracker>;
     mockPromptManager = new PromptManager({} as ServerConfig) as jest.Mocked<PromptManager>;
+
+    // Create mock AccountabilityTracker
+    mockAccountabilityTracker = {
+      detectRedFlags: jest.fn().mockReturnValue([]),
+      recordClaim: jest.fn(),
+      recordProgress: jest.fn(),
+      getCompletionScore: jest.fn().mockReturnValue(100),
+      canAcceptCompletion: jest.fn().mockReturnValue(true),
+      generateEvidenceReport: jest.fn().mockReturnValue('Evidence report'),
+      generateErrorResponse: jest.fn()
+    } as unknown as jest.Mocked<AccountabilityTracker>;
 
     // Setup mock config with proper type assertions (not 'any')
     mockConfig = {
@@ -66,8 +79,8 @@ describe('ResponseEnhancer - All Tools Integration', () => {
       `Task(subagent_type="${targetAgent}", prompt="Check and complete MCP task ${taskId}: ${content}")`
     ) as jest.MockedFunction<(targetAgent: string, taskId: string, taskContent: string) => string>;
 
-    // Create ResponseEnhancer instance
-    responseEnhancer = new ResponseEnhancer(mockConfig);
+    // Create ResponseEnhancer instance with mocked accountability tracker
+    responseEnhancer = new ResponseEnhancer(mockConfig, mockAccountabilityTracker);
   });
 
   describe('Tool Coverage Tests - All 17 Tools', () => {
@@ -573,8 +586,8 @@ describe('ResponseEnhancer - All Tools Integration', () => {
       const testCases = [
         { level: 95, expectedUrgency: 'friendly', expectedIcon: '✅' },
         { level: 75, expectedUrgency: 'warning', expectedIcon: '⚠️' },
-        { level: 55, expectedUrgency: 'critical', expectedIcon: '🚨' },
-        { level: 25, expectedUrgency: 'blocking', expectedIcon: '🛑' }
+        { level: 55, expectedUrgency: 'critical', expectedIcon: '⚠️' },  // ResponseEnhancer uses ⚠️ [FIRM] for this level
+        { level: 25, expectedUrgency: 'blocking', expectedIcon: '🚨' }  // ResponseEnhancer uses 🚨 [CRITICAL] for low compliance
       ];
 
       for (const testCase of testCases) {

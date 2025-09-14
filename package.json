@@ -77,7 +77,9 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
+    "@types/debug": "^4.1.12",
     "@types/minimatch": "^5.1.2",
+    "debug": "^4.4.3",
     "fs-extra": "^11.2.0",
     "minimatch": "^10.0.3"
   },

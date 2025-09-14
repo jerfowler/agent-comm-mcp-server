@@ -4,12 +4,15 @@
  * Following MCP 2025-06-18 specification
  */
 
+import debug from 'debug';
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
-import { 
-  ResourceProvider, 
-  ResourceContent, 
-  ResourceMetadata 
+import {
+  ResourceProvider,
+  ResourceContent,
+  ResourceMetadata
 } from './ResourceProvider.js';
+
+const log = debug('agent-comm:resources:providers:serverresourceprovider');
 import { EventLogger } from '../../logging/EventLogger.js';
 import { AgentCommError } from '../../types.js';
 import * as fs from '../../utils/fs-extra-safe.js';
@@ -46,6 +49,7 @@ export class ServerResourceProvider implements ResourceProvider {
    * List all server information resources
    */
   async listResources(): Promise<Resource[]> {
+    log('listResources called');
     return [
       {
         uri: 'server://info',

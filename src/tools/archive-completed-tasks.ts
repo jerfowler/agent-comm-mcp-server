@@ -5,7 +5,10 @@
 
 import { ServerConfig } from '../types.js';
 import { archiveTasksTool } from './archive-tasks.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:archivecompletedtasks');
 export interface ArchiveCompletedTasksResult {
   success: boolean;
   archivedCount: number | undefined;
@@ -20,6 +23,7 @@ export async function archiveCompletedTasks(
   config: ServerConfig,
   args: Record<string, unknown> = {}
 ): Promise<ArchiveCompletedTasksResult> {
+  log('archiveCompletedTasks called with args: %O', { config, args });
   
   // Use existing archive tool with completed mode
   const archiveArgs = {

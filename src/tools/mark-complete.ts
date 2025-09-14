@@ -9,7 +9,10 @@ import { validateRequiredString, validateRequiredConfig } from '../utils/validat
 import { verifyAgentWork, DEFAULT_CONFIDENCE_THRESHOLD } from '../core/agent-work-verifier.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:markcomplete');
 interface ReconciliationOptions {
   mode?: 'strict' | 'auto_complete' | 'reconcile' | 'force';
   explanations?: Record<string, string> | undefined; // item -> reason for not being checked
@@ -261,6 +264,7 @@ export async function markComplete(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<CompletionResult> {
+  log('markComplete called with args: %O', { config, args });
   // Validate configuration has required components
   validateRequiredConfig(config);
   

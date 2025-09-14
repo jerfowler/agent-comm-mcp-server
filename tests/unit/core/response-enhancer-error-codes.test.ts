@@ -6,7 +6,7 @@
 import { ResponseEnhancer } from '../../../src/core/ResponseEnhancer.js';
 import { AccountabilityTracker } from '../../../src/core/AccountabilityTracker.js';
 import { EventLogger } from '../../../src/logging/EventLogger.js';
-import type { EnhancementContext } from '../../../src/types.js';
+import { RedFlag, ErrorResponse } from '../../../src/types.js';
 
 jest.mock('../../../src/logging/EventLogger.js');
 jest.mock('../../../src/core/AccountabilityTracker.js');
@@ -25,12 +25,12 @@ describe('ResponseEnhancer - Error Code Integration', () => {
     } as unknown as jest.Mocked<EventLogger>;
 
     mockAccountabilityTracker = {
-      detectRedFlags: jest.fn(),
-      generateErrorResponse: jest.fn(),
+      detectRedFlags: jest.fn<RedFlag[], [string, string]>().mockReturnValue([]),
+      generateErrorResponse: jest.fn<ErrorResponse, [RedFlag[]]>().mockReturnValue({} as ErrorResponse),
       recordClaim: jest.fn(),
       verifyClaim: jest.fn(),
-      canAcceptCompletion: jest.fn(),
-      formatErrorForConsole: jest.fn()
+      canAcceptCompletion: jest.fn().mockReturnValue(true),
+      formatErrorForConsole: jest.fn().mockReturnValue('')
     } as unknown as jest.Mocked<AccountabilityTracker>;
 
     enhancer = new ResponseEnhancer(mockEventLogger, mockAccountabilityTracker);
@@ -58,8 +58,8 @@ describe('ResponseEnhancer - Error Code Integration', () => {
         trust_score: 0
       };
 
-      mockAccountabilityTracker.detectRedFlags.mockResolvedValue(redFlags);
-      mockAccountabilityTracker.generateErrorResponse.mockResolvedValue(errorResponse);
+      (mockAccountabilityTracker.detectRedFlags as jest.Mock).mockReturnValue(redFlags);
+      (mockAccountabilityTracker.generateErrorResponse as jest.Mock).mockReturnValue(errorResponse);
 
       const context = {
         toolName: 'mark_complete',
@@ -106,8 +106,8 @@ describe('ResponseEnhancer - Error Code Integration', () => {
         trust_score: 45
       };
 
-      mockAccountabilityTracker.detectRedFlags.mockResolvedValue(redFlags);
-      mockAccountabilityTracker.generateErrorResponse.mockResolvedValue(errorResponse);
+      (mockAccountabilityTracker.detectRedFlags as jest.Mock).mockReturnValue(redFlags);
+      (mockAccountabilityTracker.generateErrorResponse as jest.Mock).mockReturnValue(errorResponse);
 
       const context = {
         toolName: 'mark_complete',
@@ -126,8 +126,8 @@ describe('ResponseEnhancer - Error Code Integration', () => {
     });
 
     it('should allow completion when no red flags', async () => {
-      mockAccountabilityTracker.detectRedFlags.mockResolvedValue([]);
-      mockAccountabilityTracker.canAcceptCompletion.mockReturnValue(true);
+      (mockAccountabilityTracker.detectRedFlags as jest.Mock).mockReturnValue([]);
+      (mockAccountabilityTracker.canAcceptCompletion as jest.Mock).mockReturnValue(true);
 
       const context = {
         toolName: 'mark_complete',
@@ -206,8 +206,8 @@ describe('ResponseEnhancer - Error Code Integration', () => {
       const result = await enhancer.enhanceToolResponse(context);
 
       expect(result.guidance?.error_handling).toContain('NO_EVIDENCE_PROVIDED');
-      expect(result.guidance?.exit_code).toBe(2);
-      expect(result.guidance?.red_flags).toContain('Empty progress report');
+      expect(result['exit_code']).toBe(2);
+      expect(result['red_flags']).toContain('Empty progress report');
     });
 
     it('should track progress reports for evidence', async () => {
@@ -247,8 +247,8 @@ describe('ResponseEnhancer - Error Code Integration', () => {
       const result = await enhancer.enhanceToolResponse(context);
 
       expect(result.guidance?.error_handling).toContain('INVALID_PLAN');
-      expect(result.guidance?.exit_code).toBe(1);
-      expect(result.guidance?.red_flags).toContain('Plan too short');
+      expect(result['exit_code']).toBe(1);
+      expect(result['red_flags']).toContain('Plan too short');
     });
 
     it('should validate checkbox presence in plans', async () => {
@@ -263,7 +263,7 @@ describe('ResponseEnhancer - Error Code Integration', () => {
 
       const result = await enhancer.enhanceToolResponse(context);
 
-      expect(result.guidance?.red_flags).toContain('Missing checkboxes');
+      expect(result['red_flags']).toContain('Missing checkboxes');
       expect(result.guidance?.requirement).toContain('Valid checkboxes required');
     });
   });
@@ -289,10 +289,10 @@ REQUIRED ACTIONS:
 ⛔ DO NOT PROCEED WITHOUT VERIFICATION
 `;
 
-      mockAccountabilityTracker.formatErrorForConsole.mockReturnValue(formattedOutput);
+      (mockAccountabilityTracker.formatErrorForConsole as jest.Mock).mockReturnValue(formattedOutput);
 
       const errorResponse = {
-        success: false,
+        success: false as const,
         error_code: 'INSUFFICIENT_EVIDENCE',
         error_severity: 'CRITICAL',
         exit_code: 1,
@@ -319,8 +319,8 @@ REQUIRED ACTIONS:
         }
       ];
 
-      mockAccountabilityTracker.detectRedFlags.mockResolvedValue(redFlags);
-      mockAccountabilityTracker.generateErrorResponse.mockResolvedValue({
+      (mockAccountabilityTracker.detectRedFlags as jest.Mock).mockReturnValue(redFlags);
+      (mockAccountabilityTracker.generateErrorResponse as jest.Mock).mockReturnValue({
         success: false,
         error_code: 'TASK_TOOL_DECEPTION',
         error_severity: 'CRITICAL',
@@ -341,8 +341,8 @@ REQUIRED ACTIONS:
 
       const result = await enhancer.enhanceToolResponse(context);
 
-      expect(result.guidance?.trust_warning).toContain('Task tool "completion" means NOTHING');
-      expect(result.guidance?.verification_required).toBe(true);
+      expect(result['trust_warning']).toContain('Task tool "completion" means NOTHING');
+      expect(result['verification_required']).toBe(true);
     });
   });
 
@@ -356,9 +356,15 @@ REQUIRED ACTIONS:
       ];
 
       for (const { code, exitCode } of testCases) {
-        mockAccountabilityTracker.generateErrorResponse.mockResolvedValue({
-          success: false,
+        // Mock detectRedFlags to return flags so the error path is triggered
+        (mockAccountabilityTracker.detectRedFlags as jest.Mock).mockReturnValue([
+          { severity: 'CRITICAL', message: `Error: ${code}`, evidence: 'Test evidence', recommendation: 'Fix' }
+        ]);
+
+        (mockAccountabilityTracker.generateErrorResponse as jest.Mock).mockReturnValue({
+          success: false as const,
           error_code: code,
+          error_severity: 'CRITICAL',
           exit_code: exitCode,
           red_flags: [`Error: ${code}`]
         });

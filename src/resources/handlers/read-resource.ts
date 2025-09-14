@@ -4,12 +4,18 @@
  * Following MCP 2025-06-18 specification
  */
 
-import type { 
-  ReadResourceRequest,
+import debug from 'debug';
+import type {
+ReadResourceRequest,
   ReadResourceResult 
 } from '@modelcontextprotocol/sdk/types.js';
 import { ResourceManager } from '../ResourceManager.js';
 import { AgentCommError } from '../../types.js';
+
+const log = debug('agent-comm:resources:handlers:readresource');
+
+// Initialize read resource handler
+log('Read resource handler ready');
 
 /**
  * Create handler for resources/read requests

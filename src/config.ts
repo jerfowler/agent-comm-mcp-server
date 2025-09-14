@@ -5,6 +5,13 @@
 import * as path from 'path';
 import { BaseServerConfig, ServerConfig } from './types.js';
 import { PACKAGE_INFO, SERVER_NAME, SERVER_VERSION, SERVER_DESCRIPTION } from './generated/version.js';
+import debug from 'debug';
+
+
+const log = debug('agent-comm:config');
+
+// Initialize configuration with defaults
+log('Loading configuration from environment');
 
 const DEFAULT_CONFIG = {
   commDir: './comm',

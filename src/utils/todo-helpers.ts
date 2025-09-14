@@ -2,6 +2,13 @@
  * Helper functions for Todo management in MCP tasks
  */
 
+import debug from 'debug';
+
+const log = debug('agent-comm:utils:todohelpers');
+
+// Initialize todo helpers module
+log('Todo helpers utilities initialized');
+
 export interface TodoItem {
   content: string;
   status: 'pending' | 'in_progress' | 'completed';

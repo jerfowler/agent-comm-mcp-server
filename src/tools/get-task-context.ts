@@ -6,7 +6,10 @@
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, TaskContext } from '../core/TaskContextManager.js';
 import { validateOptionalString, validateRequiredConfig } from '../utils/validation.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:gettaskcontext');
 /**
  * Get task context without exposing file operations
  */
@@ -14,6 +17,7 @@ export async function getTaskContext(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<TaskContext> {
+  log('getTaskContext called with args: %O', { config, args });
   // Validate configuration has required components
   validateRequiredConfig(config);
   

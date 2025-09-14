@@ -3,6 +3,13 @@
  */
 
 import { InvalidTaskError, ServerConfig } from '../types.js';
+import debug from 'debug';
+
+
+const log = debug('agent-comm:utils:validation');
+
+// Initialize validation utilities
+log('Validation utilities initialized');
 
 /**
  * Validate required string parameter

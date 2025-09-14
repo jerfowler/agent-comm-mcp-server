@@ -27,8 +27,62 @@ Every test change must pass:
 - ✅ All test suites (`npm run test` - unit, smoke, integration, lifecycle, e2e)
 - ✅ 95%+ coverage requirement
 - ✅ Pre-commit hook validation
+- ✅ Debug package integration compliance
 
----
+### **4. Debug Package Requirements (MANDATORY)**
+**All new source code** must integrate the `debug` npm package for structured debugging:
+
+#### **REQUIRED**: Debug Package Usage
+```typescript
+// ALWAYS DO THIS in new source files
+import debug from 'debug';
+
+const log = debug('agent-comm:namespace:component');
+
+export class NewComponent {
+  async execute(): Promise<void> {
+    log('Starting component execution');
+    // Implementation with debug statements
+  }
+}
+```
+
+#### **Namespace Structure (MANDATORY)**
+- **Core**: `agent-comm:core:*` (accountability, compliance, connection, delegation, response, context)
+- **Tools**: `agent-comm:tools:*` (create-task, archive, progress, sync, verification)  
+- **Logging**: `agent-comm:logging:*` (event, error, audit)
+- **Resources**: `agent-comm:resources:*` (task, agent, server)
+- **Utils**: `agent-comm:utils:*` (fs, validation, lock)
+
+#### **Testing Debug Integration**
+```typescript
+// Mock debug for testing
+const mockDebug = jest.fn();
+jest.mock('debug', () => () => mockDebug);
+
+// Test debug calls
+expect(mockDebug).toHaveBeenCalledWith('Expected debug message: %s', param);
+```
+
+#### **Environment Variable Testing**
+```bash
+# Required test scenarios
+DEBUG=agent-comm:* npm test              # All debug output
+DEBUG=agent-comm:core:* npm test         # Namespace filtering
+DEBUG= npm test                          # No debug output
+```
+
+#### **BANNED**: Code Without Debug Integration
+```typescript
+// NEVER DO THIS in new source code
+export class NewTool {
+  async execute() {
+    console.log('Starting execution'); // ❌ Use debug package
+    // Missing debug integration completely ❌
+  }
+}
+```
+
 
 ## **MANDATORY PATTERNS**
 

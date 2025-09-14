@@ -4,7 +4,11 @@
  */
 
 import type { EventLogger } from '../logging/EventLogger.js';
+import type { RedFlag, ErrorResponse } from '../types.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:core:accountabilitytracker');
 export interface TaskClaim {
   taskId: string;
   agent: string;
@@ -22,25 +26,6 @@ export interface VerificationResult {
   expectedPattern?: RegExp;
 }
 
-export interface RedFlag {
-  severity: 'CRITICAL' | 'BLOCKER';
-  message: string;
-  evidence: string;
-  recommendation: string;
-}
-
-export interface ErrorResponse {
-  success: false;
-  error_code: string;
-  error_severity: string;
-  exit_code: number;
-  red_flags: string[];
-  blocked?: boolean;
-  trust_score?: number;
-  verification_commands?: string[];
-  verification_required?: boolean;
-  trust_warning?: string;
-}
 
 /**
  * AccountabilityTracker ensures agents provide evidence for their claims
@@ -63,6 +48,7 @@ export class AccountabilityTracker {
     claim: string,
     evidence?: string
   ): Promise<void> {
+    log('recordClaim called');
     let taskClaim = this.taskClaims.get(taskId);
 
     if (!taskClaim) {
@@ -297,7 +283,7 @@ export class AccountabilityTracker {
   /**
    * Detect red flags in task completion attempt
    */
-  async detectRedFlags(agent: string, taskId: string): Promise<RedFlag[]> {
+  detectRedFlags(agent: string, taskId: string): RedFlag[] {
     const flags: RedFlag[] = [];
     const key = `${agent}:${taskId}`;
 
@@ -357,7 +343,7 @@ export class AccountabilityTracker {
   /**
    * Generate error response from red flags
    */
-  async generateErrorResponse(flags: RedFlag[]): Promise<ErrorResponse> {
+  generateErrorResponse(flags: RedFlag[]): ErrorResponse {
     // Determine error code based on flag patterns
     let errorCode = 'UNKNOWN_ERROR';
     let exitCode = 1;

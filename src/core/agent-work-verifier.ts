@@ -15,7 +15,10 @@
 import { ServerConfig } from '../types.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:core:agentworkverifier');
 export interface VerificationResult {
   success: boolean;
   confidence: number;
@@ -64,6 +67,7 @@ export async function verifyAgentWork(
   agent: string,
   taskId?: string
 ): Promise<VerificationResult> {
+  log('verifyAgentWork called with args: %O', { config, agent, taskId });
   try {
     // Find the active task if taskId not provided
     const activeTaskPath = await findActiveTaskPath(config, agent, taskId);

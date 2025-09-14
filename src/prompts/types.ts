@@ -6,6 +6,13 @@
 /**
  * Prompt argument definition
  */
+import debug from 'debug';
+
+const log = debug('agent-comm:types');
+
+// Initialize prompt types
+log('Prompt type definitions loaded');
+
 export interface PromptArgument {
   name: string;
   description: string;

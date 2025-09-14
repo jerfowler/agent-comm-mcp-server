@@ -7,6 +7,7 @@ import { ServerConfig, Task } from '../types.js';
 import { getAgentTasks } from '../utils/task-manager.js';
 import * as fs from '../utils/fs-extra-safe.js';
 import * as path from 'path';
+import debug from 'debug';
 import type {
   PromptContent,
   PromptMessage,
@@ -14,6 +15,8 @@ import type {
   TaskContext,
   ErrorType
 } from './types.js';
+
+const log = debug('agent-comm:prompts:dynamicpromptengine');
 
 /**
  * Engine for generating dynamic, context-aware prompt content
@@ -29,6 +32,7 @@ export class DynamicPromptEngine {
    * Generate prompt content based on prompt name and arguments
    */
   async generatePromptContent(promptName: PromptName, args: Record<string, unknown>): Promise<PromptContent> {
+    log('generatePromptContent called');
     // Validate arguments
     this.validateArguments(promptName, args);
 
@@ -776,11 +780,11 @@ await create_task({ agent: "senior-backend-engineer", ... });
           mimeType: 'text/x-typescript',
           text: `// Example: Fully Compliant Task Workflow
 
-import { 
+import {
   create_task,
   submit_plan,
   report_progress,
-  mark_complete 
+  mark_complete
 } from '@mcp/agent-comm';
 
 async function compliantWorkflow() {

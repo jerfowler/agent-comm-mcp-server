@@ -69,7 +69,10 @@
 import * as fs from './fs-extra-safe.js';
 import * as path from 'path';
 import { Task, TaskMetadata, FileNotFoundError, InvalidTaskError } from '../types.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:utils:filesystem');
 // Re-export Stats type from fs-extra-safe for test compatibility
 export { Stats } from './fs-extra-safe.js';
 
@@ -77,6 +80,7 @@ export { Stats } from './fs-extra-safe.js';
  * Ensure directory exists
  */
 export async function ensureDirectory(dirPath: string): Promise<void> {
+  log('ensureDirectory called with args: %O', { dirPath });
   await fs.ensureDir(dirPath);
 }
 

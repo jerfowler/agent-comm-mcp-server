@@ -26,6 +26,7 @@ import * as fs from './utils/fs-extra-safe.js';
 // Import core components
 import { ConnectionManager } from './core/ConnectionManager.js';
 import { EventLogger } from './logging/EventLogger.js';
+import { ErrorLogger } from './logging/ErrorLogger.js';
 import { TaskContextManager } from './core/TaskContextManager.js';
 import { ResourceManager } from './resources/ResourceManager.js';
 import { PromptManager } from './prompts/PromptManager.js';
@@ -81,12 +82,14 @@ export function createMCPServer(): Server {
   // Initialize core components - extend BaseServerConfig to ServerConfig
   const connectionManager = new ConnectionManager();
   const eventLogger = new EventLogger(baseConfig.logDir);
+  const errorLogger = new ErrorLogger(baseConfig.logDir);
 
   // Create initial config for components that need it
   const initialConfig: ServerConfig = {
     ...baseConfig,
     connectionManager,
-    eventLogger
+    eventLogger,
+    errorLogger
   } as ServerConfig;
 
   // Initialize Smart Response System components
@@ -100,6 +103,7 @@ export function createMCPServer(): Server {
     ...baseConfig,
     connectionManager,
     eventLogger,
+    errorLogger,
     promptManager,
     complianceTracker,
     delegationTracker,

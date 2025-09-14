@@ -10,7 +10,10 @@ import { validateRequiredString, validateOptionalString, validateContent } from 
 import { AgentCommError } from '../types.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:createtask');
 // Enhanced PROTOCOL_CONTEXT with strong directives
 export const PROTOCOL_CONTEXT = `
 
@@ -281,6 +284,7 @@ export async function createTask(
   config: ServerConfig,
   options: CreateTaskOptions
 ): Promise<CreateTaskResponse> {
+  log('createTask called with args: %O', { config, options });
   // Validate inputs
   const agent = validateRequiredString(options.agent, 'agent');
   const rawTaskName = validateRequiredString(options.taskName, 'taskName');
