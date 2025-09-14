@@ -1,12 +1,12 @@
 /**
  * Auto-generated file - DO NOT EDIT
  * Generated from package.json at build time
- * Source: @jerfowler/agent-comm-mcp-server@0.9.1
+ * Source: @jerfowler/agent-comm-mcp-server@0.9.2
  */
 
 export const PACKAGE_INFO = {
   name: '@jerfowler/agent-comm-mcp-server',
-  version: '0.9.1',
+  version: '0.9.2',
   description: 'MCP server for AI agent task communication and delegation with diagnostic lifecycle visibility',
   author: 'Jeremy Fowler',
   repository: {
