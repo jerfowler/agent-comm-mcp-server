@@ -5,6 +5,26 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-09-14
+
+### 💥 BREAKING CHANGES
+
+- **Breaking**: v0.8.0 - Smart Response System & TypeScript Strict Mode Implementation (#47)
+
+### ✨ Features
+
+- implement ResponseEnhancer integration (#49) and Enhanced Logging System (#50)
+- implement error codes and red flag detection system (partial)
+
+### 🐛 Bug Fixes
+
+- merge fix
+
+### 🔧 Other Changes
+
+- update environment and documentation for issues #49 and #50
+- remove archived communication task files
+
 ## [Unreleased]
 
 ### Added - Issue #49 ResponseEnhancer Integration
