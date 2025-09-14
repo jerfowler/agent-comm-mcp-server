@@ -10,7 +10,8 @@ build/
 *.tsbuildinfo
 
 # Generated files
-src/generated/
+# Note: version.ts needs to be committed for CI/CD
+# src/generated/
 
 # Coverage
 coverage/
