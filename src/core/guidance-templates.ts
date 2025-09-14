@@ -3,6 +3,13 @@
  * Provides contextual messages based on tool and escalation level
  */
 
+import debug from 'debug';
+
+const log = debug('agent-comm:core:guidancetemplates');
+
+// Initialize guidance templates
+log('Guidance templates for smart response system loaded');
+
 export interface GuidanceTemplate {
   level_1: string;  // Friendly reminder (90-100 compliance)
   level_2: string;  // Warning message (70-89 compliance)

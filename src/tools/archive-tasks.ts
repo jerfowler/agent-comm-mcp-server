@@ -2,14 +2,17 @@
  * Archive tasks tool for the Agent Communication MCP Server
  */
 
+import debug from 'debug';
 import { ServerConfig, ArchiveResult, ArchiveOptions } from '../types.js';
 import { archiveTasks } from '../utils/task-manager.js';
-import { 
-  validateArchiveMode, 
-  validateOptionalString, 
-  validateNumber, 
-  validateBoolean 
+import {
+  validateArchiveMode,
+  validateOptionalString,
+  validateNumber,
+  validateBoolean
 } from '../utils/validation.js';
+
+const log = debug('agent-comm:tools:archivetasks');
 
 /**
  * Archive tasks (clear comms functionality)
@@ -18,6 +21,7 @@ export async function archiveTasksTool(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<ArchiveResult> {
+  log('archiveTasksTool called with args: %O', { config, args });
   const mode = validateArchiveMode(args['mode'] || 'completed');
   const agent = validateOptionalString(args['agent'], 'agent');
   const dryRun = validateBoolean(args['dryRun'], 'dryRun', false);

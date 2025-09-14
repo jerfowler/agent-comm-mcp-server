@@ -24,6 +24,12 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "test:debug": "jest --detectOpenHandles --forceExit",
+    "test:issue49": "npm run test:unit -- tests/unit/core/response-enhancer-error-codes.test.ts --verbose",
+    "test:issue49:debug": "node --inspect-brk node_modules/.bin/jest tests/unit/core/response-enhancer-error-codes.test.ts --runInBand",
+    "verify:issue49": "./tmp/issue-49/verify-all.sh",
+    "verify:issue50": "./tmp/issue-50/verify-logging-system.sh",
+    "debug:accountability": "npm run test:unit -- tests/unit/core/accountability-tracker.test.ts --verbose",
+    "analyze:errors": "node scripts/analyze-errors.js 2>/dev/null || echo 'Error analysis script not yet created'",
     "type-check": "tsc --noEmit --project tsconfig.all.json",
     "type-check:src": "tsc --noEmit",
     "type-check:tests": "tsc --noEmit --project tsconfig.all.json tests/**/*.ts",
@@ -77,7 +83,9 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
+    "@types/debug": "^4.1.12",
     "@types/minimatch": "^5.1.2",
+    "debug": "^4.4.3",
     "fs-extra": "^11.2.0",
     "minimatch": "^10.0.3"
   },

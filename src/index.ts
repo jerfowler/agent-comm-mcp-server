@@ -13,18 +13,26 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
   ListPromptsRequestSchema,
-  GetPromptRequestSchema
+  GetPromptRequestSchema,
+  CallToolRequest,
+  ListResourcesRequest,
+  ReadResourceRequest,
+  GetPromptRequest
 } from '@modelcontextprotocol/sdk/types.js';
 import { getConfig, validateConfig, getServerInfo, validateEnvironment } from './config.js';
-import { AgentCommError, ServerConfig } from './types.js';
+import { AgentCommError, ServerConfig, GetFullLifecycleArgs, TrackTaskProgressArgs } from './types.js';
 import * as fs from './utils/fs-extra-safe.js';
 
 // Import core components
 import { ConnectionManager } from './core/ConnectionManager.js';
 import { EventLogger } from './logging/EventLogger.js';
+import { ErrorLogger } from './logging/ErrorLogger.js';
 import { TaskContextManager } from './core/TaskContextManager.js';
 import { ResourceManager } from './resources/ResourceManager.js';
 import { PromptManager } from './prompts/PromptManager.js';
+import { ResponseEnhancer } from './core/ResponseEnhancer.js';
+import { ComplianceTracker } from './core/ComplianceTracker.js';
+import { DelegationTracker } from './core/DelegationTracker.js';
 
 // Import tools
 import { checkTasks } from './tools/check-tasks.js';
@@ -74,16 +82,37 @@ export function createMCPServer(): Server {
   // Initialize core components - extend BaseServerConfig to ServerConfig
   const connectionManager = new ConnectionManager();
   const eventLogger = new EventLogger(baseConfig.logDir);
-  
+  const errorLogger = new ErrorLogger(baseConfig.logDir);
+
+  // Create initial config for components that need it
+  const initialConfig: ServerConfig = {
+    ...baseConfig,
+    connectionManager,
+    eventLogger,
+    errorLogger
+  } as ServerConfig;
+
+  // Initialize Smart Response System components
+  const promptManager = new PromptManager(initialConfig);
+  const complianceTracker = new ComplianceTracker(initialConfig);
+  const delegationTracker = new DelegationTracker(initialConfig);
+  const responseEnhancer = new ResponseEnhancer(initialConfig);
+
+  // Create complete config with all components
   const config: ServerConfig = {
     ...baseConfig,
     connectionManager,
-    eventLogger
+    eventLogger,
+    errorLogger,
+    promptManager,
+    complianceTracker,
+    delegationTracker,
+    responseEnhancer
   };
-  
+
   // Validate the complete config
   validateConfig(config);
-  
+
   // Initialize TaskContextManager and ResourceManager
   const taskContextManager = new TaskContextManager(config);
   const resourceManager = new ResourceManager({
@@ -115,48 +144,99 @@ export function createMCPServer(): Server {
 }
 
 /**
+ * Helper function to enhance tool responses with Smart Response System
+ */
+async function enhanceToolResponse(
+  toolName: string,
+  toolResponse: unknown,
+  agent: string,
+  config: ServerConfig
+): Promise<unknown> {
+  // If ResponseEnhancer is not configured, return original response
+  if (!config.responseEnhancer) {
+    return toolResponse;
+  }
+
+  try {
+    // Create enhancement context with optional properties
+    const context: Parameters<typeof config.responseEnhancer.enhance>[0] = {
+      toolName,
+      toolResponse,
+      agent
+    };
+
+    // Add optional components if available
+    if (config.promptManager) {
+      context.promptManager = config.promptManager;
+    }
+    if (config.complianceTracker) {
+      context.complianceTracker = config.complianceTracker;
+    }
+    if (config.delegationTracker) {
+      context.delegationTracker = config.delegationTracker;
+    }
+
+    // Enhance the response
+    const enhanced = await config.responseEnhancer.enhance(context);
+    return enhanced;
+  } catch (error) {
+    // On error, return original response
+    return toolResponse;
+  }
+}
+
+/**
  * Set up server request handlers
  */
-function setupServerHandlers(server: Server, config: any, resourceManager: ResourceManager): void {
+function setupServerHandlers(server: Server, config: ServerConfig, resourceManager: ResourceManager): void {
   // Tool call handler
   server.setRequestHandler(
     CallToolRequestSchema,
-    async (request: any) => {
+    async (request: CallToolRequest) => {
       try {
         const { name, arguments: args } = request.params;
         
         switch (name) {
           case 'check_tasks': {
-            const result = await checkTasks(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await checkTasks(config, args ?? {});
+            const enhanced = await enhanceToolResponse('check_tasks', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
             
           case 'read_task': {
-            const result = await readTask(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await readTask(config, args ?? {});
+            const enhanced = await enhanceToolResponse('read_task', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+                  text: typeof enhanced === 'string' ? enhanced : JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
             
           case 'write_task': {
-            const result = await writeTask(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await writeTask(config, args ?? {});
+            const enhanced = await enhanceToolResponse('write_task', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
@@ -164,48 +244,60 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
             
             
           case 'create_task': {
-            const result = await createTaskTool(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await createTaskTool(config, args ?? {});
+            const enhanced = await enhanceToolResponse('create_task', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
             
           case 'list_agents': {
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
             const result = await listAgents(config);
-            return { 
+            const enhanced = await enhanceToolResponse('list_agents', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
             
           case 'archive_tasks': {
-            const result = await archiveTasksTool(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await archiveTasksTool(config, args ?? {});
+            const enhanced = await enhanceToolResponse('archive_tasks', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
             
           case 'restore_tasks': {
-            const result = await restoreTasksTool(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await restoreTasksTool(config, args ?? {});
+            const enhanced = await enhanceToolResponse('restore_tasks', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
@@ -214,60 +306,75 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Context-based tools
           case 'get_task_context': {
-            const result = await getTaskContext(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await getTaskContext(config, args ?? {});
+            const enhanced = await enhanceToolResponse('get_task_context', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
 
           case 'submit_plan': {
-            const result = await submitPlan(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await submitPlan(config, args ?? {});
+            const enhanced = await enhanceToolResponse('submit_plan', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
 
           case 'report_progress': {
-            const result = await reportProgress(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await reportProgress(config, args ?? {});
+            const enhanced = await enhanceToolResponse('report_progress', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
 
           case 'mark_complete': {
-            const result = await markComplete(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await markComplete(config, args ?? {});
+            const enhanced = await enhanceToolResponse('mark_complete', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
 
           case 'archive_completed_tasks': {
-            const result = await archiveCompletedTasks(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await archiveCompletedTasks(config, args ?? {});
+            const enhanced = await enhanceToolResponse('archive_completed_tasks', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
@@ -275,24 +382,30 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Diagnostic tools (v0.4.0)
           case 'get_full_lifecycle': {
-            const result = await getFullLifecycle(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await getFullLifecycle(config, (args ?? {}) as unknown as GetFullLifecycleArgs);
+            const enhanced = await enhanceToolResponse('get_full_lifecycle', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
 
           case 'track_task_progress': {
-            const result = await trackTaskProgress(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await trackTaskProgress(config, (args ?? {}) as unknown as TrackTaskProgressArgs);
+            const enhanced = await enhanceToolResponse('track_task_progress', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
@@ -300,36 +413,45 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
 
           // Best practice tools
           case 'get_server_info': {
-            const result = await getServerInfoTool(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await getServerInfoTool(config, args ?? {});
+            const enhanced = await enhanceToolResponse('get_server_info', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
 
           case 'ping': {
-            const result = await ping(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await ping(config, args ?? {});
+            const enhanced = await enhanceToolResponse('ping', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
           }
 
           case 'sync_todo_checkboxes': {
-            const result = await syncTodoCheckboxes(config, args || {});
-            return { 
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await syncTodoCheckboxes(config, args ?? {});
+            const enhanced = await enhanceToolResponse('sync_todo_checkboxes', result, agent, config);
+            return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result, null, 2)
+                  text: JSON.stringify(enhanced, null, 2)
                 }
               ]
             };
@@ -750,14 +872,16 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
   // Resource handlers
   server.setRequestHandler(
     ListResourcesRequestSchema,
-    async (request: any) => {
-      return resourceManager.listResources(request.params);
+    async (request: ListResourcesRequest) => {
+      // Handle the optional params with proper type narrowing for exactOptionalPropertyTypes
+      const options = request.params?.cursor ? { cursor: request.params.cursor } : undefined;
+      return resourceManager.listResources(options);
     }
   );
   
   server.setRequestHandler(
     ReadResourceRequestSchema,
-    async (request: any) => {
+    async (request: ReadResourceRequest) => {
       if (!request.params?.uri) {
         throw new AgentCommError('URI parameter is required', 'INVALID_PARAMS');
       }
@@ -782,10 +906,10 @@ function setupServerHandlers(server: Server, config: any, resourceManager: Resou
   // Prompts get handler
   server.setRequestHandler(
     GetPromptRequestSchema,
-    async (request: any) => {
+    async (request: GetPromptRequest) => {
       try {
         const { name, arguments: args } = request.params;
-        const result = await promptManager.getPrompt(name, args || {});
+        const result = await promptManager.getPrompt(name, args ?? {});
         return {
           description: result.description,
           messages: result.messages

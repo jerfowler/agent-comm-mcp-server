@@ -249,6 +249,50 @@ describe('create_task unified tool', () => {
       await expect(createTask(mockConfig, options))
         .rejects.toThrow(AgentCommError);
     });
+
+    // Test uncovered lines 195, 230, 246 from create-task.ts
+    it('should handle malformed task names with multiple timestamps (line 195)', async () => {
+      const options = {
+        agent: 'test-agent',
+        taskName: 'task-20240101-123456-20240102-654321-name'
+      };
+
+      const result = await createTask(mockConfig, options);
+      expect(result.success).toBe(true);
+      expect(result.taskCreated).toBe(true);
+    });
+
+    it('should handle task name with regex match but no group 1 (line 195 break case)', async () => {
+      // This tests the break condition in the while loop when match[1] doesn't exist
+      const options = {
+        agent: 'test-agent', 
+        taskName: 'test-task-incomplete-pattern'
+      };
+
+      const result = await createTask(mockConfig, options);
+      expect(result.success).toBe(true);
+      expect(result.taskCreated).toBe(true);
+    });
+
+    it('should handle wrapper tool error scenario (line 360)', async () => {
+      // Mock the createTaskTool to throw error
+      mockedTaskManager.initializeTask.mockRejectedValue(new Error('Mock error for coverage'));
+
+      const args = {
+        agent: 'test-agent',
+        taskName: 'test-wrapper-error',
+        content: 'Test content',
+        taskType: 'delegation' as const
+      };
+
+      try {
+        await createTaskTool(mockConfig, args);
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AgentCommError);
+        expect((error as AgentCommError).message).toContain('Mock error for coverage');
+      }
+    });
   });
 
   describe('Clean name extraction', () => {

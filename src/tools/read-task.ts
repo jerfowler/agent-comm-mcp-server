@@ -6,7 +6,10 @@ import * as path from 'path';
 import { ServerConfig, ReadTaskResponse } from '../types.js';
 import { readFile, getStats, parseTaskMetadata } from '../utils/file-system.js';
 import { validateRequiredString, validateTaskFileType } from '../utils/validation.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:readtask');
 /**
  * Read a task file by type (init, plan, done, error)
  */
@@ -14,6 +17,7 @@ export async function readTask(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<ReadTaskResponse> {
+  log('readTask called with args: %O', { config, args });
   const agent = validateRequiredString(args['agent'], 'agent');
   const task = validateRequiredString(args['task'], 'task');
   const fileType = validateTaskFileType(args['file']);

@@ -11,6 +11,9 @@
 /* eslint-disable no-restricted-syntax */
 
 import { Stats, MakeDirectoryOptions, Mode } from 'fs';
+import debug from 'debug';
+
+const log = debug('agent-comm:utils:fsextrasafe');
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -81,6 +84,7 @@ class FsExtraImporter {
    * Try multiple import strategies to get fs-extra
    */
   async tryImportFsExtra(): Promise<FsExtraModule | null> {
+    log('tryImportFsExtra called');
     // Strategy 1: Try ES module import (current approach)
     try {
       const fsExtra = await import('fs-extra');
@@ -317,7 +321,14 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback
-    await nodeFs.mkdir(dirPath, { recursive: true });
+    try {
+      await nodeFs.mkdir(dirPath, { recursive: true });
+    } catch (error) {
+      // EEXIST is fine - directory already exists
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+        throw error;
+      }
+    }
   }
 
   async appendFile(filePath: string, data: string): Promise<void> {
@@ -375,7 +386,15 @@ class SafeFileSystem implements SafeFsInterface {
     }
 
     // Node.js built-in fallback - copy file
-    await nodeFs.copyFile(src, dest);
+    try {
+      await nodeFs.copyFile(src, dest);
+    } catch (error) {
+      // EISDIR means we're trying to copy a directory - re-throw with clear message
+      if ((error as NodeJS.ErrnoException).code === 'EISDIR') {
+        throw error; // Directory copying not supported in Node.js fallback
+      }
+      throw error;
+    }
   }
 
 
@@ -409,10 +428,10 @@ class SafeFileSystem implements SafeFsInterface {
     // Node.js built-in fallback
     if (typeof options === 'object' && options !== null) {
       // options is MakeDirectoryOptions
-      await nodeFs.mkdir(dirPath, { recursive: true, ...options } as MakeDirectoryOptions);
+      await nodeFs.mkdir(dirPath, { recursive: true, ...options });
     } else if (options !== null && options !== undefined) {
       // options is a Mode (string/number)
-      await nodeFs.mkdir(dirPath, { recursive: true, mode: options } as MakeDirectoryOptions);
+      await nodeFs.mkdir(dirPath, { recursive: true, mode: options });
     } else {
       // options is null/undefined
       await nodeFs.mkdir(dirPath, { recursive: true });

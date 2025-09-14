@@ -27,8 +27,62 @@ Every test change must pass:
 - ✅ All test suites (`npm run test` - unit, smoke, integration, lifecycle, e2e)
 - ✅ 95%+ coverage requirement
 - ✅ Pre-commit hook validation
+- ✅ Debug package integration compliance
 
----
+### **4. Debug Package Requirements (MANDATORY)**
+**All new source code** must integrate the `debug` npm package for structured debugging:
+
+#### **REQUIRED**: Debug Package Usage
+```typescript
+// ALWAYS DO THIS in new source files
+import debug from 'debug';
+
+const log = debug('agent-comm:namespace:component');
+
+export class NewComponent {
+  async execute(): Promise<void> {
+    log('Starting component execution');
+    // Implementation with debug statements
+  }
+}
+```
+
+#### **Namespace Structure (MANDATORY)**
+- **Core**: `agent-comm:core:*` (accountability, compliance, connection, delegation, response, context)
+- **Tools**: `agent-comm:tools:*` (create-task, archive, progress, sync, verification)  
+- **Logging**: `agent-comm:logging:*` (event, error, audit)
+- **Resources**: `agent-comm:resources:*` (task, agent, server)
+- **Utils**: `agent-comm:utils:*` (fs, validation, lock)
+
+#### **Testing Debug Integration**
+```typescript
+// Mock debug for testing
+const mockDebug = jest.fn();
+jest.mock('debug', () => () => mockDebug);
+
+// Test debug calls
+expect(mockDebug).toHaveBeenCalledWith('Expected debug message: %s', param);
+```
+
+#### **Environment Variable Testing**
+```bash
+# Required test scenarios
+DEBUG=agent-comm:* npm test              # All debug output
+DEBUG=agent-comm:core:* npm test         # Namespace filtering
+DEBUG= npm test                          # No debug output
+```
+
+#### **BANNED**: Code Without Debug Integration
+```typescript
+// NEVER DO THIS in new source code
+export class NewTool {
+  async execute() {
+    console.log('Starting execution'); // ❌ Use debug package
+    // Missing debug integration completely ❌
+  }
+}
+```
+
 
 ## **MANDATORY PATTERNS**
 
@@ -132,6 +186,62 @@ Detailed description of what needs to be accomplished.
 - External dependencies: database, file system access
 
 This plan meets all format requirements with >50 characters, proper structure, and clear progress markers.`;
+```
+
+### **Debug Package Integration Requirements**
+
+All new source code MUST include debug package integration:
+
+#### Mandatory Debug Integration
+- **Required Package**: debug@^4.4.3 with @types/debug
+- **Namespace Structure**: Follow `agent-comm:category:component` hierarchy
+- **Import Pattern**: `import debug from 'debug'`
+- **Instance Creation**: `const log = debug('agent-comm:category:component')`
+
+#### Namespace Hierarchy for New Code
+```typescript
+// Core system components
+'agent-comm:core:NEW_COMPONENT'     // New core components
+'agent-comm:core:NEW_COMPONENT:perf' // Performance timing
+
+// Tool system components
+'agent-comm:tools:NEW_TOOL'         // New MCP tools
+'agent-comm:tools:NEW_TOOL:perf'    // Tool performance timing
+
+// Utility components
+'agent-comm:utils:NEW_UTILITY'      // New utility functions
+'agent-comm:resources:NEW_RESOURCE' // New resource providers
+```
+
+#### Required Debug Statements
+1. **Entry/Exit Points**: Log function entry and successful completion
+2. **Error Conditions**: Log all errors with context before throwing
+3. **Performance Timing**: Log timing for operations >100ms expected duration
+4. **State Changes**: Log significant state transitions
+5. **External Interactions**: Log calls to external systems/files
+
+#### Example Implementation Pattern
+```typescript
+import debug from 'debug';
+const log = debug('agent-comm:tools:my-new-tool');
+
+export async function myNewTool(params: ToolParams): Promise<ToolResult> {
+  const startTime = Date.now();
+  log('executing tool with params: %O', params);
+
+  try {
+    const result = await performOperation(params);
+    const duration = Date.now() - startTime;
+
+    log('tool execution completed in %dms', duration);
+
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    log('tool failed after %dms: %O', duration, error);
+    throw error;
+  }
+}
 ```
 
 ### **Test Setup and Mocking**

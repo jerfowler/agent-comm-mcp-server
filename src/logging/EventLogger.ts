@@ -6,6 +6,9 @@
 import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { EventEmitter } from 'events';
+import debug from 'debug';
+
+const log = debug('agent-comm:logging:event');
 
 // Timer dependency injection for deterministic testing
 export interface TimerDependency {
@@ -115,18 +118,32 @@ export class EventLogger extends EventEmitter {
   private timerDependency: TimerDependency;
   constructor(logDir: string, timerDependency?: TimerDependency, _config?: EventLoggerConfig) {
     super();
-    
+
     // Use LOG_DIR environment variable or provided logDir, with fallback to .logs
     const envLogDir = process.env['LOG_DIR'];
     if (envLogDir?.trim()) {
       this.logDir = path.isAbsolute(envLogDir) ? envLogDir : path.resolve(logDir, envLogDir);
+      log('Using LOG_DIR environment variable: %s', this.logDir);
     } else {
-      // Default to .logs subdirectory if no LOG_DIR specified
-      this.logDir = path.join(logDir, '.logs');
+      // Check if the provided logDir already ends with .logs to avoid duplication
+      const resolvedLogDir = path.resolve(logDir);
+      const pathSegments = resolvedLogDir.split(path.sep);
+      const lastSegment = pathSegments[pathSegments.length - 1];
+
+      if (lastSegment === '.logs') {
+        // Path ends with .logs directory, don't add another one
+        this.logDir = resolvedLogDir;
+        log('Log directory already ends with .logs: %s', this.logDir);
+      } else {
+        // Add .logs subdirectory
+        this.logDir = path.join(resolvedLogDir, '.logs');
+        log('Added .logs subdirectory: %s', this.logDir);
+      }
     }
-    
+
     this.logFilePath = path.join(this.logDir, 'agent-comm.log');
     this.timerDependency = timerDependency ?? new DefaultTimerDependency();
+    log('EventLogger initialized with log file: %s', this.logFilePath);
     // Config is received but not used in current implementation
     // Future: implement log rotation based on maxLogFileSize, maxLogAgeHours
     // Note: ensureLogDir() is called in processWriteQueue() to handle async properly
@@ -194,8 +211,7 @@ export class EventLogger extends EventEmitter {
         entries.push(entry);
       } catch (error) {
         // Skip malformed lines
-        // eslint-disable-next-line no-console
-        console.error('Failed to parse log entry:', error);
+        log('Failed to parse log entry: %s', error);
       }
     }
 
@@ -451,8 +467,7 @@ export class EventLogger extends EventEmitter {
     } catch (error) {
       // Re-queue failed entries at the beginning
       this.writeQueue.unshift(...entriesToWrite);
-      // eslint-disable-next-line no-console
-      console.error('Failed to write log entries:', error);
+      log('Failed to write log entries: %s', error);
       throw error;
     } finally {
       this.isWriting = false;

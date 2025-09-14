@@ -7,7 +7,10 @@ import { ServerConfig } from '../types.js';
 import { TaskContextManager, PlanSubmissionResult } from '../core/TaskContextManager.js';
 import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:submitplan');
 interface PlanValidationResult {
   valid: boolean;
   checkboxCount: number;
@@ -68,6 +71,7 @@ export async function submitPlan(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<PlanSubmissionResult> {
+  log('submitPlan called with args: %O', { config, args });
   // Validate configuration has required components
   validateRequiredConfig(config);
   

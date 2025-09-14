@@ -4,10 +4,11 @@
  * Following MCP 2025-06-18 specification
  */
 
-import type { 
-  ListResourcesResult, 
+import debug from 'debug';
+import type {
+  ListResourcesResult,
   ReadResourceResult,
-  Resource 
+  Resource
 } from '@modelcontextprotocol/sdk/types.js';
 import { TaskContextManager } from '../core/TaskContextManager.js';
 import { ConnectionManager } from '../core/ConnectionManager.js';
@@ -20,6 +21,8 @@ import {
 import { TaskResourceProvider } from './providers/TaskResourceProvider.js';
 import { ServerResourceProvider } from './providers/ServerResourceProvider.js';
 import { AgentResourceProvider } from './providers/AgentResourceProvider.js';
+
+const log = debug('agent-comm:resources:resourcemanager');
 
 /**
  * Configuration for ResourceManager
@@ -96,6 +99,7 @@ export class ResourceManager {
    * List all available resources with pagination
    */
   async listResources(options?: { cursor?: string }): Promise<ListResourcesResult> {
+    log('listResources called');
     try {
       const cursor = this.decodeCursor(options?.cursor);
       const allResources: Resource[] = [];
@@ -151,7 +155,7 @@ export class ResourceManager {
       throw new AgentCommError(
         'Failed to list resources',
         'INTERNAL_ERROR',
-        { originalError: error }
+        { originalError: error as Error }
       );
     }
   }
@@ -227,7 +231,7 @@ export class ResourceManager {
       throw new AgentCommError(
         'Resource not found',
         'RESOURCE_NOT_FOUND',
-        { uri, originalError: error }
+        { uri, originalError: error as Error }
       );
     }
   }

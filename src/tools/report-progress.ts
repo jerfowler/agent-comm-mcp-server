@@ -6,7 +6,10 @@
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, ProgressUpdate, ProgressReportResult } from '../core/TaskContextManager.js';
 import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:reportprogress');
 /**
  * Report progress updates without file exposure
  */
@@ -14,6 +17,7 @@ export async function reportProgress(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<ProgressReportResult> {
+  log('reportProgress called with args: %O', { config, args });
   // Validate configuration has required components
   validateRequiredConfig(config);
   

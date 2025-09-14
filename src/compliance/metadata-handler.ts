@@ -11,6 +11,13 @@
 /**
  * MCP Metadata Validation Result
  */
+import debug from 'debug';
+
+const log = debug('agent-comm:metadatahandler');
+
+// Initialize metadata handler
+log('MCP metadata handler initialized');
+
 export interface MCPMetaValidationResult {
   isValid: boolean;
   errors: string[];

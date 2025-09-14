@@ -9,7 +9,10 @@ import { validateRequiredString, validateRequiredConfig } from '../utils/validat
 import { verifyAgentWork, DEFAULT_CONFIDENCE_THRESHOLD } from '../core/agent-work-verifier.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:markcomplete');
 interface ReconciliationOptions {
   mode?: 'strict' | 'auto_complete' | 'reconcile' | 'force';
   explanations?: Record<string, string> | undefined; // item -> reason for not being checked
@@ -39,7 +42,7 @@ interface ReconciledCompletion {
 function extractUncheckedItems(content: string): string[] {
   const uncheckedRegex = /^- \[ \] \*\*([^:]+)\*\*:/gm;
   const matches = content.match(uncheckedRegex) ?? [];
-  return matches.map(match => {
+  return matches.map((match: string) => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
   });
@@ -51,7 +54,7 @@ function extractUncheckedItems(content: string): string[] {
 function extractCheckedItems(content: string): string[] {
   const checkedRegex = /^- \[x\] \*\*([^:]+)\*\*:/gmi;
   const matches = content.match(checkedRegex) ?? [];
-  return matches.map(match => {
+  return matches.map((match: string) => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
     return titleMatch ? titleMatch[1] : match;
   });
@@ -206,7 +209,7 @@ ${summary}`,
 
 ### Variance Report
 ${validation.uncheckedItems.map(item => {
-  const explanation = explanations[item] || 'Completed via alternative approach';
+  const explanation = explanations[item] ?? 'Completed via alternative approach';
   return `- **${item}**: ${explanation}`;
 }).join('\n')}
 
@@ -261,6 +264,7 @@ export async function markComplete(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<CompletionResult> {
+  log('markComplete called with args: %O', { config, args });
   // Validate configuration has required components
   validateRequiredConfig(config);
   

@@ -37,6 +37,16 @@ Think of this as a **mission control** for AI agents. Instead of trying to do ev
 
 **⚡ **Non-Blocking**: All agents can work simultaneously while you stay productive**
 
+### New Features (v0.9.0)
+
+**🔍 **Zero-Trust Verification** (Issue #49)**: Advanced accountability system with red flag detection prevents agent deception through evidence-based verification
+
+**📊 **Enhanced Error Logging** (Issue #50)**: Comprehensive error tracking with ErrorLogger class, pattern analysis, and agent error rate monitoring
+
+**🐛 **Debug Integration** (Issue #50)**: Full debug package integration across 49 source files with namespace hierarchy for granular debugging control
+
+**🚦 **Parallel Execution Support** (Issue #49)**: Multi-agent coordination with concurrent tool calls and automatic evidence tracking
+
 ---
 
 ## Quick Start
@@ -190,6 +200,10 @@ The **Smart Response System** learns from your agent interactions to provide pro
 
 3. **Automatic Compliance Tracking**: The system quietly tracks how well agents follow the task workflow and adjusts its guidance accordingly—no manual intervention needed.
 
+4. **Parallel Execution Optimization**: Automatically detects opportunities to run multiple agents in parallel and generates the specific Task() commands for you. The parallel execution feature analyzes task dependencies and suggests concurrent execution patterns to maximize throughput.
+
+5. **Escalating Urgency Levels**: Provides gentle reminders for compliant agents, firm warnings for those falling behind, and critical alerts when immediate action is required.
+
 **Example: Before and After**
 
 **Before Smart Response System:**
@@ -215,6 +229,26 @@ The **Smart Response System** learns from your agent interactions to provide pro
   }
 }
 ```
+
+**Parallel Execution Example:**
+
+When the system detects multiple independent tasks, it automatically suggests parallel execution patterns. This parallel execution capability dramatically reduces overall completion time by utilizing all available agents concurrently.
+
+```json
+{
+  "tasks": [
+    { "id": "task-1", "targetAgent": "senior-frontend-engineer" },
+    { "id": "task-2", "targetAgent": "senior-backend-engineer" },
+    { "id": "task-3", "targetAgent": "senior-dba-advisor" }
+  ],
+  "guidance": {
+    "contextual_reminder": "🚀 PARALLEL EXECUTION OPPORTUNITY: Multiple independent tasks detected!",
+    "actionable_command": "# Execute these agents in parallel:\nTask(subagent_type=\"senior-frontend-engineer\", prompt=\"Handle task: task-1\")\nTask(subagent_type=\"senior-backend-engineer\", prompt=\"Handle task: task-2\")\nTask(subagent_type=\"senior-dba-advisor\", prompt=\"Handle task: task-3\")"
+  }
+}
+```
+
+The parallel execution optimizer considers task dependencies, agent availability, and workload distribution to generate optimal execution strategies.
 
 The system is **completely automatic**—it's enabled by default and works silently in the background. You'll only notice it when it helps you avoid mistakes or complete tasks more efficiently.
 

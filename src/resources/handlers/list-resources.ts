@@ -4,12 +4,18 @@
  * Following MCP 2025-06-18 specification
  */
 
-import type { 
-  ListResourcesRequest,
+import debug from 'debug';
+import type {
+ListResourcesRequest,
   ListResourcesResult 
 } from '@modelcontextprotocol/sdk/types.js';
 import { ResourceManager } from '../ResourceManager.js';
 import { AgentCommError } from '../../types.js';
+
+const log = debug('agent-comm:resources:handlers:listresources');
+
+// Initialize list resources handler
+log('List resources handler ready');
 
 /**
  * Create handler for resources/list requests

@@ -10,11 +10,15 @@ import { stat } from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { validateRequiredString } from '../utils/validation.js';
 import { TrackTaskProgressArgs, TrackTaskProgressResult, ServerConfig } from '../types.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:tracktaskprogress');
 export async function trackTaskProgress(
   config: ServerConfig,
   args: TrackTaskProgressArgs
 ): Promise<TrackTaskProgressResult> {
+  log('trackTaskProgress called with args: %O', { config, args });
   // Validate parameters
   validateRequiredString(args.agent, 'agent');
   validateRequiredString(args.taskId, 'taskId');

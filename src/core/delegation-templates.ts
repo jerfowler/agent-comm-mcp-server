@@ -7,6 +7,13 @@
  * Generate a complete Task tool invocation command for delegation
  * This addresses Issue #12 by providing the exact command agents need
  */
+import debug from 'debug';
+
+const log = debug('agent-comm:core:delegationtemplates');
+
+// Initialize delegation templates module
+log('Delegation templates module initialized');
+
 export function generateTaskToolInvocation(
   targetAgent: string,
   taskId: string,

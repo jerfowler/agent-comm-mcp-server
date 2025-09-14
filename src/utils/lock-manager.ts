@@ -6,7 +6,10 @@
 import * as fs from './fs-extra-safe.js';
 import * as path from 'path';
 import { AgentCommError } from '../types.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:utils:lockmanager');
 export interface LockInfo {
   tool: string;
   pid: number;
@@ -50,6 +53,7 @@ export class LockManager {
    * Attempt to acquire a lock for the given task directory
    */
   async acquireLock(taskDir: string, toolName: string): Promise<LockResult> {
+    log('acquireLock called');
     if (!taskDir || taskDir.trim() === '') {
       throw new AgentCommError('taskDir is required', 'INVALID_INPUT');
     }

@@ -5,6 +5,13 @@
 
 import { ServerConfig } from '../types.js';
 import { PACKAGE_INFO } from '../generated/version.js';
+import debug from 'debug';
+
+
+const log = debug('agent-comm:tools:getserverinfo');
+
+// Initialize server info tool
+log('Server info tool ready');
 
 /**
  * Server start time for uptime calculation

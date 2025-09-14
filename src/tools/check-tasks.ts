@@ -7,7 +7,10 @@ import { ServerConfig } from '../types.js';
 import { TaskContextManager } from '../core/TaskContextManager.js';
 import { validateRequiredString } from '../utils/validation.js';
 import { validateAgentName } from '../utils/file-system.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:checktasks');
 export interface CheckTasksResponse {
   tasks: {
     taskId: string;
@@ -33,6 +36,7 @@ export async function checkTasks(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<CheckTasksResponse> {
+  log('checkTasks called with args: %O', { config, args });
   const agent = validateRequiredString(args['agent'], 'agent');
   validateAgentName(agent);
   

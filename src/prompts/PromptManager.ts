@@ -5,6 +5,7 @@
 
 import { ServerConfig } from '../types.js';
 import { DynamicPromptEngine } from './DynamicPromptEngine.js';
+import debug from 'debug';
 import type {
   PromptMetadata,
   PromptListResponse,
@@ -12,6 +13,8 @@ import type {
   PromptName,
   PromptDefinition
 } from './types.js';
+
+const log = debug('agent-comm:prompts:promptmanager');
 
 /**
  * Core prompt manager for MCP server
@@ -119,6 +122,7 @@ export class PromptManager {
    * List all available prompts
    */
   async listPrompts(): Promise<PromptListResponse> {
+    log('listPrompts called');
     const prompts: PromptMetadata[] = Array.from(this.prompts.values()).map(prompt => ({
       name: prompt.name,
       description: prompt.description,
