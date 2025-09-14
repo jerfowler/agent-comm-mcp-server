@@ -71,7 +71,7 @@ jobs:
           fi
 
       - name: Create validation issue if needed
-        if: steps.validation.outputs.VALIDATION_ISSUES == 'true'
+        if: steps.validation.outputs.VALIDATION_ISSUES == 'true' && github.event.inputs.force_sync != 'true'
         run: |
           # Check if validation issue already exists
           EXISTING_ISSUE=$(gh issue list --label "validation-failure" --state open --json number --jq '.[0].number' || echo "")
