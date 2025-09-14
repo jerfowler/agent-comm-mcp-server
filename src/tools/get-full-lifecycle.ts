@@ -9,11 +9,15 @@ import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import { validateRequiredString } from '../utils/validation.js';
 import { GetFullLifecycleArgs, GetFullLifecycleResult, ServerConfig, ProgressMarkers } from '../types.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:getfulllifecycle');
 export async function getFullLifecycle(
   config: ServerConfig,
   args: GetFullLifecycleArgs
 ): Promise<GetFullLifecycleResult> {
+  log('getFullLifecycle called with args: %O', { config, args });
   // Validate parameters
   validateRequiredString(args.agent, 'agent');
   validateRequiredString(args.taskId, 'taskId');

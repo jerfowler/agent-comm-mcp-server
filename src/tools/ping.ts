@@ -4,6 +4,13 @@
  */
 
 import { ServerConfig } from '../types.js';
+import debug from 'debug';
+
+
+const log = debug('agent-comm:tools:ping');
+
+// Initialize ping health check
+log('Ping tool initialized');
 
 /**
  * Ping tool for health checks

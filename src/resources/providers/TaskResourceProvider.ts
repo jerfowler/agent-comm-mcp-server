@@ -4,12 +4,15 @@
  * Following MCP 2025-06-18 specification
  */
 
+import debug from 'debug';
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
-import { 
-  ResourceProvider, 
-  ResourceContent, 
-  ResourceMetadata 
+import {
+  ResourceProvider,
+  ResourceContent,
+  ResourceMetadata
 } from './ResourceProvider.js';
+
+const log = debug('agent-comm:resources:providers:taskresourceprovider');
 import { TaskContextManager } from '../../core/TaskContextManager.js';
 import { EventLogger } from '../../logging/EventLogger.js';
 import { AgentCommError } from '../../types.js';
@@ -44,6 +47,7 @@ export class TaskResourceProvider implements ResourceProvider {
     limit?: number;
     filter?: string;
   }): Promise<Resource[]> {
+    log('listResources called');
     try {
       const resources: Resource[] = [];
       // Get all agents from comm directory

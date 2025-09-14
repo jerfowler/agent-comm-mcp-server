@@ -10,7 +10,10 @@ import { LockManager } from '../utils/lock-manager.js';
 import { pathExists, readFile, writeFile } from '../utils/file-system.js';
 import { readdir, stat } from '../utils/fs-extra-safe.js';
 import * as path from 'path';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:synctodocheckboxes');
 interface TodoUpdate {
   title: string;
   status: 'pending' | 'in_progress' | 'completed';
@@ -239,6 +242,7 @@ export async function syncTodoCheckboxes(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<SyncTodoCheckboxesResult> {
+  log('syncTodoCheckboxes called with args: %O', { config, args });
   const agent = validateRequiredString(args['agent'], 'agent');
   const todoUpdatesArray = args['todoUpdates'];
   

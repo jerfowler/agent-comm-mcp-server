@@ -3,6 +3,13 @@
  * Tracks which agent is making requests via connection context
  */
 
+import debug from 'debug';
+
+const log = debug('agent-comm:core:connectionmanager');
+
+// Initialize connection manager
+log('ConnectionManager module loaded');
+
 export interface Connection {
   id: string;
   agent: string;

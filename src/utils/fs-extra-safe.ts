@@ -11,6 +11,9 @@
 /* eslint-disable no-restricted-syntax */
 
 import { Stats, MakeDirectoryOptions, Mode } from 'fs';
+import debug from 'debug';
+
+const log = debug('agent-comm:utils:fsextrasafe');
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -81,6 +84,7 @@ class FsExtraImporter {
    * Try multiple import strategies to get fs-extra
    */
   async tryImportFsExtra(): Promise<FsExtraModule | null> {
+    log('tryImportFsExtra called');
     // Strategy 1: Try ES module import (current approach)
     try {
       const fsExtra = await import('fs-extra');

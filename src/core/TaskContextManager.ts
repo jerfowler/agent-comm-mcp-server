@@ -9,7 +9,10 @@ import { ConnectionManager, Connection } from './ConnectionManager.js';
 import { EventLogger } from '../logging/EventLogger.js';
 import { ProgressMarkers, AgentCommError, AgentOwnershipError, TaskState, MultiTaskState } from '../types.js';
 import { LockManager } from '../utils/lock-manager.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:core:taskcontextmanager');
 export interface TaskContext {
   title: string;
   objective: string;
@@ -196,6 +199,7 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
    * @throws {AgentOwnershipError} if agent doesn't own the task
    */
   async validateAgentOwnership(taskId: string, agent: string): Promise<OwnershipValidationResult> {
+    log('validateAgentOwnership called');
     const startTime = Date.now();
     
     try {

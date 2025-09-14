@@ -434,16 +434,14 @@ describe('EventLogger', () => {
       const malformedContent = `{"valid": "entry", "operation": "test", "agent": "test", "timestamp": "${new Date().toISOString()}", "success": true}\n{"invalid json\n{"another": "valid", "operation": "test2", "agent": "test2", "timestamp": "${new Date().toISOString()}", "success": true}`;
       await fs.writeFile(logFilePath, malformedContent);
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-      // Test coverage for line 94: console.error for malformed entries
+      // The implementation uses debug logging, not console.error
+      // So we just test that malformed entries are skipped
       const entries = await eventLogger.getLogEntries();
-      
+
       // Should get only the valid entries, malformed ones are skipped
       expect(entries).toHaveLength(2);
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to parse log entry:', expect.any(Error));
-      
-      consoleSpy.mockRestore();
+      expect(entries[0].operation).toBe('test');
+      expect(entries[1].operation).toBe('test2');
     });
 
     it('should return zero statistics for empty log', async () => {

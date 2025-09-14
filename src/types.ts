@@ -2,6 +2,13 @@
  * Core types and interfaces for the Agent Communication MCP Server
  */
 
+import debug from 'debug';
+
+const log = debug('agent-comm:types');
+
+// Initialize core types
+log('Core type definitions loaded');
+
 export interface TaskMetadata {
   agent: string;
   created: string;
@@ -88,7 +95,8 @@ export interface ServerConfig extends BaseServerConfig {
   // Core Components - injected at runtime
   connectionManager: import('./core/ConnectionManager.js').ConnectionManager;
   eventLogger: import('./logging/EventLogger.js').EventLogger;
-  
+  errorLogger?: import('./logging/ErrorLogger.js').ErrorLogger;
+
   // Smart Response System Components (Issue #12)
   responseEnhancer?: import('./core/ResponseEnhancer.js').ResponseEnhancer;
   complianceTracker?: import('./core/ComplianceTracker.js').ComplianceTracker;
@@ -298,16 +306,37 @@ export interface EnhancementContext {
   promptManager?: import('./prompts/PromptManager.js').PromptManager;
   complianceTracker?: import('./core/ComplianceTracker.js').ComplianceTracker;
   delegationTracker?: import('./core/DelegationTracker.js').DelegationTracker;
+  accountabilityTracker?: import('./core/AccountabilityTracker.js').AccountabilityTracker;
 }
 
 export interface EnhancedResponse {
   [key: string]: unknown; // Original response fields
+  success?: boolean;
+  error_code?: string;
+  error_severity?: string;
+  exit_code?: number;
+  red_flags?: string[];
+  blocked?: boolean;
+  trust_score?: number;
+  verification_commands?: string[];
+  verification_required?: boolean;
+  trust_warning?: string;
   guidance?: {
     next_steps: string;
     contextual_reminder: string;
     compliance_level?: number;
     actionable_command?: string;
     delegation_template?: string;
+    urgency_level?: 'gentle' | 'firm' | 'critical';
+    critical_warning?: string;
+    verification_protocol?: {
+      required: boolean;
+      commands: string[];
+      trust_level: string;
+    };
+    error_handling?: string;
+    requirement?: string;
+    trust_level?: string;
   };
 }
 
@@ -343,6 +372,26 @@ export interface DelegationRecord {
   taskToolInvoked: boolean;
   subagentStarted: boolean;
   completionStatus: 'pending' | 'complete' | 'abandoned';
+}
+
+export interface RedFlag {
+  severity: 'CRITICAL' | 'BLOCKER';
+  message: string;
+  evidence: string;
+  recommendation: string;
+}
+
+export interface ErrorResponse {
+  success: false;
+  error_code: string;
+  error_severity: string;
+  exit_code: number;
+  red_flags: string[];
+  blocked?: boolean;
+  trust_score?: number;
+  verification_commands?: string[];
+  verification_required?: boolean;
+  trust_warning?: string;
 }
 
 export interface DelegationStats {

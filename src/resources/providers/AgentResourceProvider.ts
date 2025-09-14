@@ -4,12 +4,15 @@
  * Following MCP 2025-06-18 specification
  */
 
+import debug from 'debug';
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
-import { 
-  ResourceProvider, 
-  ResourceContent, 
-  ResourceMetadata 
+import {
+  ResourceProvider,
+  ResourceContent,
+  ResourceMetadata
 } from './ResourceProvider.js';
+
+const log = debug('agent-comm:resources:providers:agentresourceprovider');
 import { ConnectionManager } from '../../core/ConnectionManager.js';
 import { TaskContextManager } from '../../core/TaskContextManager.js';
 import { EventLogger } from '../../logging/EventLogger.js';
@@ -43,6 +46,7 @@ export class AgentResourceProvider implements ResourceProvider {
    * List all agent status resources
    */
   async listResources(): Promise<Resource[]> {
+    log('listResources called');
     try {
       const resources: Resource[] = [];
       // Create a full ServerConfig by extending the provider's config

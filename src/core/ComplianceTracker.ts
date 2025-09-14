@@ -3,6 +3,7 @@
  * Part of the Smart Response System for improving agent task completion
  */
 
+import debug from 'debug';
 import type {
   AgentComplianceRecord,
   ComplianceActivity,
@@ -11,6 +12,7 @@ import type {
 import * as fs from '../utils/fs-extra-safe.js';
 import * as path from 'path';
 
+const log = debug('agent-comm:core:compliancetracker');
 /**
  * ComplianceTracker manages agent compliance scoring and escalation levels
  */
@@ -26,6 +28,7 @@ export class ComplianceTracker {
    * Initialize the compliance tracker
    */
   async initialize(): Promise<void> {
+    log('initialize called');
     await fs.ensureDir(this.complianceDir);
   }
 

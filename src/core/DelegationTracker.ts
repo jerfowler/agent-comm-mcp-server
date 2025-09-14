@@ -3,6 +3,7 @@
  * Detects incomplete delegations and provides actionable guidance
  */
 
+import debug from 'debug';
 import type {
   DelegationRecord,
   DelegationStats,
@@ -11,6 +12,7 @@ import type {
 import * as fs from '../utils/fs-extra-safe.js';
 import * as path from 'path';
 
+const log = debug('agent-comm:core:delegationtracker');
 /**
  * DelegationTracker manages delegation lifecycle tracking and detection
  */
@@ -26,6 +28,7 @@ export class DelegationTracker {
    * Initialize the delegation tracker
    */
   async initialize(): Promise<void> {
+    log('initialize called');
     await fs.ensureDir(this.delegationsDir);
     await this.loadDelegations();
   }

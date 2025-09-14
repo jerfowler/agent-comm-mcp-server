@@ -9,6 +9,13 @@
  */
 
 import { AgentCommError } from '../types.js';
+import debug from 'debug';
+
+
+const log = debug('agent-comm:errorcodes');
+
+// Initialize error code module
+log('Error code compliance module initialized');
 
 /**
  * MCP 2025-06-18 Standard Error Codes

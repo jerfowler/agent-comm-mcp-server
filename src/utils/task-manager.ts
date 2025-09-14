@@ -6,11 +6,15 @@ import * as path from 'path';
 import { Task, Agent, ServerConfig, ArchiveResult, RestoreResult, ArchiveOptions } from '../types.js';
 import * as fs from './file-system.js';
 import { validateAgentName, validateTaskName } from './file-system.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:utils:taskmanager');
 /**
  * Get all tasks for an agent
  */
 export async function getAgentTasks(config: ServerConfig, agentName: string): Promise<Task[]> {
+  log('getAgentTasks called with args: %O', { config, agentName });
   validateAgentName(agentName);
   
   const agentDir = path.join(config.commDir, agentName);

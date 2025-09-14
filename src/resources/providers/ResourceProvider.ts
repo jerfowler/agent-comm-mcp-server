@@ -5,6 +5,13 @@
  */
 
 import type { Resource } from '@modelcontextprotocol/sdk/types.js';
+import debug from 'debug';
+
+
+const log = debug('agent-comm:resourceprovider');
+
+// Initialize resource provider
+log('Resource provider base initialized');
 
 /**
  * Resource content returned by providers

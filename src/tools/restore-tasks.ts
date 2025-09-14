@@ -5,7 +5,10 @@
 import { ServerConfig, RestoreResult } from '../types.js';
 import { restoreTasks } from '../utils/task-manager.js';
 import { validateRequiredString, validateOptionalString } from '../utils/validation.js';
+import debug from 'debug';
 
+
+const log = debug('agent-comm:tools:restoretasks');
 /**
  * Restore tasks from archive
  */
@@ -13,6 +16,7 @@ export async function restoreTasksTool(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<RestoreResult> {
+  log('restoreTasksTool called with args: %O', { config, args });
   const timestamp = validateRequiredString(args['timestamp'], 'timestamp');
   
   // Validate timestamp format (basic check) before processing other params
