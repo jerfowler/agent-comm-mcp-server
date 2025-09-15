@@ -664,6 +664,24 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
                 agent: {
                   type: 'string',
                   description: 'Agent name submitting the plan'
+                },
+                agentContext: {
+                  type: 'object',
+                  description: 'Optional: Agent context data including identity, capabilities, and working context',
+                  properties: {
+                    identity: { type: 'object' },
+                    currentCapabilities: { type: 'object' },
+                    workingContext: { type: 'object' }
+                  }
+                },
+                contextEstimate: {
+                  type: 'object',
+                  description: 'Optional: Context estimate for the plan',
+                  properties: {
+                    estimatedTokensRequired: { type: 'number' },
+                    confidenceLevel: { type: 'number' },
+                    criticalSections: { type: 'array', items: { type: 'string' } }
+                  }
                 }
               },
               required: ['content', 'agent']
@@ -713,6 +731,24 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
                 agent: {
                   type: 'string',
                   description: 'Agent name reporting progress'
+                },
+                contextStatus: {
+                  type: 'object',
+                  description: 'Optional: Current context usage status',
+                  properties: {
+                    currentUsage: { type: 'number' },
+                    trend: { type: 'string', enum: ['INCREASING', 'DECREASING', 'STABLE'] },
+                    estimatedRemaining: { type: 'number' }
+                  }
+                },
+                capabilityChanges: {
+                  type: 'object',
+                  description: 'Optional: Capability changes discovered during execution',
+                  properties: {
+                    discoveredLimitations: { type: 'array', items: { type: 'string' } },
+                    toolEffectiveness: { type: 'object' },
+                    adaptations: { type: 'array', items: { type: 'string' } }
+                  }
                 }
               },
               required: ['updates', 'agent']

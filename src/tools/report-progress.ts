@@ -1,11 +1,13 @@
 /**
  * Report progress tool - Progress updates without file exposure
  * Updates progress markers without exposing file operations
+ * Enhanced with context status tracking (Issue #51)
  */
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, ProgressUpdate, ProgressReportResult } from '../core/TaskContextManager.js';
 import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
+import type { ContextStatus, CapabilityChanges } from '../types/context-types.js';
 import debug from 'debug';
 
 
@@ -24,6 +26,10 @@ export async function reportProgress(
   const agent = validateRequiredString(args['agent'], 'agent');
   const updatesArray = args['updates'];
   const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
+
+  // Optional context tracking (Issue #51)
+  const contextStatus = args['contextStatus'] as ContextStatus | undefined;
+  const capabilityChanges = args['capabilityChanges'] as CapabilityChanges | undefined;
   
   if (!Array.isArray(updatesArray)) {
     throw new Error('Progress updates must be an array');
@@ -83,6 +89,27 @@ export async function reportProgress(
     connectionManager: config.connectionManager,
     eventLogger: config.eventLogger
   });
+
+  // Log context status if provided (Issue #51)
+  if (contextStatus) {
+    log('Context status reported:', {
+      usage: contextStatus.currentUsage,
+      trend: contextStatus.trend,
+      remaining: contextStatus.estimatedRemaining
+    });
+
+    // Could trigger alerts if usage is high
+    if (contextStatus.currentUsage > 85) {
+      log('WARNING: High context usage detected:', contextStatus.currentUsage);
+    }
+  }
+
+  if (capabilityChanges) {
+    log('Capability changes reported:', {
+      limitations: capabilityChanges.discoveredLimitations?.length ?? 0,
+      adaptations: capabilityChanges.adaptations?.length ?? 0
+    });
+  }
 
   return await contextManager.reportProgress(updates, connection);
 }

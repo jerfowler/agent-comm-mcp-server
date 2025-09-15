@@ -1,12 +1,14 @@
 /**
  * Submit plan tool - Plan submission without file exposure
  * Accepts plan content and handles file creation internally
+ * Enhanced with optional context reporting (Issue #51)
  */
 
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, PlanSubmissionResult } from '../core/TaskContextManager.js';
 import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
+import type { AgentContextData, ContextEstimate } from '../types/context-types.js';
 import debug from 'debug';
 
 
@@ -74,10 +76,14 @@ export async function submitPlan(
   log('submitPlan called with args: %O', { config, args });
   // Validate configuration has required components
   validateRequiredConfig(config);
-  
+
   const content = validateRequiredString(args['content'], 'content');
   const agent = validateRequiredString(args['agent'], 'agent');
   const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
+
+  // Optional context parameters (Issue #51)
+  const agentContext = args['agentContext'] as AgentContextData | undefined;
+  const contextEstimate = args['contextEstimate'] as ContextEstimate | undefined;
   
   // Validate plan format before submission
   const validation = validatePlanFormat(content);
@@ -121,6 +127,24 @@ export async function submitPlan(
     connectionManager: config.connectionManager,
     eventLogger: config.eventLogger
   });
+
+  // Log context information if provided (Issue #51)
+  if (agentContext) {
+    log('Agent context provided:', {
+      identity: agentContext.identity.agentName,
+      specialization: agentContext.identity.specialization,
+      tools: agentContext.currentCapabilities.availableTools.length,
+      priorities: agentContext.workingContext.currentPriorities
+    });
+  }
+
+  if (contextEstimate) {
+    log('Context estimate provided:', {
+      tokensRequired: contextEstimate.estimatedTokensRequired,
+      confidence: contextEstimate.confidenceLevel,
+      criticalSections: contextEstimate.criticalSections.length
+    });
+  }
 
   return await contextManager.submitPlan(content, connection);
 }
