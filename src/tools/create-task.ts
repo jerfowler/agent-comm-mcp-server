@@ -6,7 +6,7 @@
 
 import { ServerConfig, CreateTaskResponse, EnhancementContext } from '../types.js';
 import { initializeTask } from '../utils/task-manager.js';
-import { validateRequiredString, validateOptionalString, validateContent } from '../utils/validation.js';
+import { validateRequiredString, validateOptionalString, validateContent, validateAgentWithAvailability } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
 import { ErrorLogEntry } from '../logging/ErrorLogger.js';
 import * as fs from '../utils/file-system.js';
@@ -311,7 +311,7 @@ export async function createTask(
   let rawTaskName: string;
 
   try {
-    agent = validateRequiredString(options.agent, 'agent');
+    agent = await validateAgentWithAvailability(options.agent);
   } catch (error) {
     // Log validation error before re-throwing
     if (config.errorLogger) {
