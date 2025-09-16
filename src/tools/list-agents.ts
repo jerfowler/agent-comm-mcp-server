@@ -15,13 +15,42 @@ export async function listAgents(
   config: ServerConfig
 ): Promise<ListAgentsResponse> {
   log('listAgents called with config');
-  const agents = await getAllAgents(config);
-  
-  const totalTasks = agents.reduce((sum, agent) => sum + agent.taskCount, 0);
-  
-  return {
-    agents,
-    totalAgents: agents.length,
-    totalTasks
-  };
+
+  try {
+    const agents = await getAllAgents(config);
+
+    const totalTasks = agents.reduce((sum, agent) => sum + agent.taskCount, 0);
+
+    return {
+      agents,
+      totalAgents: agents.length,
+      totalTasks
+    };
+  } catch (error) {
+    // Log error if ErrorLogger is configured
+    if (config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'runtime',
+        operation: 'list_agents',
+        agent: 'system',
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to list agents',
+          name: error instanceof Error ? error.name : 'Error',
+          code: error instanceof Error && 'code' in error ? String((error as Error & { code?: unknown }).code) : undefined
+        },
+        context: {
+          tool: 'list_agents',
+          parameters: {
+            operation: 'scan_directories',
+            path: config.commDir
+          }
+        },
+        severity: 'low'
+      });
+    }
+
+    // Re-throw the error to maintain existing behavior
+    throw error;
+  }
 }
