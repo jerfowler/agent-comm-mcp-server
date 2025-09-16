@@ -8,6 +8,7 @@ import { ServerConfig } from '../types.js';
 import { TaskContextManager, PlanSubmissionResult } from '../core/TaskContextManager.js';
 import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
+import { ErrorLogEntry } from '../logging/ErrorLogger.js';
 import type { AgentContextData, ContextEstimate } from '../types/context-types.js';
 import debug from 'debug';
 
@@ -105,7 +106,38 @@ export async function submitPlan(
       '  - Expected: List of all test files and configurations',
       '  - Error: If no tests found, document as critical issue'
     ].join('\n');
-    
+
+    // Log validation error before throwing
+    if (config.errorLogger) {
+      // Extract any status markers if they exist
+      const statusMarkerRegex = /\[(PENDING|COMPLETE|IN_PROGRESS|TODO|DONE|BLOCKED)\]/gi;
+      const statusMarkers = content.match(statusMarkerRegex);
+
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'validation',
+        operation: 'submit_plan',
+        agent,
+        ...(taskId && { taskId }),
+        error: {
+          message: errorMessage,
+          name: 'PlanFormatError'
+        },
+        context: {
+          tool: 'submit_plan',
+          ...(statusMarkers && { invalidMarkers: statusMarkers }),
+          parameters: {
+            agent,
+            contentLength: content.length,
+            checkboxCount: validation.checkboxCount,
+            errors: validation.errors
+          }
+        },
+        severity: 'medium'
+      };
+      await config.errorLogger.logError(errorEntry);
+    }
+
     throw new AgentCommError(errorMessage, 'PLAN_FORMAT_INVALID');
   }
   

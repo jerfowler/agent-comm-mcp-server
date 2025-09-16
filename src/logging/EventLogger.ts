@@ -414,12 +414,12 @@ export class EventLogger extends EventEmitter {
   async waitForOperations(count: number, timeoutMs = 5000): Promise<void> {
     return new Promise((resolve, reject) => {
       let operationCount = 0;
-      
+
       const timeout = this.timerDependency.setTimeout(() => {
         this.off('operation:logged', onOperationLogged);
         reject(new Error(`Timeout waiting for ${count} operations after ${timeoutMs}ms`));
       }, timeoutMs);
-      
+
       const onOperationLogged = () => {
         operationCount++;
         if (operationCount >= count) {
@@ -428,9 +428,49 @@ export class EventLogger extends EventEmitter {
           resolve();
         }
       };
-      
+
       this.on('operation:logged', onOperationLogged);
     });
+  }
+
+  /**
+   * Log an error entry - delegates to ErrorLogger if available
+   * This method provides backwards compatibility for error logging
+   */
+  async error(
+    message: string,
+    context?: {
+      operation?: string;
+      agent?: string;
+      taskId?: string;
+      source?: 'mcp_response' | 'tool_execution' | 'runtime' | 'validation' | 'network';
+      severity?: 'low' | 'medium' | 'high' | 'critical';
+      code?: string | number;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<void> {
+    // Create a LogEntry for the base EventLogger
+    const logEntry: LogEntry = {
+      timestamp: new Date(),
+      operation: context?.operation ?? 'error',
+      agent: context?.agent ?? 'unknown',
+      success: false,
+      duration: 0,
+      error: {
+        message,
+        name: 'Error',
+        ...(context?.code !== undefined ? { code: String(context.code) } : {})
+      },
+      ...(context?.taskId !== undefined ? { taskId: context.taskId } : {}),
+      ...(context?.metadata !== undefined ? { metadata: context.metadata } : {})
+    };
+
+    // Log to the standard event log
+    await this.logOperation(logEntry);
+
+    // Note: If using ErrorLogger subclass, it will override this method
+    // to also log to error.log with enhanced error tracking
+    log('Error logged: %s - %s', context?.operation ?? 'unknown', message);
   }
 
   // Private methods

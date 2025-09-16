@@ -16,14 +16,22 @@ jest.mock('../../../src/utils/validation.js');
 const mockTaskManager = taskManager as jest.Mocked<typeof taskManager>;
 const mockValidation = validation as jest.Mocked<typeof validation>;
 
+// Mock ErrorLogger
+const mockErrorLogger = {
+  logError: jest.fn().mockImplementation(() => Promise.resolve())
+};
+
 describe('Restore Tasks Tool', () => {
   let mockConfig: ServerConfig;
   let mockRestoreResult: RestoreResult;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    mockConfig = testUtils.createMockConfig();
+
+    mockConfig = {
+      ...testUtils.createMockConfig(),
+      errorLogger: mockErrorLogger as any
+    };
     mockRestoreResult = {
       restored: {
         completed: 3,
@@ -196,15 +204,33 @@ describe('Restore Tasks Tool', () => {
   });
 
   describe('timestamp validation failures', () => {
-    it('should throw error for invalid timestamp format - wrong separators', async () => {
+    it('should throw error and log for invalid timestamp format - wrong separators', async () => {
       const args = {
         timestamp: '2025/01/01 12:00:00'
       };
-      
+
       await expect(restoreTasksTool(mockConfig, args))
         .rejects.toThrow('Invalid timestamp format. Expected: YYYY-MM-DDTHH-mm-ss');
-      
+
       expect(mockTaskManager.restoreTasks).not.toHaveBeenCalled();
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'validation',
+          operation: 'restore_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'Invalid timestamp format. Expected: YYYY-MM-DDTHH-mm-ss'
+          }),
+          context: expect.objectContaining({
+            tool: 'restore-tasks',
+            parameters: expect.objectContaining({
+              timestamp: '2025/01/01 12:00:00'
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
     it('should throw error for invalid timestamp format - missing components', async () => {
@@ -403,28 +429,66 @@ describe('Restore Tasks Tool', () => {
   });
 
   describe('task manager error propagation', () => {
-    it('should propagate file system errors from task manager', async () => {
+    it('should propagate and log file system errors from task manager', async () => {
       const args = {
         timestamp: '2025-01-01T12-00-00'
       };
-      
+
       const fsError = new Error('ENOENT: no such file or directory');
       mockTaskManager.restoreTasks.mockRejectedValue(fsError);
-      
+
       await expect(restoreTasksTool(mockConfig, args))
         .rejects.toThrow('ENOENT: no such file or directory');
+
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'tool_execution',
+          operation: 'restore_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'ENOENT: no such file or directory'
+          }),
+          context: expect.objectContaining({
+            tool: 'restore-tasks',
+            parameters: expect.objectContaining({
+              timestamp: '2025-01-01T12-00-00'
+            })
+          }),
+          severity: 'medium'
+        })
+      );
     });
 
-    it('should propagate permission errors from task manager', async () => {
+    it('should propagate and log permission errors from task manager', async () => {
       const args = {
         timestamp: '2025-01-01T12-00-00'
       };
-      
+
       const permissionError = new Error('EACCES: permission denied');
       mockTaskManager.restoreTasks.mockRejectedValue(permissionError);
-      
+
       await expect(restoreTasksTool(mockConfig, args))
         .rejects.toThrow('EACCES: permission denied');
+
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'tool_execution',
+          operation: 'restore_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'EACCES: permission denied'
+          }),
+          context: expect.objectContaining({
+            tool: 'restore-tasks',
+            parameters: expect.objectContaining({
+              timestamp: '2025-01-01T12-00-00'
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
     it('should propagate custom InvalidTaskError from task manager', async () => {

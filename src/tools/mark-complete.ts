@@ -49,6 +49,63 @@ function extractUncheckedItems(content: string): string[] {
 }
 
 /**
+ * Validate checkbox format in plan content and detect invalid formats
+ */
+function validateCheckboxFormats(content: string, config: ServerConfig, agent: string, taskId?: string): void {
+  const lines = content.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Skip empty lines and headers
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    // Only validate lines that contain brackets and appear to be checkbox attempts
+    // This includes malformed brackets like [INVALID] but excludes general list items
+    const hasCheckboxBrackets = line.includes('[') && line.includes(']');
+    const isListItem = line.startsWith('-') && hasCheckboxBrackets;
+    if (hasCheckboxBrackets && (isListItem || !line.startsWith('-'))) {
+      // This looks like a checkbox attempt, validate format
+      const validCheckbox = line.match(/^- \[[x ]\] \*\*[^:]+\*\*:/);
+
+      if (!validCheckbox) {
+        // Log parsing error for invalid checkbox format
+        if (config.errorLogger) {
+          config.errorLogger.logError({
+            timestamp: new Date(),
+            source: 'validation',
+            operation: 'mark_complete',
+            agent,
+            taskId: taskId ?? 'unknown',
+            error: {
+              message: `Invalid checkbox format on line ${i + 1}: ${line}`,
+              name: 'ParseError',
+              code: undefined
+            },
+            context: {
+              tool: 'mark_complete',
+              parameters: {
+                parseError: 'checkbox_format_invalid',
+                planContentLength: content.length,
+                invalidLine: line,
+                lineNumber: i + 1
+              }
+            },
+            severity: 'critical'
+          }).catch(() => {
+            // Ignore logging errors to prevent blocking execution
+          });
+        }
+
+        throw new Error(`Invalid checkbox format on line ${i + 1}: ${line}`);
+      }
+    }
+  }
+}
+
+/**
  * Extract checked checkbox items from plan content  
  */
 function extractCheckedItems(content: string): string[] {
@@ -64,14 +121,19 @@ function extractCheckedItems(content: string): string[] {
  * Validate task completion against plan checkboxes
  */
 async function validateCompletion(
-  config: ServerConfig, 
+  config: ServerConfig,
   agent: string,
   taskId?: string
 ): Promise<CompletionValidation> {
+  let planContent = '';  // Declare in function scope for error logging
+
   try {
+    log('validateCompletion called for agent: %s, taskId: %s', agent, taskId);
     // Find the task directory - either specified or active
     const agentDir = path.join(config.commDir, agent);
+    log('Checking agent directory: %s', agentDir);
     if (!await fs.pathExists(agentDir)) {
+      log('Agent directory does not exist, returning default validation');
       return {
         totalItems: 0,
         checkedItems: 0,
@@ -80,33 +142,40 @@ async function validateCompletion(
         hasIncompleteItems: false
       };
     }
-    
+
     let activeTaskDir: string | null = null;
-    
+
     if (taskId) {
+      log('Using specified taskId: %s', taskId);
       // Use specified taskId
       const taskPath = path.join(agentDir, taskId);
       if (await fs.pathExists(taskPath)) {
         activeTaskDir = taskId;
       }
     } else {
+      log('Finding active task (no taskId specified)');
       // Find active task (backward compatibility)
       const taskDirs = await fs.listDirectory(agentDir);
+      log('Found task directories: %O', taskDirs);
       activeTaskDir = await (async () => {
         for (const dir of taskDirs) {
           const donePath = path.join(agentDir, dir, 'DONE.md');
           const errorPath = path.join(agentDir, dir, 'ERROR.md');
           const doneExists = await fs.pathExists(donePath);
           const errorExists = await fs.pathExists(errorPath);
+          log('Checking task %s: done=%s, error=%s', dir, doneExists, errorExists);
           if (!doneExists && !errorExists) {
+            log('Found active task: %s', dir);
             return dir;
           }
         }
+        log('No active task found');
         return null;
       })();
     }
-    
+
     if (!activeTaskDir) {
+      log('No active task directory found, returning default validation');
       // No active task found
       return {
         totalItems: 0,
@@ -116,11 +185,15 @@ async function validateCompletion(
         hasIncompleteItems: false
       };
     }
+
+    log('Using active task directory: %s', activeTaskDir);
     
     // Read PLAN.md file
     const planPath = path.join(agentDir, activeTaskDir, 'PLAN.md');
-    
+    log('Checking PLAN.md at path: %s', planPath);
+
     if (!await fs.pathExists(planPath)) {
+      log('PLAN.md does not exist, returning default validation');
       // No plan file, assume validation passes
       return {
         totalItems: 0,
@@ -130,12 +203,19 @@ async function validateCompletion(
         hasIncompleteItems: false
       };
     }
-    
-    const planContent = await fs.readFile(planPath);
+
+    log('PLAN.md exists, reading content');
+    planContent = await fs.readFile(planPath);
+    log('PLAN.md content: %s', planContent);
+
+    // Validate checkbox formats and log errors if malformed
+    log('Starting checkbox format validation');
+    validateCheckboxFormats(planContent, config, agent, taskId ?? activeTaskDir);
+
     const uncheckedItems = extractUncheckedItems(planContent);
     const checkedItems = extractCheckedItems(planContent);
     const totalItems = uncheckedItems.length + checkedItems.length;
-    
+
     return {
       totalItems,
       checkedItems: checkedItems.length,
@@ -143,28 +223,53 @@ async function validateCompletion(
       completionPercentage: totalItems > 0 ? (checkedItems.length / totalItems) * 100 : 100,
       hasIncompleteItems: uncheckedItems.length > 0
     };
-    
+
   } catch (error) {
-    // If validation fails, assume no plan validation needed
-    return {
-      totalItems: 0,
-      checkedItems: 0,
-      uncheckedItems: [],
-      completionPercentage: 100,
-      hasIncompleteItems: false
-    };
+    // If validation fails, log error and re-throw
+    if (config.errorLogger) {
+      // Check if this is a checkbox parsing error specifically
+      const isParseError = error instanceof Error && error.message.includes('Invalid checkbox format');
+
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'validation',
+        operation: 'mark_complete',
+        agent,
+        taskId: taskId ?? 'unknown',
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: isParseError ? 'ParseError' : (error instanceof Error ? error.name : 'ValidationError'),
+          code: (error as NodeJS.ErrnoException)?.code
+        },
+        context: {
+          tool: 'mark_complete',
+          parameters: isParseError ? {
+            parseError: 'checkbox_format_invalid',
+            planContentLength: planContent.length
+          } : {
+            operation: 'validate_completion',
+            planPath: 'validation-error'
+          }
+        },
+        severity: 'critical'
+      });
+    }
+    throw error;
   }
 }
 
 /**
  * Apply reconciliation logic to completion
  */
-function reconcileCompletion(
+async function reconcileCompletion(
   validation: CompletionValidation,
   status: 'DONE' | 'ERROR',
   summary: string,
-  reconciliation?: ReconciliationOptions
-): ReconciledCompletion {
+  reconciliation: ReconciliationOptions | undefined,
+  config: ServerConfig,
+  agent: string,
+  taskId?: string
+): Promise<ReconciledCompletion> {
   
   if (!validation.hasIncompleteItems) {
     // No unchecked items, proceed normally
@@ -174,8 +279,76 @@ function reconcileCompletion(
   const mode = reconciliation?.mode ?? 'strict';
   
   switch (mode) {
-    case 'auto_complete':
-      // Auto-mark all unchecked as complete
+    case 'auto_complete': {
+      // Auto-mark all unchecked as complete and update PLAN.md
+      try {
+        // Find the PLAN.md file to update
+        const agentDir = path.join(config.commDir, agent);
+        let planPath: string | null = null;
+
+        if (taskId) {
+          planPath = path.join(agentDir, taskId, 'PLAN.md');
+        } else {
+          // Find active task directory
+          const taskDirs = await fs.listDirectory(agentDir);
+          let activeTaskDir = '';
+
+          for (const taskDir of taskDirs) {
+            const taskPath = path.join(agentDir, taskDir);
+            const stat = await fs.pathExists(taskPath);
+            if (stat) {
+              // For simplicity, use first available task directory
+              // In production, we'd need proper stat implementation
+              activeTaskDir = taskDir;
+              break;
+            }
+          }
+
+          if (activeTaskDir) {
+            planPath = path.join(agentDir, activeTaskDir, 'PLAN.md');
+          }
+        }
+
+        // Update PLAN.md if it exists
+        if (planPath && await fs.pathExists(planPath)) {
+          let planContent = await fs.readFile(planPath);
+
+          // Replace unchecked items with checked
+          validation.uncheckedItems.forEach(item => {
+            const uncheckedPattern = new RegExp(`^- \\[ \\] \\*\\*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*:`, 'gm');
+            planContent = planContent.replace(uncheckedPattern, `- [x] **${item}**:`);
+          });
+
+          await fs.writeFile(planPath, planContent);
+        }
+      } catch (error) {
+        // Log PLAN.md update failure
+        if (config.errorLogger) {
+          await config.errorLogger.logError({
+            timestamp: new Date(),
+            source: 'runtime',
+            operation: 'mark_complete',
+            agent,
+            taskId: taskId ?? 'unknown',
+            error: {
+              message: error instanceof Error ? error.message : String(error),
+              name: error instanceof Error ? error.name : 'Error',
+              code: (error as NodeJS.ErrnoException)?.code
+            },
+            context: {
+              tool: 'mark_complete',
+              parameters: {
+                operation: 'plan_update',
+                reconciliationMode: 'auto_complete',
+                errorCode: (error as NodeJS.ErrnoException)?.code
+              }
+            },
+            severity: 'critical'
+          });
+        }
+        throw error;
+      }
+
       return {
         status: 'DONE',
         summary: `## Auto-Reconciliation Applied
@@ -192,6 +365,7 @@ ${summary}`,
           uncheckedItemsCount: validation.uncheckedItems.length
         }
       };
+    }
       
     case 'reconcile': {
       // Document variance with explanations
@@ -248,6 +422,30 @@ ${summary}`,
     case 'strict':
       // Strict mode - reject if unchecked items exist and status is DONE
       if (status === 'DONE') {
+        // Log reconciliation rejection with CRITICAL severity
+        if (config.errorLogger) {
+          await config.errorLogger.logError({
+            timestamp: new Date(),
+            source: 'validation',
+            operation: 'mark_complete',
+            agent,
+            taskId: taskId ?? 'unknown',
+            error: {
+              message: `Reconciliation failed: ${validation.uncheckedItems.length} unchecked items in strict mode`,
+              name: 'ReconciliationError',
+              code: undefined
+            },
+            context: {
+              tool: 'mark_complete',
+              parameters: {
+                reconciliationMode: 'strict',
+                uncheckedItemsCount: validation.uncheckedItems.length,
+                attemptedStatus: 'DONE'
+              }
+            },
+            severity: 'critical'
+          });
+        }
         throw new Error(`Cannot mark DONE with ${validation.uncheckedItems.length} unchecked items. Use reconciliation mode or complete all items first.`);
       }
       return { status, summary };
@@ -320,6 +518,31 @@ export async function markComplete(
       
       // Block DONE completion if verification confidence is too low
       if (verificationResult.confidence < DEFAULT_CONFIDENCE_THRESHOLD) {
+        // Log verification failure with CRITICAL severity
+        if (config.errorLogger) {
+          await config.errorLogger.logError({
+            timestamp: new Date(),
+            source: 'validation',
+            operation: 'mark_complete',
+            agent,
+            taskId: taskId ?? 'unknown',
+            error: {
+              message: `Verification failed: confidence ${verificationResult.confidence}% below threshold ${DEFAULT_CONFIDENCE_THRESHOLD}%`,
+              name: 'VerificationError',
+              code: undefined
+            },
+            context: {
+              tool: 'mark_complete',
+              parameters: {
+                verificationConfidence: verificationResult.confidence,
+                threshold: DEFAULT_CONFIDENCE_THRESHOLD,
+                reconciliationMode: reconciliation?.mode ?? 'strict'
+              }
+            },
+            severity: 'critical'
+          });
+        }
+
         const errorDetails = [
           `VERIFICATION FAILED: ${verificationResult.confidence}% confidence (minimum ${DEFAULT_CONFIDENCE_THRESHOLD}% required)`,
           '',
@@ -343,7 +566,7 @@ export async function markComplete(
           '  3. Use mcp__agent_comm__report_progress to document real work',
           '  4. Ensure PLAN.md exists with checked items for progress tracking'
         ].join('\n');
-        
+
         throw new Error(errorDetails);
       }
       
@@ -384,14 +607,19 @@ export async function markComplete(
   }
   
   // Validate completion against plan checkboxes
+  log('Starting validation for agent: %s, taskId: %s', agent, taskId);
   const validation = await validateCompletion(config, agent, taskId);
-  
+  log('Validation completed: %O', validation);
+
   // Apply reconciliation logic
-  const reconciledCompletion = reconcileCompletion(
+  const reconciledCompletion = await reconcileCompletion(
     validation,
     status as 'DONE' | 'ERROR',
     summary.trim(),
-    reconciliation
+    reconciliation,
+    config,
+    agent,
+    taskId
   );
   
   const contextManager = new TaskContextManager({
@@ -400,9 +628,44 @@ export async function markComplete(
     eventLogger: config.eventLogger
   });
 
-  return await contextManager.markComplete(
-    reconciledCompletion.status, 
-    reconciledCompletion.summary, 
-    connection
-  );
+  try {
+    return await contextManager.markComplete(
+      reconciledCompletion.status,
+      reconciledCompletion.summary,
+      connection
+    );
+  } catch (error) {
+    // Log file write failures for DONE.md/ERROR.md
+    if (config.errorLogger) {
+      const isFileError = error instanceof Error &&
+        ((error as NodeJS.ErrnoException).code === 'ENOSPC' ||
+         (error as NodeJS.ErrnoException).code === 'EACCES' ||
+         (error as NodeJS.ErrnoException).code === 'EIO');
+
+      if (isFileError) {
+        await config.errorLogger.logError({
+          timestamp: new Date(),
+          source: 'runtime',
+          operation: 'mark_complete',
+          agent,
+          taskId: taskId ?? 'unknown',
+          error: {
+            message: error.message,
+            name: error.name,
+            code: (error as NodeJS.ErrnoException).code
+          },
+          context: {
+            tool: 'mark_complete',
+            parameters: {
+              operation: 'write_completion',
+              fileType: reconciledCompletion.status,
+              errorCode: (error as NodeJS.ErrnoException).code
+            }
+          },
+          severity: 'critical'
+        });
+      }
+    }
+    throw error;
+  }
 }
