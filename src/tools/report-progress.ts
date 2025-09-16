@@ -7,6 +7,7 @@
 import { ServerConfig } from '../types.js';
 import { TaskContextManager, ProgressUpdate, ProgressReportResult } from '../core/TaskContextManager.js';
 import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
+import { ErrorLogEntry } from '../logging/ErrorLogger.js';
 import type { ContextStatus, CapabilityChanges } from '../types/context-types.js';
 import debug from 'debug';
 
@@ -20,27 +21,170 @@ export async function reportProgress(
   args: Record<string, unknown>
 ): Promise<ProgressReportResult> {
   log('reportProgress called with args: %O', { config, args });
+
+  // Validate agent parameter first for proper error logging order
+  let agent: string;
+  try {
+    agent = validateRequiredString(args['agent'], 'agent');
+  } catch (error) {
+    // Log validation error
+    if (config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'validation',
+        operation: 'report_progress',
+        agent: args['agent'] as string ?? undefined,
+        error: {
+          message: (error as Error).message,
+          name: 'ValidationError',
+          code: undefined
+        },
+        context: {
+          tool: 'report_progress',
+          parameters: {
+            agent: args['agent'] ?? undefined
+          }
+        },
+        severity: 'high'
+      });
+    }
+    throw error;
+  }
+
   // Validate configuration has required components
   validateRequiredConfig(config);
-  
-  const agent = validateRequiredString(args['agent'], 'agent');
   const updatesArray = args['updates'];
   const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
 
   // Optional context tracking (Issue #51)
   const contextStatus = args['contextStatus'] as ContextStatus | undefined;
   const capabilityChanges = args['capabilityChanges'] as CapabilityChanges | undefined;
-  
-  if (!Array.isArray(updatesArray)) {
-    throw new Error('Progress updates must be an array');
+
+  // Validate context status if provided
+  if (contextStatus) {
+    // Validate currentUsage is non-negative
+    if (typeof contextStatus.currentUsage === 'number' && contextStatus.currentUsage < 0) {
+      const error = new Error(`Context status validation failed: currentUsage cannot be negative, got ${contextStatus.currentUsage}`);
+      if (config.errorLogger) {
+        await config.errorLogger.logError({
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: error.message,
+            name: 'ValidationError',
+            code: undefined
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: {
+              operation: 'context_validation',
+              currentUsage: contextStatus.currentUsage,
+              estimatedRemaining: contextStatus.estimatedRemaining,
+              trend: contextStatus.trend
+            }
+          },
+          severity: 'high'
+        });
+      }
+      throw error;
+    }
+
+    // Validate trend is a valid value
+    if (contextStatus.trend && !['INCREASING', 'DECREASING', 'STABLE'].includes(contextStatus.trend)) {
+      const error = new Error(`Context status validation failed: trend must be one of INCREASING, DECREASING, STABLE, got ${contextStatus.trend}`);
+      if (config.errorLogger) {
+        await config.errorLogger.logError({
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: error.message,
+            name: 'ValidationError',
+            code: undefined
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: {
+              operation: 'context_validation',
+              invalidTrend: contextStatus.trend,
+              validTrends: ['INCREASING', 'DECREASING', 'STABLE']
+            }
+          },
+          severity: 'high'
+        });
+      }
+      throw error;
+    }
   }
   
-  // Validate and convert updates
-  const updates: ProgressUpdate[] = updatesArray.map((update, index) => {
-    if (typeof update !== 'object' || update === null) {
-      throw new Error(`Update at index ${index} must be an object`);
+  if (!Array.isArray(updatesArray)) {
+    const error = new Error('Progress updates must be an array');
+    // Log validation error
+    if (config.errorLogger) {
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'validation',
+        operation: 'report_progress',
+        agent,
+        ...(taskId && { taskId }),
+        error: {
+          message: error.message,
+          name: error.name
+        },
+        context: {
+          tool: 'report_progress',
+          parameters: { agent, updates: updatesArray }
+        },
+        severity: 'medium'
+      };
+      await config.errorLogger.logError(errorEntry);
     }
-    
+    throw error;
+  }
+
+  // Allow empty updates array but log it for debugging
+  if (updatesArray.length === 0) {
+    log('Empty updates array provided - allowing for backward compatibility');
+  }
+
+  // Validate and convert updates
+  const updates: ProgressUpdate[] = [];
+  for (let index = 0; index < updatesArray.length; index++) {
+    const update = updatesArray[index] as unknown;
+    if (typeof update !== 'object' || update === null) {
+      const error = new Error(`Update at index ${index} must be an object`);
+      // Log validation error
+      if (config.errorLogger) {
+        await config.errorLogger.logError({
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: error.message,
+            name: 'ValidationError',
+            code: undefined
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: {
+              agent,
+              updateIndex: index,
+              updateValue: update
+            }
+          },
+          severity: 'high'
+        });
+      }
+      throw error;
+    }
+
     const updateObj = update as Record<string, unknown>;
     
     const step = updateObj['step'];
@@ -49,28 +193,143 @@ export async function reportProgress(
     const timeSpent = updateObj['timeSpent'];
     const estimatedTimeRemaining = updateObj['estimatedTimeRemaining'];
     const blocker = updateObj['blocker'];
-    
+
     if (typeof step !== 'number') {
-      throw new Error(`Update at index ${index}: step must be a number`);
+      const error = new Error(`Update at index ${index}: step must be a number`);
+      // Log validation error
+      if (config.errorLogger) {
+        const errorEntry: ErrorLogEntry = {
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: error.message,
+            name: error.name
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: { agent, invalidStep: step, updateIndex: index }
+          },
+          severity: 'medium'
+        };
+        await config.errorLogger.logError(errorEntry);
+      }
+      throw error;
+    }
+
+    // Log unusual step numbers but don't block (for resilience)
+    if (step <= 0) {
+      log('Warning: Unusual step number detected: %d at index %d', step, index);
+      // Log unusual condition for analysis but don't block
+      if (config.errorLogger) {
+        const errorEntry: ErrorLogEntry = {
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: `Unusual step number detected: ${step} at index ${index}`,
+            name: 'ValidationWarning'
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: { unusualStep: step, updateIndex: index }
+          },
+          severity: 'medium' // Not blocking, just unusual
+        };
+        await config.errorLogger.logError(errorEntry);
+      }
+      // Continue processing - don't throw
+    }
+
+    // Log extremely large step numbers but don't block (for resilience)
+    if (step > 100) {
+      log('Warning: Extremely large step number detected: %d at index %d', step, index);
+      // Log unusual condition for analysis but don't block
+      if (config.errorLogger) {
+        const errorEntry: ErrorLogEntry = {
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: `Extremely large step number detected: ${step} at index ${index}`,
+            name: 'ValidationWarning'
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: { unusualStep: step, typicalMax: 100, updateIndex: index }
+          },
+          severity: 'medium' // Not blocking, just unusual
+        };
+        await config.errorLogger.logError(errorEntry);
+      }
+      // Continue processing - don't throw
     }
     
     if (typeof status !== 'string' || !['COMPLETE', 'IN_PROGRESS', 'PENDING', 'BLOCKED'].includes(status)) {
-      throw new Error(`Update at index ${index}: status must be one of COMPLETE, IN_PROGRESS, PENDING, BLOCKED`);
+      const error = new Error(`Update at index ${index}: status must be one of COMPLETE, IN_PROGRESS, PENDING, BLOCKED`);
+      // Log validation error
+      if (config.errorLogger) {
+        const errorEntry: ErrorLogEntry = {
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: error.message,
+            name: error.name
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: { agent, invalidStatus: status, updateIndex: index }
+          },
+          severity: 'medium'
+        };
+        await config.errorLogger.logError(errorEntry);
+      }
+      throw error;
     }
     
     if (typeof description !== 'string' || description.trim() === '') {
-      throw new Error(`Update at index ${index}: description must be a non-empty string`);
+      const error = new Error(`Update at index ${index}: description must be a non-empty string`);
+      // Log validation error
+      if (config.errorLogger) {
+        const errorEntry: ErrorLogEntry = {
+          timestamp: new Date(),
+          source: 'validation',
+          operation: 'report_progress',
+          agent,
+          ...(taskId && { taskId }),
+          error: {
+            message: error.message,
+            name: error.name
+          },
+          context: {
+            tool: 'report_progress',
+            parameters: { agent, invalidDescription: description, updateIndex: index }
+          },
+          severity: 'medium'
+        };
+        await config.errorLogger.logError(errorEntry);
+      }
+      throw error;
     }
     
-    return {
+    updates.push({
       step,
       status: status as 'COMPLETE' | 'IN_PROGRESS' | 'PENDING' | 'BLOCKED',
       description: description.trim(),
       ...(typeof timeSpent === 'number' && { timeSpent }),
       ...(typeof estimatedTimeRemaining === 'number' && { estimatedTimeRemaining }),
       ...(typeof blocker === 'string' && blocker.trim() && { blocker: blocker.trim() })
-    };
-  });
+    });
+  }
   
   // Create connection for the agent with optional taskId
   const connection = {
@@ -111,5 +370,86 @@ export async function reportProgress(
     });
   }
 
-  return await contextManager.reportProgress(updates, connection);
+  try {
+    return await contextManager.reportProgress(updates, connection);
+  } catch (error) {
+    // Log specific error scenarios that can occur during progress reporting
+    if (config.errorLogger) {
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'runtime',
+        operation: 'report_progress',
+        agent,
+        ...(taskId && { taskId }),
+        error: {
+          message: (error as Error).message,
+          name: (error as Error).name || 'Error',
+          code: (error as NodeJS.ErrnoException)?.code
+        },
+        context: {
+          tool: 'report_progress',
+          parameters: {
+            updatesCount: updates.length,
+            ...(contextStatus && { contextStatus }),
+            ...(capabilityChanges && { capabilityChanges })
+          }
+        },
+        severity: 'high'
+      };
+
+      // Categorize specific error types for better error analysis
+      const errorMessage = (error as Error).message.toLowerCase();
+
+      if (errorMessage.includes('plan.md not found')) {
+        errorEntry.source = 'runtime';
+        errorEntry.context.parameters = {
+          ...errorEntry.context.parameters,
+          operation: 'plan_file_check',
+          fileType: 'PLAN.md'
+        };
+      } else if (errorMessage.includes('permission denied')) {
+        errorEntry.source = 'runtime';
+        errorEntry.context.parameters = {
+          ...errorEntry.context.parameters,
+          operation: 'file_access',
+          permissions: true
+        };
+      } else if (errorMessage.includes('disk full') || errorMessage.includes('no space')) {
+        errorEntry.source = 'tool_execution';
+        errorEntry.context.parameters = {
+          ...errorEntry.context.parameters,
+          operation: 'file_write',
+          diskSpace: true
+        };
+      } else if (errorMessage.includes('invalid step number')) {
+        errorEntry.source = 'validation';
+        const stepMatch = errorMessage.match(/invalid step number:?\s*(\d+|-?\d+)/);
+        if (stepMatch) {
+          errorEntry.context.parameters = {
+            ...errorEntry.context.parameters,
+            invalidStep: parseInt(stepMatch[1]),
+            maxSteps: updates.length
+          };
+        }
+      } else if (errorMessage.includes('malformed') || errorMessage.includes('checkbox')) {
+        errorEntry.source = 'validation';
+        errorEntry.context.parameters = {
+          ...errorEntry.context.parameters,
+          operation: 'checkbox_parsing',
+          malformedContent: true
+        };
+      } else if (errorMessage.includes('context status') || errorMessage.includes('invalid context')) {
+        errorEntry.source = 'validation';
+        errorEntry.context.parameters = {
+          ...errorEntry.context.parameters,
+          operation: 'context_validation',
+          contextStatus: contextStatus
+        };
+      }
+
+      await config.errorLogger.logError(errorEntry);
+    }
+
+    throw error;
+  }
 }

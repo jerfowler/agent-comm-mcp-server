@@ -1126,10 +1126,25 @@ mcp__agent_comm__sync_todo_checkboxes(agent="current-agent", taskId="specific-ta
 
   private async updatePlanFileWithProgress(agentDir: string, taskId: string, updates: ProgressUpdate[]): Promise<void> {
     const planPath = path.join(agentDir, taskId, 'PLAN.md');
-    if (!(await fs.pathExists(planPath))) return;
-    
+    if (!(await fs.pathExists(planPath))) {
+      // Gracefully handle missing PLAN.md - progress can be reported without a plan
+      // This supports ad-hoc work and maintains backward compatibility
+      log(`PLAN.md not found for task ${taskId}, skipping checkbox synchronization`);
+      return; // Skip plan updates but don't fail
+    }
+
     let planContent = await fs.readFile(planPath, 'utf8');
-    
+
+    // Validate checkbox format in PLAN.md content
+    const lines = planContent.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Check for malformed checkbox patterns that could indicate parsing issues
+      if (line.match(/^-\s*\[/) && !line.match(/^- \[[ x]\] /)) {
+        throw new Error(`Malformed checkbox detected at line ${i + 1}: "${line}". Expected format: "- [ ] " or "- [x] "`);
+      }
+    }
+
     for (const update of updates) {
       if (update.status === 'COMPLETE') {
         // Convert unchecked to checked for completed steps

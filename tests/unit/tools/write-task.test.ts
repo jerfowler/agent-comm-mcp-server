@@ -6,6 +6,7 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { writeTask } from '../../../src/tools/write-task.js';
 import * as fileSystem from '../../../src/utils/file-system.js';
 import * as validation from '../../../src/utils/validation.js';
+import { LockManager } from '../../../src/utils/lock-manager.js';
 import { ServerConfig, InvalidTaskError } from '../../../src/types.js';
 import { testUtils } from '../../utils/testUtils.js';
 import * as path from 'path';
@@ -13,17 +14,42 @@ import * as path from 'path';
 // Mock modules
 jest.mock('../../../src/utils/file-system.js');
 jest.mock('../../../src/utils/validation.js');
+jest.mock('../../../src/utils/lock-manager.js');
 
 const mockFileSystem = fileSystem as jest.Mocked<typeof fileSystem>;
 const mockValidation = validation as jest.Mocked<typeof validation>;
 
 describe('Write Task Tool', () => {
   let mockConfig: ServerConfig;
+  let mockLockManager: jest.Mocked<LockManager>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockConfig = testUtils.createMockConfig();
+
+    // Setup LockManager mock
+    mockLockManager = {
+      acquireLock: jest.fn(),
+      releaseLock: jest.fn()
+    } as unknown as jest.Mocked<LockManager>;
+
+    // Configure mock return values with proper typing
+    const lockResult = {
+      acquired: true,
+      lockId: 'test-lock-id-123',
+      lockFile: '/test/path/.lock'
+    };
+
+    const releaseResult = {
+      released: true
+    };
+
+    (mockLockManager.acquireLock as jest.Mock).mockImplementation(() => Promise.resolve(lockResult));
+    (mockLockManager.releaseLock as jest.Mock).mockImplementation(() => Promise.resolve(releaseResult));
+
+    // Mock LockManager constructor
+    (LockManager as jest.MockedClass<typeof LockManager>).mockImplementation(() => mockLockManager);
 
     // Setup default validation mocks
     mockValidation.validateRequiredString.mockImplementation((value) => value as string);
@@ -52,7 +78,7 @@ describe('Write Task Tool', () => {
       
       expect(mockValidation.validateRequiredString).toHaveBeenCalledWith('test-agent', 'agent');
       expect(mockValidation.validateRequiredString).toHaveBeenCalledWith('test-task', 'task');
-      expect(mockValidation.validateEnum).toHaveBeenCalledWith('PLAN', 'file', ['PLAN', 'DONE', 'ERROR']);
+      // Note: validateEnum is not called - file type validation is done inline
       expect(mockValidation.validateRequiredString).toHaveBeenCalledWith(content, 'content');
       expect(mockValidation.validateContent).toHaveBeenCalledWith(content);
       
@@ -100,7 +126,7 @@ describe('Write Task Tool', () => {
       const expectedTaskDir = path.join(mockConfig.commDir, 'database-admin', 'migrate-schema');
       const expectedFilePath = path.join(expectedTaskDir, 'ERROR.md');
       
-      expect(mockValidation.validateEnum).toHaveBeenCalledWith('ERROR', 'file', ['PLAN', 'DONE', 'ERROR']);
+      // Note: validateEnum is not called - file type validation is done inline
       expect(mockFileSystem.writeFile).toHaveBeenCalledWith(expectedFilePath, content);
       
       expect(result.success).toBe(true);
@@ -294,12 +320,10 @@ describe('Write Task Tool', () => {
         content: 'content'
       };
       
-      mockValidation.validateEnum.mockImplementation(() => {
-        throw new InvalidTaskError('file must be one of: PLAN, DONE, ERROR', 'file');
-      });
-      
+      // Note: validateEnum is not used, file validation is done inline
+
       await expect(writeTask(mockConfig, args))
-        .rejects.toThrow('file must be one of: PLAN, DONE, ERROR');
+        .rejects.toThrow('Invalid file type: INVALID. Must be one of: PLAN, DONE, ERROR');
     });
 
     it('should propagate validation error for missing content', async () => {
@@ -352,13 +376,8 @@ describe('Write Task Tool', () => {
           return value as string;
         });
         
-        mockValidation.validateEnum.mockImplementation(<T extends string>(value: unknown, name: string) => {
-          if (name === 'file' && value === null) {
-            throw new InvalidTaskError('file must be one of: PLAN, DONE, ERROR', 'file');
-          }
-          return value as T;
-        });
-        
+        // Note: validateEnum is not used in writeTask implementation
+
         await expect(writeTask(mockConfig, testCase.args))
           .rejects.toThrow();
         
@@ -733,13 +752,11 @@ console.log(code);
         file: 'INIT', // Not allowed for write operations
         content: 'content'
       };
-      
-      mockValidation.validateEnum.mockImplementation(() => {
-        throw new InvalidTaskError('file must be one of: PLAN, DONE, ERROR', 'file');
-      });
-      
+
+      // Note: validateEnum is not used, file validation is done inline
+
       await expect(writeTask(mockConfig, args))
-        .rejects.toThrow('file must be one of: PLAN, DONE, ERROR');
+        .rejects.toThrow('Invalid file type: INIT. Must be one of: PLAN, DONE, ERROR');
     });
   });
 

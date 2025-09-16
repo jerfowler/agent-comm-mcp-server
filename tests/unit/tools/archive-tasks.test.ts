@@ -16,14 +16,22 @@ jest.mock('../../../src/utils/validation.js');
 const mockTaskManager = taskManager as jest.Mocked<typeof taskManager>;
 const mockValidation = validation as jest.Mocked<typeof validation>;
 
+// Mock ErrorLogger
+const mockErrorLogger = {
+  logError: jest.fn().mockImplementation(() => Promise.resolve())
+};
+
 describe('Archive Tasks Tool', () => {
   let mockConfig: ServerConfig;
   let mockArchiveResult: ArchiveResult;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    mockConfig = testUtils.createMockConfig();
+
+    mockConfig = {
+      ...testUtils.createMockConfig(),
+      errorLogger: mockErrorLogger as any
+    };
     mockArchiveResult = {
       archived: {
         completed: 5,
@@ -147,37 +155,94 @@ describe('Archive Tasks Tool', () => {
   });
 
   describe('input validation failures', () => {
-    it('should throw error when agent is required for by-agent mode but not provided', async () => {
+    it('should throw error and log when agent is required for by-agent mode but not provided', async () => {
       const args = { mode: 'by-agent' };
-      
+
       mockValidation.validateOptionalString.mockReturnValueOnce(undefined);
-      
+
       await expect(archiveTasksTool(mockConfig, args))
         .rejects.toThrow('Agent name is required for by-agent mode');
-      
+
       expect(mockTaskManager.archiveTasks).not.toHaveBeenCalled();
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'validation',
+          operation: 'archive_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'Agent name is required for by-agent mode'
+          }),
+          context: expect.objectContaining({
+            tool: 'archive-tasks',
+            parameters: expect.objectContaining({
+              mode: 'by-agent',
+              agent: undefined
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
-    it('should throw error when olderThan is required for by-date mode but not provided', async () => {
+    it('should throw error and log when olderThan is required for by-date mode but not provided', async () => {
       const args = { mode: 'by-date' };
-      
+
       const result = archiveTasksTool(mockConfig, args);
-      
+
       await expect(result).rejects.toThrow('olderThan parameter is required for by-date mode');
       expect(mockTaskManager.archiveTasks).not.toHaveBeenCalled();
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'validation',
+          operation: 'archive_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'olderThan parameter is required for by-date mode'
+          }),
+          context: expect.objectContaining({
+            tool: 'archive-tasks',
+            parameters: expect.objectContaining({
+              mode: 'by-date',
+              olderThan: undefined
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
-    it('should propagate validation errors from validateArchiveMode', async () => {
+    it('should propagate validation errors from validateArchiveMode and log', async () => {
       const args = { mode: 'invalid-mode' };
-      
+
       mockValidation.validateArchiveMode.mockImplementation(() => {
         throw new InvalidTaskError('Invalid archive mode', 'invalid-mode');
       });
-      
+
       await expect(archiveTasksTool(mockConfig, args))
         .rejects.toThrow('Invalid archive mode');
-      
+
       expect(mockTaskManager.archiveTasks).not.toHaveBeenCalled();
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'validation',
+          operation: 'archive_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'Invalid archive mode'
+          }),
+          context: expect.objectContaining({
+            tool: 'archive-tasks',
+            parameters: expect.objectContaining({
+              mode: 'invalid-mode',
+              dryRun: false
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
     it('should propagate validation errors from validateOptionalString', async () => {
@@ -294,44 +359,124 @@ describe('Archive Tasks Tool', () => {
   });
 
   describe('task manager error propagation', () => {
-    it('should propagate ArchiveError from task manager', async () => {
+    it('should propagate ArchiveError from task manager and log', async () => {
       const args = { mode: 'completed' };
       const archiveError = new ArchiveError('Failed to create archive directory', 'archive');
-      
+
       mockTaskManager.archiveTasks.mockRejectedValue(archiveError);
-      
+
       await expect(archiveTasksTool(mockConfig, args))
         .rejects.toThrow('Failed to create archive directory');
+
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'tool_execution',
+          operation: 'archive_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'Failed to create archive directory'
+          }),
+          context: expect.objectContaining({
+            tool: 'archive-tasks',
+            parameters: expect.objectContaining({
+              mode: 'completed',
+              dryRun: false
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
-    it('should propagate generic errors from task manager', async () => {
+    it('should propagate generic errors from task manager and log', async () => {
       const args = { mode: 'completed' };
       const genericError = new Error('Disk full');
-      
+
       mockTaskManager.archiveTasks.mockRejectedValue(genericError);
-      
+
       await expect(archiveTasksTool(mockConfig, args))
         .rejects.toThrow('Disk full');
+
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'tool_execution',
+          operation: 'archive_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'Disk full'
+          }),
+          context: expect.objectContaining({
+            tool: 'archive-tasks',
+            parameters: expect.objectContaining({
+              mode: 'completed',
+              dryRun: false
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
-    it('should handle task manager timeout errors', async () => {
+    it('should handle task manager timeout errors and log', async () => {
       const args = { mode: 'all' };
       const timeoutError = new Error('Operation timeout');
-      
+
       mockTaskManager.archiveTasks.mockRejectedValue(timeoutError);
-      
+
       await expect(archiveTasksTool(mockConfig, args))
         .rejects.toThrow('Operation timeout');
+
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'tool_execution',
+          operation: 'archive_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'Operation timeout'
+          }),
+          context: expect.objectContaining({
+            tool: 'archive-tasks',
+            parameters: expect.objectContaining({
+              mode: 'all',
+              dryRun: false
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
 
-    it('should handle permission denied errors from task manager', async () => {
+    it('should handle permission denied errors from task manager and log', async () => {
       const args = { mode: 'completed' };
       const permissionError = new ArchiveError('Permission denied', 'archive');
-      
+
       mockTaskManager.archiveTasks.mockRejectedValue(permissionError);
-      
+
       await expect(archiveTasksTool(mockConfig, args))
         .rejects.toThrow('Permission denied');
+
+      expect(mockErrorLogger.logError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: expect.any(Date),
+          source: 'tool_execution',
+          operation: 'archive_tasks',
+          agent: 'unknown',
+          error: expect.objectContaining({
+            message: 'Permission denied'
+          }),
+          context: expect.objectContaining({
+            tool: 'archive-tasks',
+            parameters: expect.objectContaining({
+              mode: 'completed',
+              dryRun: false
+            })
+          }),
+          severity: 'high'
+        })
+      );
     });
   });
 

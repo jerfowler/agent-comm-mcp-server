@@ -446,8 +446,8 @@ Just narrative description of what needs to be done.
         reconciliation_mode: 'reconcile'
       };
 
-      const result = await markComplete(mockConfig, args);
-      expect(result.success).toBe(true);
+      await expect(markComplete(mockConfig, args))
+        .rejects.toThrow('Invalid checkbox format');
     });
   });
 });
