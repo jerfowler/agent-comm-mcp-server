@@ -5,6 +5,21 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-09-17
+
+### ✨ Features
+
+- implement Issue #60 - Add stepCount parameter for plan validation
+- implement Issue #59 - Enhanced Agent Validation with Dynamic Discovery
+- comprehensive ErrorLogger integration with 80%+ test coverage
+- implement Issue #51 - Enhanced Agent Context Reporting and Proactive Task Management
+
+### 🐛 Bug Fixes
+
+- resolve all remaining test failures with comprehensive fixes
+- comprehensive test failure resolution
+- use optional chain syntax for ESLint compliance
+
 ## [0.9.0] - 2025-09-14
 
 ### 💥 BREAKING CHANGES
