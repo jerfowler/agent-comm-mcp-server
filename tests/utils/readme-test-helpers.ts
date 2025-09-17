@@ -70,8 +70,7 @@ export const readmeTestHelpers = {
     const result = await createTask(context.config, {
       agent,
       taskName: 'implement-dashboard-component',
-      content: `# Task: Dashboard Implementation\n\n## Requirements\n${taskContent}\n\n## Additional Notes\nInclude proper TypeScript interfaces and comprehensive tests.`,
-      taskType: 'delegation'
+      content: `# Task: Dashboard Implementation\n\n## Requirements\n${taskContent}\n\n## Additional Notes\nInclude proper TypeScript interfaces and comprehensive tests.`
     });
 
     return result;
@@ -163,8 +162,7 @@ export const readmeTestHelpers = {
         createTask(context.config, {
           agent: task.agent,
           taskName: task.taskName,
-          content: task.content,
-          taskType: 'delegation'
+          content: task.content
         })
       )
     );
@@ -241,8 +239,7 @@ export const readmeTestHelpers = {
         prompt: 'Using the agent-comm MCP server, delegate this task to senior-frontend-engineer',
         expectedTool: 'create_task',
         expectedParams: {
-          agent: 'senior-frontend-engineer',
-          taskType: 'delegation'
+          agent: 'senior-frontend-engineer'
         },
         expectedResponse: {
           success: true,
@@ -281,8 +278,7 @@ export const readmeTestHelpers = {
         prompt: 'Using the agent-comm MCP tools, create these tasks in parallel',
         expectedTool: 'create_task',
         expectedParams: {
-          agent: 'string',
-          taskType: 'delegation'
+          agent: 'string'
         },
         expectedResponse: {
           success: true,

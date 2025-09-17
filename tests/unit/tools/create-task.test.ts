@@ -74,7 +74,6 @@ describe('create_task unified tool', () => {
         agent: 'test-agent',
         taskName: 'clean-task-name',
         content: 'Test task content',
-        taskType: 'delegation' as const
       };
 
       const result = await createTask(mockConfig, options);
@@ -91,10 +90,10 @@ describe('create_task unified tool', () => {
         'clean-task-name'
       );
 
-      // Should write enhanced content
+      // Should write enhanced content without protocol injection
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         '/test/path/INIT.md',
-        expect.stringContaining('## MCP Task Management Protocol')
+        expect.stringContaining('Test task content')
       );
 
       // Should include tracking information
@@ -142,7 +141,7 @@ describe('create_task unified tool', () => {
       );
     });
 
-    it('should include protocol context in all task types', async () => {
+    it('should include only user content without protocol injection', async () => {
       const options = {
         agent: 'test-agent',
         taskName: 'test-task',
@@ -151,36 +150,33 @@ describe('create_task unified tool', () => {
 
       await createTask(mockConfig, options);
 
-      // Verify protocol context is included
+      // Verify only user content and metadata, no protocol injection
       const writtenContent = (mockedFs.writeFile as jest.Mock).mock.calls[0][1];
-      expect(writtenContent).toContain('## MCP Task Management Protocol');
-      expect(writtenContent).toContain('create_task');
-      expect(writtenContent).toContain('TodoWrite');
       expect(writtenContent).toContain('Original content');
+      expect(writtenContent).toContain('## Metadata');
+      expect(writtenContent).not.toContain('## MCP Task Management Protocol');
     });
 
     it('should create template for self tasks without content', async () => {
       const options = {
         agent: 'test-agent',
-        taskName: 'self-task',
-        taskType: 'self' as const
+        taskName: 'self-task'
         // No content provided
       };
 
       await createTask(mockConfig, options);
 
-      // Should write template with protocol context
+      // Should write template with only metadata, no protocol injection
       const writtenContent = (mockedFs.writeFile as jest.Mock).mock.calls[0][1];
-      expect(writtenContent).toContain('# Task: self-task');
-      expect(writtenContent).toContain('## Next Steps');
-      expect(writtenContent).toContain('## MCP Task Management Protocol');
+      expect(writtenContent).toContain('## Metadata');
+      expect(writtenContent).toContain('Agent: test-agent');
+      expect(writtenContent).not.toContain('## MCP Task Management Protocol');
     });
 
     it('should include parent task reference for subtasks', async () => {
       const options = {
         agent: 'test-agent',
         taskName: 'child-task',
-        taskType: 'subtask' as const,
         parentTask: 'parent-task-id',
         content: 'Subtask content'
       };
@@ -199,8 +195,7 @@ describe('create_task unified tool', () => {
       const args = {
         agent: 'test-agent',
         taskName: 'wrapper-test',
-        content: 'Test content',
-        taskType: 'delegation'
+        content: 'Test content'
       };
 
       const result = await createTaskTool(mockConfig, args);
@@ -282,7 +277,6 @@ describe('create_task unified tool', () => {
         agent: 'test-agent',
         taskName: 'test-wrapper-error',
         content: 'Test content',
-        taskType: 'delegation' as const
       };
 
       try {

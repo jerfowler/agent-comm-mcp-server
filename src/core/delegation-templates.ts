@@ -169,8 +169,7 @@ export function generateDelegationExample(): string {
 const task = await mcp__agent_comm__create_task({
   agent: "senior-backend-engineer",
   taskName: "implement-auth-system",
-  content: "Implement OAuth2 authentication",
-  taskType: "delegation"
+  content: "Implement OAuth2 authentication"
 });
 
 // Step 2: Start the subagent (CRITICAL - Don't forget!)
