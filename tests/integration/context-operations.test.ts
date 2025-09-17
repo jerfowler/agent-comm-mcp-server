@@ -102,8 +102,8 @@ describe('MCP Server Context-Based Operations', () => {
     });
   });
 
-  describe('2. Auto-Context Injection', () => {
-    it('should always inject protocol context and return filename only', async () => {
+  describe('2. Clean Task Content (Issue #64)', () => {
+    it('should provide clean task content with metadata only (no protocol injection)', async () => {
       const targetAgent = 'frontend-engineer';
       const taskName = 'implement-dashboard';
       const originalContent = '# Dashboard Task\n\nImplement user dashboard';
@@ -132,16 +132,16 @@ describe('MCP Server Context-Based Operations', () => {
         'utf8'
       );
       
-      // Content should contain the original text plus protocol instructions
+      // Content should contain the original text plus metadata (no protocol injection per Issue #64)
       expect(taskContent).toContain('Dashboard Task');
       expect(taskContent).toContain('Implement user dashboard');
-      expect(taskContent).toContain('MCP Task Management Protocol');
-      expect(taskContent).toContain('check_assigned_tasks()');
-      // Protocol context is injected - verify key workflow instructions are present
-      expect(taskContent).toContain('CRITICAL: Task Workflow');
+      expect(taskContent).toContain('## Metadata');
+      expect(taskContent).toContain('Agent: frontend-engineer');
+      // Protocol guidance now provided via ResponseEnhancer, not injected in task content
+      expect(taskContent).not.toContain('MCP Task Management Protocol');
     });
 
-    it('should provide helpful context information in delegated tasks', async () => {
+    it('should provide clean delegated task content with metadata only', async () => {
       const targetAgent = 'backend-engineer';
       const taskName = 'implement-api';
       const originalContent = '# API Task\n\nImplement REST API endpoints';
@@ -166,11 +166,13 @@ describe('MCP Server Context-Based Operations', () => {
         'utf8'
       );
       
-      // Content should contain the original text plus protocol instructions (always injected)
-      expect(taskContent).toContain('API Task'); 
+      // Content should contain the original text plus metadata (no protocol injection per Issue #64)
+      expect(taskContent).toContain('API Task');
       expect(taskContent).toContain('Implement REST API endpoints');
-      expect(taskContent).toContain('MCP Task Management Protocol');
-      expect(taskContent).toContain('MANDATORY: Todo Integration');
+      expect(taskContent).toContain('## Metadata');
+      expect(taskContent).toContain('Agent: backend-engineer');
+      // Protocol guidance now provided via ResponseEnhancer, not injected in task content
+      expect(taskContent).not.toContain('MCP Task Management Protocol');
     });
   });
 
