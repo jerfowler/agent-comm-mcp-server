@@ -238,6 +238,18 @@ describe('report-progress ErrorLogger Integration', () => {
 
   describe('Invalid Step Number Errors', () => {
     it('should log warning for extremely large step number but not throw', async () => {
+      // Override mocks to ensure no stepCount metadata is available
+      const mockedFs = fs as jest.Mocked<typeof fs>;
+      mockedFs.pathExists.mockImplementation(async (path: string) => {
+        // Block access to PLAN.metadata.json and PLAN.md to force fallback behavior
+        if (path.includes('PLAN.metadata.json') || path.includes('PLAN.md')) return false;
+        // Allow other paths for basic test functionality
+        if (path.includes('comm/test-agent/test-task-123')) return true;
+        if (path.includes('comm/test-agent')) return true;
+        if (path.includes('comm') && !path.includes('/')) return true;
+        return false;
+      });
+
       const options = {
         agent: 'test-agent',
         taskId: 'test-task-123',

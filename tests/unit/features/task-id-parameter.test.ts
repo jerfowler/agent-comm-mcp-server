@@ -706,7 +706,8 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       });
       
       // All operations should succeed
-      expect(mockedFs.writeFile).toHaveBeenCalledTimes(4);
+      // Expected calls: 2 PLAN.md + 2 PLAN.metadata.json + 1 PLAN.md update + 1 DONE.md = 6 total
+      expect(mockedFs.writeFile).toHaveBeenCalledTimes(6);
     });
   });
 });
