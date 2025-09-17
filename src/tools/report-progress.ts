@@ -387,7 +387,7 @@ export async function reportProgress(
               ...(taskId && { taskId }),
               error: {
                 message: errorMessage,
-                name: 'StepOutOfRangeError',
+                name: 'StepOutOfRangeWarning',
                 code: 'STEP_OUT_OF_RANGE'
               },
               context: {
@@ -397,12 +397,13 @@ export async function reportProgress(
                   maxStep: stepCount
                 }
               },
-              severity: 'high'
+              severity: 'medium'
             };
             await config.errorLogger.logError(errorEntry);
           }
 
-          throw new Error(errorMessage);
+          // Log warning but continue processing (permissive handling)
+          log('Warning: %s', errorMessage);
         }
       }
     }

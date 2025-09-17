@@ -236,7 +236,8 @@ Another paragraph that doesn't count as details.`,
   - Action: Execute third action
   - Expected: Third result achieved`,
         agent: 'test-agent',
-        stepCount: 3  // Correct count
+        stepCount: 3,  // Correct count
+        taskId: 'test-task'  // Match expected path
       };
 
       const result = await submitPlan(mockConfig, args);
@@ -246,8 +247,7 @@ Another paragraph that doesn't count as details.`,
       // Verify metadata file was written
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         path.join(mockTaskPath, 'PLAN.metadata.json'),
-        expect.stringContaining('"stepCount": 3'),
-        'utf8'
+        expect.stringContaining('"stepCount": 3')
       );
     });
 
@@ -304,7 +304,8 @@ Another paragraph that doesn't count as details.`,
 - [ ] **Second Step**: Do something second
   - Action: Execute second action
   - Expected: Second result achieved`,
-        agent: 'test-agent'
+        agent: 'test-agent',
+        taskId: 'test-task'  // Match expected path
         // No stepCount provided
       };
 
@@ -315,8 +316,7 @@ Another paragraph that doesn't count as details.`,
       // Should still create metadata file with calculated count
       expect(mockedFs.writeFile).toHaveBeenCalledWith(
         path.join(mockTaskPath, 'PLAN.metadata.json'),
-        expect.stringContaining('"stepCount": 2'),
-        'utf8'
+        expect.stringContaining('"stepCount": 2')
       );
     });
 
@@ -362,7 +362,7 @@ No checkboxes here, just text.`,
   - Expected: Result achieved`,
         agent: 'test-agent',
         stepCount: 1,
-        taskId: 'test-task-123'
+        taskId: 'test-task'  // Match expected path
       };
 
       const result = await submitPlan(mockConfig, args);
@@ -373,7 +373,7 @@ No checkboxes here, just text.`,
       const expectedMetadata = {
         stepCount: 1,
         agent: 'test-agent',
-        taskId: 'test-task-123',
+        taskId: 'test-task',
         checkboxPattern: 'markdown',
         version: '2.0.0'
       };

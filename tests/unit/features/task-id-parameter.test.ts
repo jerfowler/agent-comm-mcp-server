@@ -64,13 +64,13 @@ describe('TaskId Parameter Support (Issue #23)', () => {
         mtime
       } as fs.Stats);
     });
-    mockedFs.readFile.mockResolvedValue('- [ ] **Step 1**: Test step\n  - Action: Do something');
+    mockedFs.readFile.mockResolvedValue('- [ ] **Step 1**: Test step\n  - Action: Do something\n- [ ] **Step 2**: Second step\n  - Action: Do second thing\n- [ ] **Step 3**: Third step\n  - Action: Do third thing');
     mockedFs.writeFile.mockResolvedValue(undefined);
     
     // Mock file-system module functions
     mockedFileSystem.listDirectory.mockResolvedValue(['task-2024-01-01-task1', 'task-2024-01-02-task2']);
     mockedFileSystem.pathExists.mockResolvedValue(true);
-    mockedFileSystem.readFile.mockResolvedValue('- [ ] **Step 1**: Test step\n  - Action: Do something');
+    mockedFileSystem.readFile.mockResolvedValue('- [ ] **Step 1**: Test step\n  - Action: Do something\n- [ ] **Step 2**: Second step\n  - Action: Do second thing\n- [ ] **Step 3**: Third step\n  - Action: Do third thing');
     
     connectionManager = new ConnectionManager();
     eventLogger = {

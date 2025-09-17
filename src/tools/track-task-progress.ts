@@ -304,6 +304,35 @@ async function parseProgressFromPlan(
     // Still need to parse to count completed/in-progress/pending
     const checkboxes = parsePlanCheckboxes(planContent);
 
+    // Check for malformed checkboxes even when using metadata (maintain warning behavior)
+    const lines = planContent.split('\n');
+    for (const line of lines) {
+      if (line.match(/^\s*-\s*\[.+\]/) && !line.match(/^\s*-\s*\[( +|x)\]\s+/)) {
+        // Found a malformed checkbox - log warning
+        if (config.errorLogger) {
+          await config.errorLogger.logError({
+            timestamp: new Date(),
+            source: 'tool_execution',
+            operation: 'track_task_progress',
+            agent,
+            taskId,
+            error: {
+              message: `Malformed checkbox: ${line.trim()}`,
+              name: 'CheckboxParsingWarning',
+              code: undefined
+            },
+            context: {
+              tool: 'track_task_progress',
+              parameters: {
+                malformedLine: line.trim()
+              }
+            },
+            severity: 'low'
+          });
+        }
+      }
+    }
+
     let completedSteps = 0;
     let inProgressSteps = 0;
     let pendingSteps = 0;
