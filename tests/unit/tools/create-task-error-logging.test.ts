@@ -236,8 +236,7 @@ describe('create-task ErrorLogger Integration', () => {
       const options = {
         agent: 'test-agent',
         taskName: 'test-task',
-        content: null as unknown as string,  // Invalid content that might cause issues
-        taskType: 'delegation' as const
+        content: null as unknown as string  // Invalid content that might cause issues
       };
 
       // This should still work as content is optional

@@ -576,11 +576,6 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
                   type: 'string',
                   description: 'Task content in markdown format (optional for self tasks)'
                 },
-                taskType: {
-                  type: 'string',
-                  enum: ['delegation', 'self', 'subtask'],
-                  description: 'Task type: delegation (default), self (for own organization), subtask (with parent)'
-                },
                 parentTask: {
                   type: 'string',
                   description: 'Parent task ID for subtasks (optional)'

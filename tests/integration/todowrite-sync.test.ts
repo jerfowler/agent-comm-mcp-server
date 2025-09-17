@@ -70,8 +70,7 @@ describe('TodoWrite Synchronization Integration', () => {
       const createResult = await createTask(config, {
         agent: testAgent,
         taskName,
-        content: 'Integration test for TodoWrite synchronization',
-        taskType: 'delegation'
+        content: 'Integration test for TodoWrite synchronization'
       });
       
       expect(createResult.success).toBe(true);
