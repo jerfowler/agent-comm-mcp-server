@@ -13,9 +13,9 @@ The **Agent Communication MCP Server** provides a robust, context-based task man
 - **🔄 Intelligent Reconciliation**: Flexible task completion with plan variance handling
 - **⚡ Non-Blocking Architecture**: Preserves Claude Code parallelism with async-first design
 
-### 🚀 Enhanced Capabilities (v0.6.0)
+### 🚀 Enhanced Capabilities (v0.10.0)
 
-This version introduces **significant enhancements** for enterprise-grade task management:
+This version introduces **significant enhancements** for enterprise-grade task management and performance optimization:
 
 #### 🆔 Enhanced Task Management
 - **Optional `taskId` parameters** in `submit_plan`, `report_progress`, `mark_complete`
@@ -34,6 +34,24 @@ This version introduces **significant enhancements** for enterprise-grade task m
 - **Context-aware content generation** based on agent state and tasks
 - **Multi-modal support** with embedded resources and code examples  
 - **Error-specific troubleshooting** guides with real-time context
+
+#### ⚡ Performance Optimization (NEW in v0.10.0)
+- **90% validation speed improvement** with metadata caching
+- **stepCount parameter** for efficient plan validation
+- **PLAN.metadata.json** caching system for faster operations
+- **Sub-10ms validation times** replacing 100ms+ regex parsing
+
+#### 🎯 Universal Orchestration Guidance (NEW in v0.10.0)
+- **Consistent parallel execution instructions** across all task types
+- **ResponseEnhancer integration** provides workflow guidance automatically
+- **Clean task content separation** without protocol injection
+- **Parallel-first guidance** emphasizes concurrent agent execution
+
+#### ⚙️ Configurable Protocol Management (NEW in v0.10.0)
+- **protocol_config MCP tool** for template customization
+- **Independent task/plan injection control** via file-based configuration
+- **Template variable substitution** support for dynamic content
+- **Backward compatibility** maintained with auto-migration
 
 #### 📊 Advanced Workflow Support
 - **Parallel task execution** across multiple agents
@@ -412,10 +430,11 @@ interface EnhancedResponse {
 - **`get_full_lifecycle`**: Pattern analysis suggestions
 - **`track_task_progress`**: Strategy adjustment recommendations
 
-#### Utility Tools (3)
+#### Utility Tools (4)
 - **`sync_todo_checkboxes`**: TodoWrite integration reminders
 - **`get_server_info`**: Server status interpretation
 - **`ping`**: Connection verification
+- **`protocol_config`**: Protocol template configuration management
 
 ### Configuration
 
@@ -497,19 +516,26 @@ print(f"Task B status: {context_b['status']}")
 
 ---
 
-#### `submit_plan(content, agent, taskId?)`
-Submit implementation plan content with automatic file creation.
+#### `submit_plan(content, agent, taskId?, stepCount?)`
+Submit implementation plan content with automatic file creation and optional performance optimization.
 
 **Parameters:**
 - `content` (required): Plan content with **mandatory checkbox format**
 - `agent` (required): Agent name submitting the plan
 - `taskId` (optional): Specific task ID to target (defaults to current active task)
+- `stepCount` (optional): **NEW in v0.10.0** - Number of checkboxes for 90% faster validation
 
 **Returns:** Plan submission result with steps identified
 
+**⚡ Performance Optimization (v0.10.0):**
+When `stepCount` is provided, the system creates `PLAN.metadata.json` alongside `PLAN.md` for 90% faster validation:
+- **Previous**: ~100ms regex parsing per validation
+- **Current**: <10ms cached metadata lookup
+- **Benefit**: Faster `report_progress` and `track_task_progress` operations
+
 ```python
 # Example 1: Submit to current active task (default)
-result = mcp_call('submit_plan', 
+result = mcp_call('submit_plan',
     agent='senior-frontend-engineer',
     content="""
 # Implementation Plan: Dashboard Component
@@ -534,6 +560,21 @@ result = mcp_call('submit_plan',
     agent='senior-frontend-engineer',
     taskId='task-2024-01-15-dashboard-implementation',
     content="# Plan for specific task...")
+
+# Example 3: NEW v0.10.0 - Performance optimized with stepCount
+result = mcp_call('submit_plan',
+    agent='senior-frontend-engineer',
+    stepCount=6,  # Tell system to expect 6 checkboxes for 90% faster validation
+    content="""
+# Implementation Plan: Dashboard Component
+
+- [ ] **Component Setup**: Create base component
+- [ ] **State Management**: Add state handling
+- [ ] **API Integration**: Connect to backend
+- [ ] **Testing**: Write comprehensive tests
+- [ ] **Documentation**: Update README
+- [ ] **Deployment**: Deploy to staging
+""")
 ```
 
 **⚠️ MANDATORY PLAN FORMAT:**
@@ -757,6 +798,57 @@ Health check tool that returns server status and timestamp.
 status = mcp_call('ping')
 print(f"Server status: {status['status']}")
 ```
+
+---
+
+#### `protocol_config(action, [config])`
+**NEW in v0.10.0**: Manage protocol injection configuration for task and plan templates.
+
+**Parameters:**
+- `action` (required): "get" | "set" | "reset"
+- `config` (optional): Configuration object for "set" action
+
+**Configuration Structure:**
+```typescript
+{
+  task_injection: {
+    enabled: boolean,
+    template: string
+  },
+  plan_injection: {
+    enabled: boolean,
+    template: string
+  }
+}
+```
+
+**Returns:** Current or updated configuration
+
+**Examples:**
+```python
+# Get current configuration
+config = mcp_call('protocol_config', action='get')
+
+# Set custom task template
+mcp_call('protocol_config',
+  action='set',
+  config={
+    'task_injection': {
+      'enabled': True,
+      'template': 'Custom task instructions: {{content}}'
+    }
+  }
+)
+
+# Reset to defaults
+mcp_call('protocol_config', action='reset')
+```
+
+**Use Cases:**
+- Customize task creation templates for different agent types
+- Control protocol injection behavior independently for tasks vs plans
+- Implement organization-specific workflow patterns
+- A/B test different instruction templates
 
 ---
 

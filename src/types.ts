@@ -360,6 +360,14 @@ export interface EnhancedResponse {
       parallel: string;
     };
     critical_note?: string;
+    performance_optimization?: {
+      stepCount_benefit?: string;
+      creates_metadata?: string;
+      improves_tools?: string[];
+      stepCount_guidance?: string;
+      performance_benefit?: string;
+      usage_example?: string;
+    };
   };
 }
 
