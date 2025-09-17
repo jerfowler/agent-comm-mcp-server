@@ -22,7 +22,7 @@ const log = debug('agent-comm:utils:fsextrasafe');
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable no-console */
 
-import { promises as nodeFs, mkdirSync } from 'fs';
+import { promises as nodeFs, mkdirSync, readFileSync } from 'fs';
 
 // Type definitions for our safe filesystem interface
 export interface SafeFsInterface {
@@ -514,6 +514,17 @@ export const mkdtemp = (prefix: string) => safeFs.mkdtemp(prefix);
 export const mkdir = (dirPath: string, options?: Mode | MakeDirectoryOptions | null) => safeFs.mkdir(dirPath, options);
 export const chmod = (filePath: string, mode: string | number) => safeFs.chmod(filePath, mode);
 export const utimes = (filePath: string, atime: Date | number, mtime: Date | number) => safeFs.utimes(filePath, atime, mtime);
+
+// Add readJSON function
+export const readJSON = async (filePath: string): Promise<unknown> => {
+  const content = await readFile(filePath, 'utf8');
+  return JSON.parse(content);
+};
+
+export const readJsonSync = (filePath: string): unknown => {
+  const content = readFileSync(filePath, 'utf8');
+  return JSON.parse(content);
+};
 
 // Synchronous version for backwards compatibility (used in server initialization)
 export const ensureDirSync = (dirPath: string) => {

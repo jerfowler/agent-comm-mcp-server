@@ -136,9 +136,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const args = {
         agent: 'test-agent',
         content: '# Plan\n\n- [ ] **Step 1**: Test step\n  - Action: Do something\n  - Expected: Success\n  - Error: Handle failure',
-        taskId: 'task-2024-01-01-specific' // NEW: taskId parameter
+        taskId: 'task-2024-01-01-specific', // NEW: taskId parameter
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       const result = await submitPlan(config, args);
       
       expect(result.success).toBe(true);
@@ -154,10 +155,11 @@ describe('TaskId Parameter Support (Issue #23)', () => {
     it('should work without taskId (backward compatibility)', async () => {
       const args = {
         agent: 'test-agent',
-        content: '# Plan\n\n- [ ] **Step 1**: Test step\n  - Action: Do something\n  - Expected: Success\n  - Error: Handle failure'
+        content: '# Plan\n\n- [ ] **Step 1**: Test step\n  - Action: Do something\n  - Expected: Success\n  - Error: Handle failure',
         // No taskId - should use most recent task
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       const result = await submitPlan(config, args);
       
       expect(result.success).toBe(true);
@@ -182,9 +184,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const args = {
         agent: 'test-agent',
         content: '# Plan\n\n- [ ] **Step 1**: Test step\n  - Action: Do something\n  - Expected: Success\n  - Error: Handle failure',
-        taskId: 'non-existent-task'
+        taskId: 'non-existent-task',
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       await expect(submitPlan(config, args)).rejects.toThrow("Task 'non-existent-task' not found for agent 'test-agent'");
     });
 
@@ -192,9 +195,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const args = {
         agent: 'test-agent',
         content: '# Plan\n\n- [ ] **Step 1**: Test step\n  - Action: Do something\n  - Expected: Success\n  - Error: Handle failure',
-        taskId: '' // Empty string should be treated as no taskId
+        taskId: '', // Empty string should be treated as no taskId
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       const result = await submitPlan(config, args);
       
       expect(result.success).toBe(true);
@@ -528,9 +532,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const args = {
         agent: 'test-agent',
         content: '# Plan\n\n- [ ] **Step 1**: Test step with sufficient content\n  - Action: Test action with detailed description\n  - Expected: Detailed expected outcome',
-        taskId: 'task-that-does-not-exist'
+        taskId: 'task-that-does-not-exist',
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       await expect(submitPlan(config, args))
         .rejects
         .toThrow("Task 'task-that-does-not-exist' not found for agent 'test-agent'.");
@@ -548,9 +553,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const args = {
         agent: 'test-agent',
         content: '# Plan\n\n- [ ] **Step 1**: Test step with sufficient content\n  - Action: Test action with detailed description\n  - Expected: Detailed expected outcome',
-        taskId: specialTaskId
+        taskId: specialTaskId,
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       const result = await submitPlan(config, args);
       
       expect(result.success).toBe(true);
@@ -571,9 +577,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const args = {
         agent: 'test-agent',
         content: '# Plan\n\n- [ ] **Step 1**: Test step with sufficient content\n  - Action: Test action with detailed description\n  - Expected: Detailed expected outcome',
-        taskId: '../../../etc/passwd' // Path traversal attempt
+        taskId: '../../../etc/passwd', // Path traversal attempt
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       await expect(submitPlan(config, args))
         .rejects
         .toThrow("Task '../../../etc/passwd' not found for agent 'test-agent'.");
@@ -588,9 +595,10 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const planArgs = {
         agent: 'test-agent',
         content: '# Integration Test Plan\n\n- [ ] **Step 1**: Initialize\n  - Action: Setup\n- [ ] **Step 2**: Process\n  - Action: Execute\n- [ ] **Step 3**: Finalize\n  - Action: Complete',
-        taskId
+        taskId,
+        stepCount: 3  // 3 checkboxes in the plan
       };
-      
+
       const planResult = await submitPlan(config, planArgs);
       expect(planResult.success).toBe(true);
       
@@ -630,14 +638,16 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       const agent1Args = {
         agent: 'frontend-engineer',
         content: '# Frontend Task\n\n- [ ] **UI Updates**: Update components\n  - Action: Refactor',
-        taskId: 'task-2024-01-01-frontend'
+        taskId: 'task-2024-01-01-frontend',
+        stepCount: 1  // 1 checkbox in the plan
       };
-      
+
       // Agent 2 works on task2
       const agent2Args = {
         agent: 'backend-engineer',
         content: '# Backend Task\n\n- [ ] **API Updates**: Update endpoints\n  - Action: Implement',
-        taskId: 'task-2024-01-02-backend'
+        taskId: 'task-2024-01-02-backend',
+        stepCount: 1  // 1 checkbox in the plan
       };
       
       // Both agents submit plans to different tasks
@@ -667,14 +677,16 @@ describe('TaskId Parameter Support (Issue #23)', () => {
       await submitPlan(config, {
         agent,
         content: '# Task 1\n\n- [ ] **Step A**: Do A\n  - Action: Execute A',
-        taskId: 'task-2024-01-01-first'
+        taskId: 'task-2024-01-01-first',
+        stepCount: 1  // 1 checkbox in the plan
       });
-      
+
       // Switch to task2
       await submitPlan(config, {
         agent,
         content: '# Task 2\n\n- [ ] **Step B**: Do B\n  - Action: Execute B',
-        taskId: 'task-2024-01-02-second'
+        taskId: 'task-2024-01-02-second',
+        stepCount: 1  // 1 checkbox in the plan
       });
       
       // Go back to task1
