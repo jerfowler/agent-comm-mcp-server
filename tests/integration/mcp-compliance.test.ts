@@ -48,7 +48,7 @@ const EXPECTED_TOOL_SCHEMAS = {
   'check_tasks': { required: ['agent'], optional: [] },
   'read_task': { required: ['agent', 'task', 'file'], optional: [] },
   'write_task': { required: ['agent', 'task', 'file', 'content'], optional: [] },
-  'create_task': { required: ['agent', 'taskName'], optional: ['content', 'taskType', 'parentTask', 'sourceAgent'] },
+  'create_task': { required: ['agent', 'taskName'], optional: ['content', 'parentTask', 'sourceAgent'] },
   'submit_plan': { required: ['agent', 'content'], optional: [] },
   'list_agents': { required: [], optional: [] },
   'archive_tasks': { required: [], optional: ['mode', 'agent', 'olderThan', 'dryRun'] },

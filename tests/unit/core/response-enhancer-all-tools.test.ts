@@ -217,7 +217,7 @@ describe('ResponseEnhancer - All Tools Integration', () => {
           toolResponse: {
             taskId: '2025-01-10T10-00-00-delegation',
             status: 'created',
-            taskType: 'delegation',
+
             targetAgent: 'senior-backend-engineer',
             content: 'Implement the new API endpoint with full testing'
           },
@@ -562,7 +562,7 @@ describe('ResponseEnhancer - All Tools Integration', () => {
         toolResponse: {
           taskId: '2025-01-10T10-00-00-new-delegation',
           status: 'created',
-          taskType: 'delegation',
+
           targetAgent: 'frontend-engineer',
           content: 'Build the user interface components'
         },
@@ -603,7 +603,7 @@ describe('ResponseEnhancer - All Tools Integration', () => {
           toolResponse: {
             taskId: 'test-task',
             status: 'created',
-            taskType: 'delegation',
+
             targetAgent: 'backend-engineer'
           },
           promptManager: mockPromptManager,
@@ -902,7 +902,7 @@ describe('ResponseEnhancer - All Tools Integration', () => {
         toolResponse: {
           taskId: 'test-task',
           status: 'created',
-          taskType: 'delegation',
+
           targetAgent: 'backend-engineer',
           content: 'Implement feature'
         },
@@ -930,7 +930,7 @@ describe('ResponseEnhancer - All Tools Integration', () => {
         toolResponse: {
           taskId: 'test-task',
           status: 'created',
-          taskType: 'delegation',
+
           targetAgent: 'backend-engineer',
           content: 'Fix bug'
         },
@@ -958,7 +958,7 @@ describe('ResponseEnhancer - All Tools Integration', () => {
         toolResponse: {
           taskId: 'test-task',
           status: 'created',
-          taskType: 'delegation',
+
           targetAgent: 'backend-engineer',
           content: 'Critical task'
         },

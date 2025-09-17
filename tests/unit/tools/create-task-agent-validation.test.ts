@@ -69,14 +69,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*path traversal/i);
     });
 
@@ -87,14 +85,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*path traversal/i);
     });
   });
@@ -107,7 +103,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       // Note: Path traversal protection triggers first due to "/" character
@@ -115,7 +110,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*(path traversal|command injection)/i);
     });
 
@@ -126,7 +120,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       // Note: Path traversal protection triggers first due to "/" character
@@ -134,7 +127,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*(path traversal|command injection)/i);
     });
 
@@ -145,14 +137,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*command injection/i);
     });
   });
@@ -165,7 +155,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       // Multiple violations possible - any security rejection is valid
@@ -173,7 +162,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name/i);
     });
 
@@ -184,7 +172,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       // Colon triggers command injection protection
@@ -192,7 +179,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name/i);
     });
   });
@@ -205,14 +191,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*null bytes/i);
     });
 
@@ -223,14 +207,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*null bytes/i);
     });
   });
@@ -243,7 +225,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       // Single quotes and semicolons trigger command injection protection
@@ -251,7 +232,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name/i);
     });
 
@@ -262,14 +242,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/invalid agent name.*sql injection/i);
     });
   });
@@ -288,8 +266,7 @@ describe('create-task Agent Validation Integration', () => {
         const result = await createTask(mockConfig, {
           agent: agentName,
           taskName: 'test-task',
-          content: 'test content',
-          taskType: 'delegation'
+          content: 'test content'
         });
 
         expect(result.success).toBe(true);
@@ -302,7 +279,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: '  senior-backend-engineer  ',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       });
 
       expect(result.success).toBe(true);
@@ -318,7 +294,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: maliciousAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow();
 
       // Verify error was logged
@@ -340,7 +315,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       });
 
       // Verify no validation errors were logged
@@ -360,7 +334,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       });
 
       const endTime = Date.now();
@@ -379,8 +352,7 @@ describe('create-task Agent Validation Integration', () => {
         promises.push(createTask(mockConfig, {
           agent: `agent-${i}`,
           taskName: `test-task-${i}`,
-          content: 'test content',
-          taskType: 'delegation'
+          content: 'test content'
         }));
       }
 
@@ -399,14 +371,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: '',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: '',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/must be a non-empty string/i);
     });
 
@@ -415,14 +385,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: '   ',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: '   ',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/must be a non-empty string/i);
     });
 
@@ -431,21 +399,18 @@ describe('create-task Agent Validation Integration', () => {
         agent: 123 as any,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: null as any,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: undefined as any,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
     });
 
@@ -456,14 +421,12 @@ describe('create-task Agent Validation Integration', () => {
         agent: longAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(InvalidTaskError);
 
       await expect(createTask(mockConfig, {
         agent: longAgent,
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       })).rejects.toThrow(/exceeds maximum length/i);
     });
   });
@@ -474,7 +437,6 @@ describe('create-task Agent Validation Integration', () => {
         agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'test content',
-        taskType: 'delegation'
       });
 
       // Verify all expected response fields are present
@@ -490,21 +452,25 @@ describe('create-task Agent Validation Integration', () => {
       // Note: Logging operations may not be triggered in test environment
     });
 
-    it('should work with all task types (delegation, self, subtask)', async () => {
-      const taskTypes = ['delegation', 'self', 'subtask'] as const;
+    it('should work with different task configurations', async () => {
+      // Test basic task creation
+      const result = await createTask(mockConfig, {
+        agent: 'senior-backend-engineer',
+        taskName: 'test-task',
+        content: 'test content'
+      });
 
-      for (const taskType of taskTypes) {
-        const result = await createTask(mockConfig, {
-          agent: 'senior-backend-engineer',
-          taskName: `test-task-${taskType}`,
-          content: 'test content',
-          taskType: taskType,
-          ...(taskType === 'subtask' ? { parentTask: 'parent-task-id' } : {})
-        });
+      expect(result.success).toBe(true);
 
-        expect(result.success).toBe(true);
-        // Note: taskType is not returned in CreateTaskResponse interface
-      }
+      // Test with parent task
+      const resultWithParent = await createTask(mockConfig, {
+        agent: 'senior-backend-engineer',
+        taskName: 'sub-task',
+        content: 'test content',
+        parentTask: 'parent-task-id'
+      });
+
+      expect(resultWithParent.success).toBe(true);
     });
   });
 });
