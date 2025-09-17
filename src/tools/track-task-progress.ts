@@ -315,7 +315,7 @@ async function parseProgressFromPlan(
       } else {
         // Check for in-progress marker (~)
         const line = planContent.split('\n')[checkbox.line - 1];
-        if (line && line.match(/^\s*-\s*\[~\]/)) {
+        if (line?.match(/^\s*-\s*\[~\]/)) {
           inProgressSteps++;
           currentStep = checkbox.content;
         } else {
