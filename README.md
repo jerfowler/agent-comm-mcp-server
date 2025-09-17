@@ -37,15 +37,28 @@ Think of this as a **mission control** for AI agents. Instead of trying to do ev
 
 **⚡ **Non-Blocking**: All agents can work simultaneously while you stay productive**
 
-### New Features (v0.9.0)
+### Latest Features (v0.10.0)
 
-**🔍 **Zero-Trust Verification** (Issue #49)**: Advanced accountability system with red flag detection prevents agent deception through evidence-based verification
+**🎯 **Universal Orchestration Guidance** (Issue #64)**: Get consistent, parallel-first instructions every time you delegate tasks. No more guessing how to coordinate multiple agents—the system tells you exactly how to run them together efficiently.
 
-**📊 **Enhanced Error Logging** (Issue #50)**: Comprehensive error tracking with ErrorLogger class, pattern analysis, and agent error rate monitoring
+**⚙️ **Configurable Protocol Management** (Issue #63)**: New `protocol_config` tool lets you customize how tasks are created and plans are structured. Want different templates for different types of work? Now you can set that up easily.
 
-**🐛 **Debug Integration** (Issue #50)**: Full debug package integration across 49 source files with namespace hierarchy for granular debugging control
+**⚡ **90% Performance Boost** (Issue #60)**: Plan validation is now lightning fast thanks to smart caching with the new `stepCount` parameter. What used to take 100ms now takes less than 10ms. Your agents get feedback faster, work flows smoother.
 
-**🚦 **Parallel Execution Support** (Issue #49)**: Multi-agent coordination with concurrent tool calls and automatic evidence tracking
+**How to Use:** Add `stepCount` to your `submit_plan` calls:
+```javascript
+// Old way: ~100ms validation time
+mcp__agent_comm__submit_plan(agent="engineer", content="plan with checkboxes")
+
+// New way: <10ms validation time
+mcp__agent_comm__submit_plan(agent="engineer", stepCount=5, content="plan with 5 checkboxes")
+```
+
+**Benefits:** Creates `PLAN.metadata.json` for caching, dramatically speeds up `report_progress` and `track_task_progress` operations.
+
+**🔍 **Smart Agent Discovery** (Issue #59)**: The system automatically finds and validates agents, making setup more reliable. Less trial-and-error, more "it just works."
+
+**📊 **Enhanced Visibility** (Issue #51)**: Better reporting and context sharing means you always know what your agents are thinking and doing. No more black boxes—complete transparency into their work process.
 
 ---
 
@@ -263,7 +276,7 @@ The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everythi
 - **Agent Communication Patterns**: Context-based vs traditional workflows
 - **Task Organization**: How files and data are structured behind the scenes
 
-### 🛠️ Complete Tool Reference (17 Tools Total)
+### 🛠️ Complete Tool Reference (18 Tools Total)
 
 **Traditional Task Management (7 tools):**
 - Create and manage tasks with full control
@@ -283,10 +296,11 @@ The **[complete PROTOCOL.md documentation](./docs/PROTOCOL.md)** covers everythi
 - Get complete lifecycle visibility for any task
 - Track real-time progress with detailed percentages
 
-**Utility Tools (3 tools):**
+**Utility Tools (4 tools):**
 - Server health checks and status
 - Comprehensive server information and capabilities
 - TodoWrite integration for checkbox synchronization
+- Protocol configuration management for custom templates
 
 ### 🔄 Workflow Patterns
 - **Context-Based Workflow**: The recommended simple approach
