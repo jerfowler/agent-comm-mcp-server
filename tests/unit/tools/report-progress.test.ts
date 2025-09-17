@@ -635,8 +635,22 @@ describe('Report Progress Tool', () => {
         ]
       };
 
-      await expect(reportProgress(mockConfig, args))
-        .rejects.toThrow(/Step 5 is out of range/);
+      // Should NOT throw - permissive handling logs warning but continues
+      const result = await reportProgress(mockConfig, args);
+      expect(result.success).toBe(true);
+
+      // Should log warning to ErrorLogger if available
+      if (mockConfig.errorLogger) {
+        expect(mockConfig.errorLogger.logError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            error: expect.objectContaining({
+              message: expect.stringContaining('Step 5 is out of range'),
+              name: 'StepOutOfRangeWarning'
+            }),
+            severity: 'medium'
+          })
+        );
+      }
     });
 
     it('should track performance improvements with metadata', async () => {

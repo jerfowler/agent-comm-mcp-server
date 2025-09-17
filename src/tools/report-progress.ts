@@ -249,31 +249,8 @@ export async function reportProgress(
       // Continue processing - don't throw
     }
 
-    // Log extremely large step numbers but don't block (for resilience)
-    if (step > 100) {
-      log('Warning: Extremely large step number detected: %d at index %d', step, index);
-      // Log unusual condition for analysis but don't block
-      if (config.errorLogger) {
-        const errorEntry: ErrorLogEntry = {
-          timestamp: new Date(),
-          source: 'validation',
-          operation: 'report_progress',
-          agent,
-          ...(taskId && { taskId }),
-          error: {
-            message: `Extremely large step number detected: ${step} at index ${index}`,
-            name: 'ValidationWarning'
-          },
-          context: {
-            tool: 'report_progress',
-            parameters: { unusualStep: step, typicalMax: 100, updateIndex: index }
-          },
-          severity: 'medium' // Not blocking, just unusual
-        };
-        await config.errorLogger.logError(errorEntry);
-      }
-      // Continue processing - don't throw
-    }
+    // Note: Extremely large step number validation moved to after stepCount determination
+    // to avoid double logging when step is both large and out of range
     
     if (typeof status !== 'string' || !['COMPLETE', 'IN_PROGRESS', 'PENDING', 'BLOCKED'].includes(status)) {
       const error = new Error(`Update at index ${index}: status must be one of COMPLETE, IN_PROGRESS, PENDING, BLOCKED`);
@@ -372,10 +349,11 @@ export async function reportProgress(
       log('PERFORMANCE WARNING: Step validation took %dms (>10ms threshold)', validationTime);
     }
 
-    // Validate all step numbers are within range
+    // Validate all step numbers are within range and check for extremely large steps
     if (stepCount !== undefined) {
       for (const update of updates) {
         if (update.step > stepCount) {
+          // Step is out of range - this takes priority over "extremely large" warning
           const errorMessage = `Step ${update.step} is out of range (max: ${stepCount})`;
 
           if (config.errorLogger) {
@@ -404,6 +382,54 @@ export async function reportProgress(
 
           // Log warning but continue processing (permissive handling)
           log('Warning: %s', errorMessage);
+        } else if (update.step > 100) {
+          // Step is within range but extremely large - log separately
+          log('Warning: Extremely large step number detected: %d', update.step);
+          if (config.errorLogger) {
+            const errorEntry: ErrorLogEntry = {
+              timestamp: new Date(),
+              source: 'validation',
+              operation: 'report_progress',
+              agent,
+              ...(taskId && { taskId }),
+              error: {
+                message: `Extremely large step number detected: ${update.step}`,
+                name: 'ValidationWarning'
+              },
+              context: {
+                tool: 'report_progress',
+                parameters: { unusualStep: update.step, typicalMax: 100, maxStep: stepCount }
+              },
+              severity: 'medium'
+            };
+            await config.errorLogger.logError(errorEntry);
+          }
+        }
+      }
+    } else {
+      // No stepCount available, fall back to extremely large step validation only
+      for (const update of updates) {
+        if (update.step > 100) {
+          log('Warning: Extremely large step number detected: %d', update.step);
+          if (config.errorLogger) {
+            const errorEntry: ErrorLogEntry = {
+              timestamp: new Date(),
+              source: 'validation',
+              operation: 'report_progress',
+              agent,
+              ...(taskId && { taskId }),
+              error: {
+                message: `Extremely large step number detected: ${update.step}`,
+                name: 'ValidationWarning'
+              },
+              context: {
+                tool: 'report_progress',
+                parameters: { unusualStep: update.step, typicalMax: 100 }
+              },
+              severity: 'medium'
+            };
+            await config.errorLogger.logError(errorEntry);
+          }
         }
       }
     }
