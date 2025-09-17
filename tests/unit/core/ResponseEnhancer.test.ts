@@ -97,6 +97,61 @@ describe('ResponseEnhancer', () => {
       });
     });
 
+    it('should include universal orchestration guidance for create_task responses', async () => {
+      // Arrange
+      const context: EnhancementContext = {
+        toolName: 'create_task',
+        agent: 'test-agent',
+        toolResponse: {
+          taskId: '2025-01-10T10-00-00-test-task',
+          status: 'created'
+        },
+        promptManager: mockPromptManager,
+        complianceTracker: mockComplianceTracker
+      };
+
+      mockComplianceTracker.getComplianceLevel.mockResolvedValue(90);
+      mockComplianceTracker.getPersonalizedGuidance.mockResolvedValue(
+        'Task created successfully. Follow orchestration guidance.'
+      );
+
+      // Act
+      const enhanced = await responseEnhancer.enhance(context);
+
+      // Assert - Check orchestration properties are included
+      expect(enhanced.guidance).toBeDefined();
+      expect(enhanced.guidance?.workflow).toBeDefined();
+      expect(enhanced.guidance?.orchestration).toBeDefined();
+      expect(enhanced.guidance?.example_invocations).toBeDefined();
+      expect(enhanced.guidance?.critical_note).toBeDefined();
+
+      // Check workflow structure
+      expect(enhanced.guidance?.workflow).toMatchObject({
+        step1: expect.any(String),
+        step2: expect.any(String),
+        step3: expect.any(String)
+      });
+
+      // Check orchestration structure
+      expect(enhanced.guidance?.orchestration).toMatchObject({
+        pattern: expect.any(String),
+        single_agent: expect.any(String),
+        multiple_agents_parallel: expect.any(String),
+        multiple_agents_sequential: expect.any(String),
+        parallel_instruction: expect.any(String)
+      });
+
+      // Check example invocations structure
+      expect(enhanced.guidance?.example_invocations).toMatchObject({
+        single: expect.any(String),
+        parallel: expect.any(String)
+      });
+
+      // Verify parallel execution guidance is prominent
+      expect(enhanced.guidance?.orchestration?.parallel_instruction).toContain('SAME message');
+      expect(enhanced.guidance?.critical_note).toContain('PARALLEL');
+    });
+
     it('should include actionable command for delegation tasks', async () => {
       // Arrange
       const context: EnhancementContext = {
@@ -105,7 +160,6 @@ describe('ResponseEnhancer', () => {
         toolResponse: {
           taskId: '2025-01-10T10-00-00-delegation',
           status: 'created',
-          taskType: 'delegation',
           targetAgent: 'senior-backend-engineer'
         },
         promptManager: mockPromptManager,
@@ -278,8 +332,7 @@ describe('ResponseEnhancer', () => {
         agent: 'test-agent',
         toolResponse: {
           taskId: 'test-task',
-          status: 'created',
-          taskType: 'self'
+          status: 'created'
         },
         promptManager: mockPromptManager,
         complianceTracker: mockComplianceTracker
@@ -300,7 +353,6 @@ describe('ResponseEnhancer', () => {
         toolResponse: {
           taskId: 'test-task',
           status: 'created',
-          taskType: 'delegation',
           targetAgent: 'backend-engineer'
         },
         promptManager: mockPromptManager,
@@ -431,7 +483,6 @@ describe('ResponseEnhancer', () => {
         toolResponse: {
           taskId: 'delegation-task',
           status: 'created',
-          taskType: 'delegation',
           targetAgent: 'backend-engineer'
         },
         promptManager: mockPromptManager,

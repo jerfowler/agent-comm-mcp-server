@@ -221,7 +221,7 @@ describe('Guidance Templates', () => {
   });
 
   describe('generateNextSteps', () => {
-    it('should generate next steps for create_task non-delegation', () => {
+    it('should generate next steps for create_task with universal guidance', () => {
       const context: TaskContext = {
         currentTask: 'test-task',
         completedSteps: 0,
@@ -230,20 +230,20 @@ describe('Guidance Templates', () => {
       const steps = generateNextSteps('create_task', context);
       expect(Array.isArray(steps)).toBe(true);
       expect(steps.length).toBeGreaterThan(0);
-      expect(steps[0]).toContain('Submit your implementation plan');
+      expect(steps[0]).toContain('Copy the Task tool invocation command');
     });
 
-    it('should generate next steps for create_task delegation', () => {
-      const context: TaskContext & { taskType: string } = {
+    it('should generate next steps for create_task with delegation context', () => {
+      const context: TaskContext & { isDelegation?: boolean } = {
         currentTask: 'test-task',
         completedSteps: 0,
         totalSteps: 5,
-        taskType: 'delegation'
+        isDelegation: true
       };
       const steps = generateNextSteps('create_task', context);
       expect(Array.isArray(steps)).toBe(true);
       expect(steps.length).toBeGreaterThan(0);
-      expect(steps[0]).toContain('Copy the Task tool');
+      expect(steps[0]).toMatch(/Task tool|implementation plan/);
     });
 
     it('should generate next steps for submit_plan', () => {

@@ -242,7 +242,12 @@ jobs:
             echo "✅ Updated existing promotion PR #$EXISTING_PR"
           else
             # Create new PR with version information
-            PR_TITLE="🚀 Release v${{ steps.version_analysis.outputs.new_version }}: ${{ env.SOURCE_BRANCH }} → ${{ env.TARGET_BRANCH }}"
+            # Use conventional commit format for PR title to pass validation
+            if [[ "${{ steps.version_analysis.outputs.bump_type }}" == "major" ]]; then
+              PR_TITLE="chore!: promote ${{ env.SOURCE_BRANCH }} to ${{ env.TARGET_BRANCH }} for v${{ steps.version_analysis.outputs.new_version }} release"
+            else
+              PR_TITLE="chore: promote ${{ env.SOURCE_BRANCH }} to ${{ env.TARGET_BRANCH }} for v${{ steps.version_analysis.outputs.new_version }} release"
+            fi
             gh pr create \
               --base ${{ env.TARGET_BRANCH }} \
               --head ${{ env.SOURCE_BRANCH }} \
@@ -280,11 +285,11 @@ jobs:
             fi
           done
           
-          # Merge the PR
+          # Merge the PR with conventional commit format
           gh pr merge ${{ steps.create_pr.outputs.pr_number }} \
             --squash \
             --delete-branch=false \
-            --subject "🚀 Promote ${{ env.SOURCE_BRANCH }} to ${{ env.TARGET_BRANCH }}" \
+            --subject "chore: promote ${{ env.SOURCE_BRANCH }} to ${{ env.TARGET_BRANCH }}" \
             --body "Automated promotion with ${{ needs.validate.outputs.commits_count }} commits"
             
           echo "🎉 Promotion PR merged successfully!"

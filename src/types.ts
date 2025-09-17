@@ -342,6 +342,32 @@ export interface EnhancedResponse {
     requirement?: string;
     trust_level?: string;
     context_alert?: _ContextAlert;  // Optional context usage alert
+    // Universal orchestration guidance properties
+    workflow?: {
+      step1: string;
+      step2: string;
+      step3: string;
+    };
+    orchestration?: {
+      pattern: string;
+      single_agent: string;
+      multiple_agents_parallel: string;
+      multiple_agents_sequential: string;
+      parallel_instruction: string;
+    };
+    example_invocations?: {
+      single: string;
+      parallel: string;
+    };
+    critical_note?: string;
+    performance_optimization?: {
+      stepCount_benefit?: string;
+      creates_metadata?: string;
+      improves_tools?: string[];
+      stepCount_guidance?: string;
+      performance_benefit?: string;
+      usage_example?: string;
+    };
   };
 }
 
@@ -363,10 +389,9 @@ export interface AgentComplianceRecord {
 }
 
 export interface ComplianceActivity {
-  type: 'task_created' | 'delegation_completed' | 'todowrite_used' | 
+  type: 'task_created' | 'delegation_completed' | 'todowrite_used' |
         'plan_submitted' | 'progress_reported' | 'task_completed';
   taskId: string;
-  taskType?: string;
   timestamp: Date;
 }
 

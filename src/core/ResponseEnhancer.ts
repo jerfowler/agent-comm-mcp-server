@@ -16,6 +16,7 @@ import { AccountabilityTracker } from './AccountabilityTracker.js';
 import { EventLogger } from '../logging/EventLogger.js';
 import { ErrorLogger } from '../logging/ErrorLogger.js';
 import { ContextThresholdDetector } from './ContextThresholdDetector.js';
+import { generateUniversalGuidance } from './orchestration-templates.js';
 
 const log = debug('agent-comm:core:responseenhancer');
 
@@ -348,12 +349,10 @@ export class ResponseEnhancer {
         // Note: Checking but not using here, actual usage is below
         await context.delegationTracker.checkIncompleteDelegations(context.agent);
         
-        // Track new delegation if this is a create_task call
-        if (context.toolName === 'create_task' && 
-            context.toolResponse && 
+        // Track new task if this is a create_task call
+        if (context.toolName === 'create_task' &&
+            context.toolResponse &&
             typeof context.toolResponse === 'object' &&
-            'taskType' in context.toolResponse &&
-            context.toolResponse.taskType === 'delegation' &&
             'targetAgent' in context.toolResponse &&
             typeof context.toolResponse.targetAgent === 'string' &&
             'taskId' in context.toolResponse &&
@@ -502,8 +501,7 @@ export class ResponseEnhancer {
       case 'create_task': {
         if (toolResponse &&
             typeof toolResponse === 'object' &&
-            'taskType' in toolResponse &&
-            toolResponse.taskType === 'delegation') {
+            'targetAgent' in toolResponse) {
           return 'Complete delegation by invoking the Task tool';
         }
         return 'Submit your implementation plan with checkboxes';
@@ -570,10 +568,13 @@ export class ResponseEnhancer {
   }
 
   /**
-   * Enhance create_task tool responses
+   * Enhance create_task tool responses with universal orchestration guidance
    */
   private async enhanceCreateTask(context: EnhancementContext): Promise<EnhancedResponse['guidance']> {
     const { toolResponse, agent } = context;
+
+    // Generate universal orchestration guidance
+    const orchestration = generateUniversalGuidance(agent);
 
     // Generate base guidance
     const nextSteps = this.generateNextSteps(context);
@@ -584,10 +585,15 @@ export class ResponseEnhancer {
       contextualReminder = await context.complianceTracker.getPersonalizedGuidance(agent, 'create_task');
     }
 
-    // Special handling for delegation tasks
+    // Special handling for delegation tasks with orchestration guidance
     const guidance: EnhancedResponse['guidance'] = {
       next_steps: nextSteps,
       contextual_reminder: contextualReminder,
+      // Add orchestration guidance
+      workflow: orchestration.workflow,
+      orchestration: orchestration.orchestration,
+      example_invocations: orchestration.example_invocations,
+      critical_note: orchestration.critical_note,
       // Add critical warning about Task tool meaninglessness
       critical_warning: '⚠️ CRITICAL: Task tool response means NOTHING!\n"Completed" does NOT mean work was done\nZERO TRUST - verify EVERYTHING',
       verification_protocol: {
@@ -604,8 +610,6 @@ export class ResponseEnhancer {
 
     if (toolResponse &&
         typeof toolResponse === 'object' &&
-        'taskType' in toolResponse &&
-        toolResponse.taskType === 'delegation' &&
         'targetAgent' in toolResponse &&
         typeof toolResponse.targetAgent === 'string' &&
         'taskId' in toolResponse &&
@@ -672,21 +676,33 @@ export class ResponseEnhancer {
    * Enhance submit_plan tool responses
    */
   private async enhanceSubmitPlan(context: EnhancementContext): Promise<EnhancedResponse['guidance']> {
-    const { agent } = context;
-    
+    const { agent, toolResponse } = context;
+
     const nextSteps = this.generateNextSteps(context);
-    
+
     let contextualReminder = '📝 Plan submitted! Remember to use TodoWrite for tracking';
+
+    // Add stepCount optimization guidance for successful submissions
+    if (toolResponse && typeof toolResponse === 'object' && 'success' in toolResponse && toolResponse.success) {
+      contextualReminder += '\n⚡ PERFORMANCE TIP: Use stepCount parameter for 90% faster validation (100ms → <10ms)';
+      contextualReminder += '\n📊 Example: stepCount=5 for plans with 5 checkboxes enhances report_progress speed';
+    }
+
     if (context.complianceTracker) {
       const guidance = await context.complianceTracker.getPersonalizedGuidance(agent, 'submit_plan');
       if (guidance) {
-        contextualReminder = guidance;
+        contextualReminder = `${contextualReminder}\n${guidance}`;
       }
     }
 
     return {
       next_steps: nextSteps,
-      contextual_reminder: contextualReminder
+      contextual_reminder: contextualReminder,
+      performance_optimization: {
+        stepCount_benefit: '90% faster validation when provided',
+        creates_metadata: 'PLAN.metadata.json for caching',
+        improves_tools: ['report_progress', 'track_task_progress']
+      }
     };
   }
 

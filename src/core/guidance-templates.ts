@@ -147,25 +147,19 @@ export function generateGuidanceMessage(
  * Generate actionable next steps
  */
 interface TaskContext {
-  taskType?: string;
   completedSteps?: number;
   totalSteps?: number;
 }
 
-export function generateNextSteps(toolName: string, context: TaskContext): string[] {
+export function generateNextSteps(toolName: string, _context: TaskContext): string[] {
   const steps: string[] = [];
   
   switch (toolName) {
     case 'create_task':
-      if (context.taskType === 'delegation') {
-        steps.push('1. Copy the Task tool invocation command below');
-        steps.push('2. Execute it to start the subagent');
-        steps.push('3. Monitor progress with track_task_progress()');
-      } else {
-        steps.push('1. Submit your implementation plan with submit_plan()');
-        steps.push('2. Use TodoWrite to track your progress');
-        steps.push('3. Report progress regularly with report_progress()');
-      }
+      // Always provide consistent steps for all tasks
+      steps.push('1. Copy the Task tool invocation command below');
+      steps.push('2. Execute it to start the subagent');
+      steps.push('3. Monitor progress with track_task_progress()');
       break;
       
     case 'submit_plan':
