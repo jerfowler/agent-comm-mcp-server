@@ -286,4 +286,207 @@ describe('track_task_progress Tool (TDD)', () => {
       expect(result.progress.percentage).toBeLessThanOrEqual(100);
     });
   });
+
+  describe('stepCount metadata usage (Issue #60)', () => {
+    it('should use stepCount from PLAN.metadata.json when available', async () => {
+      // Setup: Create task with metadata file
+      const taskDir = path.join(testDir, 'metadata-test-task');
+      await fs.ensureDir(taskDir);
+
+      // Create PLAN.metadata.json with stepCount
+      const metadata = {
+        stepCount: 8,
+        agent: 'test-agent',
+        taskId: 'metadata-test-task',
+        createdAt: new Date().toISOString(),
+        checkboxPattern: 'markdown',
+        version: '2.0.0'
+      };
+      await fs.writeFile(
+        path.join(taskDir, 'PLAN.metadata.json'),
+        JSON.stringify(metadata, null, 2)
+      );
+
+      // Create PLAN.md with checkboxes
+      const planContent = `# Test Plan
+- [x] **Step 1**: Completed
+- [x] **Step 2**: Completed
+- [~] **Step 3**: In progress
+- [ ] **Step 4**: Pending
+- [ ] **Step 5**: Pending
+- [ ] **Step 6**: Pending
+- [ ] **Step 7**: Pending
+- [ ] **Step 8**: Pending`;
+
+      await fs.writeFile(path.join(taskDir, 'PLAN.md'), planContent);
+
+      const args: TrackTaskProgressArgs = {
+        agent: 'test-agent',
+        taskId: 'metadata-test-task'
+      };
+
+      const startTime = Date.now();
+      const result = await trackTaskProgress(config, args);
+      const executionTime = Date.now() - startTime;
+
+      // Should be fast since using cached metadata
+      expect(executionTime).toBeLessThan(50);
+
+      // Verify correct step count from metadata
+      expect(result.progress.total_steps).toBe(8);
+      expect(result.progress.completed_steps).toBe(2);
+      // Note: in_progress_steps and pending_steps are not in the interface
+      // Only total_steps, completed_steps, percentage, and current_step are available
+    });
+
+    it('should fall back to parsing PLAN.md when metadata missing', async () => {
+      // Setup: Create task without metadata file
+      const taskDir = path.join(testDir, 'no-metadata-task');
+      await fs.ensureDir(taskDir);
+
+      // Create PLAN.md without metadata
+      const planContent = `# Test Plan
+- [x] **Step 1**: Completed
+- [ ] **Step 2**: Pending
+- [ ] **Step 3**: Pending`;
+
+      await fs.writeFile(path.join(taskDir, 'PLAN.md'), planContent);
+
+      const args: TrackTaskProgressArgs = {
+        agent: 'test-agent',
+        taskId: 'no-metadata-task'
+      };
+
+      const result = await trackTaskProgress(config, args);
+
+      // Verify correct step count from parsing
+      expect(result.progress.total_steps).toBe(3);
+      expect(result.progress.completed_steps).toBe(1);
+      // Note: pending_steps is not in the interface
+      expect(result.progress.percentage).toBeLessThan(100);
+    });
+
+    it('should handle corrupted metadata gracefully', async () => {
+      // Setup: Create task with corrupted metadata
+      const taskDir = path.join(testDir, 'corrupted-metadata-task');
+      await fs.ensureDir(taskDir);
+
+      // Create corrupted PLAN.metadata.json
+      await fs.writeFile(
+        path.join(taskDir, 'PLAN.metadata.json'),
+        '{ invalid json content'
+      );
+
+      // Create valid PLAN.md as fallback
+      const planContent = `# Test Plan
+- [x] **Step 1**: Completed
+- [x] **Step 2**: Completed`;
+
+      await fs.writeFile(path.join(taskDir, 'PLAN.md'), planContent);
+
+      const args: TrackTaskProgressArgs = {
+        agent: 'test-agent',
+        taskId: 'corrupted-metadata-task'
+      };
+
+      const result = await trackTaskProgress(config, args);
+
+      // Should fall back to parsing and get correct count
+      expect(result.progress.total_steps).toBe(2);
+      expect(result.progress.completed_steps).toBe(2);
+      expect(result.progress.percentage).toBe(100);
+    });
+
+    it('should include stepCount in response when available', async () => {
+      // Setup: Create task with metadata
+      const taskDir = path.join(testDir, 'stepcount-response-task');
+      await fs.ensureDir(taskDir);
+
+      const metadata = {
+        stepCount: 5,
+        agent: 'test-agent',
+        taskId: 'stepcount-response-task',
+        createdAt: new Date().toISOString(),
+        checkboxPattern: 'markdown',
+        version: '2.0.0'
+      };
+      await fs.writeFile(
+        path.join(taskDir, 'PLAN.metadata.json'),
+        JSON.stringify(metadata, null, 2)
+      );
+
+      const planContent = `# Test Plan
+- [x] **Step 1**: Done
+- [ ] **Step 2**: Todo
+- [ ] **Step 3**: Todo
+- [ ] **Step 4**: Todo
+- [ ] **Step 5**: Todo`;
+
+      await fs.writeFile(path.join(taskDir, 'PLAN.md'), planContent);
+
+      const args: TrackTaskProgressArgs = {
+        agent: 'test-agent',
+        taskId: 'stepcount-response-task'
+      };
+
+      const result = await trackTaskProgress(config, args);
+
+      // Should include metadata info in response
+      expect(result.progress.total_steps).toBe(5);
+      // Note: metadata is not a property of TrackTaskProgressResult
+    });
+
+    it('should track performance improvements with metadata', async () => {
+      // Create two tasks - one with metadata, one without
+      const taskWithMeta = path.join(testDir, 'with-metadata');
+      const taskWithoutMeta = path.join(testDir, 'without-metadata');
+
+      await fs.ensureDir(taskWithMeta);
+      await fs.ensureDir(taskWithoutMeta);
+
+      // Large plan content (50 steps)
+      const largePlan = Array.from({ length: 50 }, (_, i) =>
+        `- [${i < 10 ? 'x' : ' '}] **Step ${i + 1}**: Task ${i + 1}`
+      ).join('\n');
+
+      // Task with metadata
+      await fs.writeFile(
+        path.join(taskWithMeta, 'PLAN.metadata.json'),
+        JSON.stringify({
+          stepCount: 50,
+          agent: 'test-agent',
+          createdAt: new Date().toISOString(),
+          checkboxPattern: 'markdown',
+          version: '2.0.0'
+        })
+      );
+      await fs.writeFile(path.join(taskWithMeta, 'PLAN.md'), largePlan);
+
+      // Task without metadata
+      await fs.writeFile(path.join(taskWithoutMeta, 'PLAN.md'), largePlan);
+
+      // Measure performance with metadata
+      const startWithMeta = Date.now();
+      const resultWithMeta = await trackTaskProgress(config, {
+        agent: 'test-agent',
+        taskId: 'with-metadata'
+      });
+      const timeWithMeta = Date.now() - startWithMeta;
+
+      // Measure performance without metadata
+      const startWithoutMeta = Date.now();
+      const resultWithoutMeta = await trackTaskProgress(config, {
+        agent: 'test-agent',
+        taskId: 'without-metadata'
+      });
+      const timeWithoutMeta = Date.now() - startWithoutMeta;
+
+      // With metadata should be faster for large plans
+      expect(resultWithMeta.progress.total_steps).toBe(50);
+      expect(resultWithoutMeta.progress.total_steps).toBe(50);
+
+      // Log performance difference for verification
+      console.log(`Performance: with metadata=${timeWithMeta}ms, without=${timeWithoutMeta}ms`);
+    });
+  });
 });

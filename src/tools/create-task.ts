@@ -6,14 +6,15 @@
 
 import { ServerConfig, CreateTaskResponse, EnhancementContext } from '../types.js';
 import { initializeTask } from '../utils/task-manager.js';
-import { validateRequiredString, validateOptionalString, validateContent } from '../utils/validation.js';
+import { validateRequiredString, validateOptionalString, validateContent, validateAgentWithAvailability } from '../utils/validation.js';
 import { AgentCommError } from '../types.js';
+import { ErrorLogEntry } from '../logging/ErrorLogger.js';
 import * as fs from '../utils/file-system.js';
 import * as path from 'path';
 import debug from 'debug';
 
 
-const log = debug('agent-comm:tools:createtask');
+const log = debug('agent-comm:tools:create-task');
 // Enhanced PROTOCOL_CONTEXT with strong directives
 export const PROTOCOL_CONTEXT = `
 
@@ -228,6 +229,24 @@ async function findExistingTask(config: ServerConfig, agent: string, taskName: s
     // Log error but don't fail - better to create duplicate than fail entirely
     // Error checking for existing tasks: could be directory not found or permission issue
     // Fallback is to allow task creation which is safer than blocking
+    if (config.errorLogger) {
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'runtime',
+        operation: 'create_task',
+        agent,
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'Error'
+        },
+        context: {
+          tool: 'create_task',
+          parameters: { agent, taskName, action: 'duplicate_detection' }
+        },
+        severity: 'high'
+      };
+      await config.errorLogger.logError(errorEntry);
+    }
   }
   
   return null;
@@ -284,10 +303,63 @@ export async function createTask(
   config: ServerConfig,
   options: CreateTaskOptions
 ): Promise<CreateTaskResponse> {
-  log('createTask called with args: %O', { config, options });
-  // Validate inputs
-  const agent = validateRequiredString(options.agent, 'agent');
-  const rawTaskName = validateRequiredString(options.taskName, 'taskName');
+  const startTime = Date.now();
+  log('createTask called with options: %O', options);
+
+  // Validate inputs with error logging
+  let agent: string;
+  let rawTaskName: string;
+
+  try {
+    agent = await validateAgentWithAvailability(options.agent);
+  } catch (error) {
+    // Log validation error before re-throwing
+    if (config.errorLogger) {
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'validation',
+        operation: 'create_task',
+        agent: String(options.agent ?? ''),
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'ValidationError'
+        },
+        context: {
+          tool: 'create_task',
+          parameters: { agent: options.agent, taskName: options.taskName }
+        },
+        severity: 'high'
+      };
+      await config.errorLogger.logError(errorEntry);
+    }
+    throw error;
+  }
+
+  try {
+    rawTaskName = validateRequiredString(options.taskName, 'taskName');
+  } catch (error) {
+    // Log validation error before re-throwing
+    if (config.errorLogger) {
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'validation',
+        operation: 'create_task',
+        agent: agent ?? String(options.agent ?? ''),
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'ValidationError'
+        },
+        context: {
+          tool: 'create_task',
+          parameters: { agent: options.agent, taskName: options.taskName }
+        },
+        severity: 'high'
+      };
+      await config.errorLogger.logError(errorEntry);
+    }
+    throw error;
+  }
+
   const content = options.content;
   const taskType = options.taskType ?? 'delegation';
   const parentTask = options.parentTask;
@@ -300,12 +372,15 @@ export async function createTask(
   try {
     // Extract clean task name to prevent double timestamps
     const cleanTaskName = extractCleanTaskName(rawTaskName);
+    log('Extracted clean task name: %s from raw: %s', cleanTaskName, rawTaskName);
     
     // Check for existing task to prevent duplicates
+    log('Checking for existing task: %s for agent: %s', cleanTaskName, agent);
     const existingTaskId = await findExistingTask(config, agent, cleanTaskName);
     
     if (existingTaskId) {
       // Return existing task - idempotent behavior
+      log('Found existing task: %s, returning without creating duplicate', existingTaskId);
       const response: CreateTaskResponse = {
         success: true,
         taskCreated: false,
@@ -318,7 +393,9 @@ export async function createTask(
       if (taskType === 'delegation') {
         response.targetAgent = agent;
       }
-      
+
+      const elapsed = Date.now() - startTime;
+      log('Returning existing task in %dms', elapsed);
       return response;
     }
     
@@ -338,11 +415,24 @@ export async function createTask(
     const enhancedContent = generateEnhancedContent(taskOptions, options.sourceAgent);
     
     // Create task using unified approach - initializeTask for all types
+    log('Creating new task for agent: %s with name: %s', agent, cleanTaskName);
     const result = await initializeTask(config, agent, cleanTaskName);
     const taskId = result.taskDir;
-    
+    log('Task created with ID: %s', taskId);
+
     // Write enhanced content to INIT.md for all task types
-    await fs.writeFile(result.initPath, enhancedContent);
+    try {
+      log('Writing INIT.md to: %s (%d bytes)', result.initPath, enhancedContent.length);
+      await fs.writeFile(result.initPath, enhancedContent);
+      log('Successfully wrote INIT.md');
+    } catch (writeError) {
+      // Add taskId to error for proper logging context
+      log('Failed to write INIT.md: %O', writeError);
+      if (writeError instanceof Error) {
+        (writeError as Error & { taskId?: string }).taskId = taskId;
+      }
+      throw writeError;
+    }
     
     const response: CreateTaskResponse = {
       success: true,
@@ -356,10 +446,41 @@ export async function createTask(
     if (taskType === 'delegation') {
       response.targetAgent = agent;
     }
-    
+
+    const elapsed = Date.now() - startTime;
+    log('Task creation completed in %dms', elapsed);
     return response;
     
   } catch (error) {
+    // Log task creation error
+    if (config.errorLogger) {
+      const extractedTaskId = error instanceof Error && 'taskId' in error ?
+        (error as Error & { taskId?: string }).taskId :
+        undefined;
+
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'tool_execution',
+        operation: 'create_task',
+        agent,
+        ...(extractedTaskId ? { taskId: extractedTaskId } : {}),  // Only include taskId if it exists
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'Error'
+        },
+        context: {
+          tool: 'create_task',
+          parameters: {
+            agent,
+            taskName: rawTaskName,
+            ...(extractedTaskId ? { taskId: extractedTaskId } : {})
+          }
+        },
+        severity: 'high'
+      };
+      await config.errorLogger.logError(errorEntry);
+    }
+
     if (error instanceof AgentCommError) {
       throw error;
     }
@@ -375,7 +496,32 @@ export async function createTaskTool(
   config: ServerConfig,
   args: Record<string, unknown>
 ): Promise<CreateTaskResponse> {
-  const agent = validateRequiredString(args['agent'], 'agent');
+  let agent: string;
+
+  try {
+    agent = validateRequiredString(args['agent'], 'agent');
+  } catch (error) {
+    // Log validation error from tool wrapper
+    if (config.errorLogger) {
+      const errorEntry: ErrorLogEntry = {
+        timestamp: new Date(),
+        source: 'validation',
+        operation: 'create_task',
+        agent: String(args['agent'] ?? ''),
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'ValidationError'
+        },
+        context: {
+          tool: 'create_task',
+          parameters: args
+        },
+        severity: 'high'
+      };
+      await config.errorLogger.logError(errorEntry);
+    }
+    throw error;
+  }
   const taskName = validateRequiredString(args['taskName'], 'taskName');
   const content = validateOptionalString(args['content'], 'content');
   const taskType = (args['taskType'] as 'delegation' | 'self' | 'subtask' | undefined) ?? 'delegation';

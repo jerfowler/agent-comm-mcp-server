@@ -8,11 +8,14 @@ import type {
   EnhancementContext,
   EnhancedResponse,
   ToolEnhancer,
-  ServerConfig
+  ServerConfig,
+  ContextUsageData,
+  ContextAlert
 } from '../types.js';
 import { AccountabilityTracker } from './AccountabilityTracker.js';
 import { EventLogger } from '../logging/EventLogger.js';
 import { ErrorLogger } from '../logging/ErrorLogger.js';
+import { ContextThresholdDetector } from './ContextThresholdDetector.js';
 
 const log = debug('agent-comm:core:responseenhancer');
 
@@ -24,6 +27,7 @@ export class ResponseEnhancer {
   private enhancers = new Map<string, ToolEnhancer>();
   private accountabilityTracker: AccountabilityTracker;
   private errorLogger: ErrorLogger | null = null;
+  private contextThresholdDetector: ContextThresholdDetector;
 
   constructor(config: ServerConfig | EventLogger, accountabilityTracker?: AccountabilityTracker) {
     // Config is passed for future extensibility, but not currently used
@@ -53,7 +57,25 @@ export class ResponseEnhancer {
         this.errorLogger = config.errorLogger;
       }
     }
+
+    // Initialize context threshold detector
+    this.contextThresholdDetector = new ContextThresholdDetector();
+
     this.registerDefaultEnhancers();
+  }
+
+  /**
+   * Check context usage and generate alerts if needed
+   */
+  private checkContextUsage(usage: ContextUsageData): ContextAlert | null {
+    return this.contextThresholdDetector.checkUsage(usage);
+  }
+
+  /**
+   * Get context recommendations based on usage
+   */
+  getContextRecommendations(usage: ContextUsageData): string[] {
+    return this.contextThresholdDetector.getRecommendations(usage);
   }
 
   /**
@@ -366,6 +388,22 @@ export class ResponseEnhancer {
           const delegationReminder = await context.delegationTracker.generateDelegationReminder(context.agent);
           if (delegationReminder) {
             guidance.contextual_reminder = `${guidance.contextual_reminder}\n\n${delegationReminder}`;
+          }
+        }
+      }
+
+      // Add context usage alerts if provided
+      if (context.contextUsage && guidance) {
+        const contextAlert = this.checkContextUsage(context.contextUsage);
+        if (contextAlert) {
+          const alertMessage = `\n\n⚠️ CONTEXT ALERT: ${contextAlert.recommendation}`;
+          guidance.contextual_reminder = guidance.contextual_reminder
+            ? `${guidance.contextual_reminder}${alertMessage}`
+            : alertMessage;
+
+          // Add alert to guidance for visibility
+          if (!guidance.context_alert) {
+            guidance.context_alert = contextAlert;
           }
         }
       }

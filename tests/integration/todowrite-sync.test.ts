@@ -110,7 +110,8 @@ describe('TodoWrite Synchronization Integration', () => {
 
       const planResult = await submitPlan(config, {
         agent: testAgent,
-        content: planContent
+        content: planContent,
+        stepCount: 5  // 5 checkboxes in the plan
       });
 
       expect(planResult.success).toBe(true);
@@ -193,7 +194,11 @@ describe('TodoWrite Synchronization Integration', () => {
   - Error: Check prop types and state management
 `;
 
-      await submitPlan(config, { agent: testAgent, content: planContent });
+      await submitPlan(config, {
+        agent: testAgent,
+        content: planContent,
+        stepCount: 3  // 3 checkboxes in the plan
+      });
 
       // Test various matching scenarios
       const todoUpdates = [
@@ -258,7 +263,11 @@ describe('TodoWrite Synchronization Integration', () => {
   - Error: Check deployment logs and rollback if necessary
 `;
 
-        await submitPlan(config, { agent, content: planContent });
+        await submitPlan(config, {
+          agent,
+          content: planContent,
+          stepCount: 3  // 3 checkboxes in the plan
+        });
         tasks.push(createResult);
       }
 
@@ -375,7 +384,11 @@ describe('TodoWrite Synchronization Integration', () => {
       
       const largePlan = `# Large Scale Performance Test\n\n${checkboxes.join('\n\n')}\n`;
       
-      await submitPlan(config, { agent: testAgent, content: largePlan });
+      await submitPlan(config, {
+        agent: testAgent,
+        content: largePlan,
+        stepCount: 100  // 100 checkboxes in the plan
+      });
 
       // Generate many todo updates (some matching, some not)
       const todoUpdates = [
@@ -447,7 +460,11 @@ describe('TodoWrite Synchronization Integration', () => {
   - Error: Manually clean up any remaining test artifacts
 `;
 
-      await submitPlan(config, { agent: testAgent, content: planContent });
+      await submitPlan(config, {
+        agent: testAgent,
+        content: planContent,
+        stepCount: 3  // 3 checkboxes in the plan
+      });
 
       // Perform rapid sequential updates
       const updateSequences = [
@@ -546,7 +563,11 @@ describe('TodoWrite Synchronization Integration', () => {
   - Error: Fix integration issues and improve error handling
 `;
 
-      await submitPlan(config, { agent: testAgent, content: realPlan });
+      await submitPlan(config, {
+        agent: testAgent,
+        content: realPlan,
+        stepCount: 7  // 7 checkboxes in the plan
+      });
 
       // Simulate realistic development progression
       const workflowSteps = [

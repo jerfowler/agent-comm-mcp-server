@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { getServerInfo } from '../../../src/tools/get-server-info.js';
+import { getServerInfo, initializeServerStartTime } from '../../../src/tools/get-server-info.js';
 import { ServerConfig } from '../../../src/types.js';
 import { PACKAGE_INFO } from '../../../src/generated/version.js';
 import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
@@ -23,6 +23,9 @@ describe('get-server-info tool', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Initialize server start time for uptime calculation
+    initializeServerStartTime();
     
     mockConfig = {
       commDir: './comm',
@@ -93,8 +96,8 @@ describe('get-server-info tool', () => {
     expect(result.memoryUsage).toHaveProperty('external');
     expect(result.memoryUsage).toHaveProperty('arrayBuffers');
 
-    // Validate uptime is positive
-    expect(result.uptime).toBeGreaterThan(0);
+    // Validate uptime is non-negative (can be 0 in tests)
+    expect(result.uptime).toBeGreaterThanOrEqual(0);
   });
 
   it('should always return current version from generated constants', async () => {
