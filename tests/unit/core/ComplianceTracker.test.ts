@@ -77,7 +77,6 @@ describe('ComplianceTracker', () => {
       const activity: ComplianceActivity = {
         type: 'task_created',
         taskId: 'test-task-id',
-        taskType: 'delegation',
         timestamp: new Date()
       };
 

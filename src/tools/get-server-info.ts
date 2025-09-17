@@ -52,43 +52,226 @@ interface ServerInfoResponse {
 /**
  * Get comprehensive server information
  */
-export function getServerInfo(
-  config: ServerConfig, 
+export async function getServerInfo(
+  config: ServerConfig,
   _args?: Record<string, unknown>
-): ServerInfoResponse {
+): Promise<ServerInfoResponse> {
   // Use generated package information constants
   
   // Initialize start time if not already set
   if (!serverStartTime) {
     initializeServerStartTime();
+
+    // Log warning about server start time not being initialized
+    if (config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'tool_execution',
+        operation: 'get_server_info',
+        agent: '',
+        taskId: '',
+        error: {
+          message: 'Server start time not initialized, using current time',
+          name: 'StartTimeWarning',
+          code: undefined
+        },
+        context: {
+          tool: 'get_server_info'
+        },
+        severity: 'low'
+      });
+    }
   }
 
-  // Calculate uptime
-  const uptime = process.uptime();
-  
+  // Calculate uptime based on server start time
+  let uptime = 0;
+  if (serverStartTime) {
+    try {
+      uptime = (Date.now() - serverStartTime.getTime()) / 1000;
+    } catch (error) {
+      // Log uptime calculation error
+      if (config.errorLogger) {
+        await config.errorLogger.logError({
+          timestamp: new Date(),
+          source: 'runtime',
+          operation: 'get_server_info',
+          agent: '',
+          taskId: '',
+          error: {
+            message: `Uptime calculation failed: ${(error as Error).message}`,
+            name: (error as Error).name || 'Error',
+            code: undefined
+          },
+          context: {
+            tool: 'get_server_info'
+          },
+          severity: 'low'
+        });
+      }
+    }
+  }
+
   // Get memory usage
-  const memoryUsage = process.memoryUsage();
+  let memoryUsage: NodeJS.MemoryUsage;
+  try {
+    memoryUsage = process.memoryUsage();
+  } catch (error) {
+    // Log memory usage error
+    if (config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'runtime',
+        operation: 'get_server_info',
+        agent: '',
+        taskId: '',
+        error: {
+          message: `Memory usage retrieval failed: ${(error as Error).message}`,
+          name: (error as Error).name || 'Error',
+          code: undefined
+        },
+        context: {
+          tool: 'get_server_info'
+        },
+        severity: 'low'
+      });
+    }
+    throw error;
+  }
   
   // Sanitize configuration (remove sensitive data)
-  const sanitizedConfig = sanitizeConfiguration(config);
+  let sanitizedConfig: Record<string, unknown>;
+  try {
+    sanitizedConfig = sanitizeConfiguration(config);
+  } catch (error) {
+    // Log configuration access error
+    if (config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'runtime',
+        operation: 'get_server_info',
+        agent: '',
+        taskId: '',
+        error: {
+          message: (error as Error).message,
+          name: (error as Error).name || 'Error',
+          code: undefined
+        },
+        context: {
+          tool: 'get_server_info'
+        },
+        severity: 'low'
+      });
+    }
+    throw error;
+  }
   
-  return {
-    name: PACKAGE_INFO.name,
-    version: PACKAGE_INFO.version,
-    description: PACKAGE_INFO.description,
-    author: PACKAGE_INFO.author,
-    repository: PACKAGE_INFO.repository,
-    uptime,
-    startTime: serverStartTime?.toISOString() ?? new Date().toISOString(),
-    capabilities: {
-      tools: true,
-      resources: false,
-      prompts: false,
-      logging: true
-    },
-    configuration: sanitizedConfig,
-    memoryUsage
-  };
+  // Validate package info and log warnings if needed
+  try {
+    if (!PACKAGE_INFO) {
+      const error = new Error('Package info not available');
+      // Log error using ErrorLogger if available
+      if (config.errorLogger) {
+        await config.errorLogger.logError({
+          timestamp: new Date(),
+          source: 'runtime',
+          operation: 'get_server_info',
+          agent: '',
+          taskId: '',
+          error: {
+            message: error.message,
+            name: 'PackageInfoError',
+            code: undefined
+          },
+          context: {
+            tool: 'get_server_info'
+          },
+          severity: 'low'
+        });
+      }
+      throw error;
+    }
+
+    const version = PACKAGE_INFO.version || '0.0.0';
+    if (!PACKAGE_INFO.version && config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'tool_execution',
+        operation: 'get_server_info',
+        agent: '',
+        taskId: '',
+        error: {
+          message: 'Version not found in package info, using fallback',
+          name: 'VersionExtractionWarning',
+          code: undefined
+        },
+        context: {
+          tool: 'get_server_info'
+        },
+        severity: 'low'
+      });
+    }
+
+    // Handle repository format
+    const repository = PACKAGE_INFO.repository;
+    if (typeof repository === 'string' && config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'tool_execution',
+        operation: 'get_server_info',
+        agent: '',
+        taskId: '',
+        error: {
+          message: 'Repository format is string instead of object',
+          name: 'RepositoryFormatWarning',
+          code: undefined
+        },
+        context: {
+          tool: 'get_server_info',
+          parameters: { repository }
+        },
+        severity: 'low'
+      });
+    }
+
+    return {
+      name: PACKAGE_INFO.name,
+      version,
+      description: PACKAGE_INFO.description,
+      author: PACKAGE_INFO.author,
+      repository,
+      uptime,
+      startTime: serverStartTime?.toISOString() ?? new Date().toISOString(),
+      capabilities: {
+        tools: true,
+        resources: false,
+        prompts: false,
+        logging: true
+      },
+      configuration: sanitizedConfig,
+      memoryUsage
+    };
+  } catch (error) {
+    // Log critical error
+    if (config.errorLogger) {
+      await config.errorLogger.logError({
+        timestamp: new Date(),
+        source: 'runtime',
+        operation: 'get_server_info',
+        agent: '',
+        taskId: '',
+        error: {
+          message: (error as Error).message,
+          name: (error as Error).name || 'Error',
+          code: (error as Error & { code?: string })?.code
+        },
+        context: {
+          tool: 'get_server_info'
+        },
+        severity: 'low'
+      });
+    }
+    throw error;
+  }
 }
 
 /**

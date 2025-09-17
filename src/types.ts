@@ -299,6 +299,9 @@ export interface MultiTaskState {
 // Smart Response System Types (Issue #12)
 // ========================
 
+// Import context types needed for interfaces below
+import type { ContextUsageData as _ContextUsageData, ContextAlert as _ContextAlert } from './types/context-types.js';
+
 export interface EnhancementContext {
   toolName: string;
   agent: string;
@@ -307,6 +310,7 @@ export interface EnhancementContext {
   complianceTracker?: import('./core/ComplianceTracker.js').ComplianceTracker;
   delegationTracker?: import('./core/DelegationTracker.js').DelegationTracker;
   accountabilityTracker?: import('./core/AccountabilityTracker.js').AccountabilityTracker;
+  contextUsage?: _ContextUsageData;  // Optional context usage for threshold detection
 }
 
 export interface EnhancedResponse {
@@ -337,6 +341,33 @@ export interface EnhancedResponse {
     error_handling?: string;
     requirement?: string;
     trust_level?: string;
+    context_alert?: _ContextAlert;  // Optional context usage alert
+    // Universal orchestration guidance properties
+    workflow?: {
+      step1: string;
+      step2: string;
+      step3: string;
+    };
+    orchestration?: {
+      pattern: string;
+      single_agent: string;
+      multiple_agents_parallel: string;
+      multiple_agents_sequential: string;
+      parallel_instruction: string;
+    };
+    example_invocations?: {
+      single: string;
+      parallel: string;
+    };
+    critical_note?: string;
+    performance_optimization?: {
+      stepCount_benefit?: string;
+      creates_metadata?: string;
+      improves_tools?: string[];
+      stepCount_guidance?: string;
+      performance_benefit?: string;
+      usage_example?: string;
+    };
   };
 }
 
@@ -358,10 +389,9 @@ export interface AgentComplianceRecord {
 }
 
 export interface ComplianceActivity {
-  type: 'task_created' | 'delegation_completed' | 'todowrite_used' | 
+  type: 'task_created' | 'delegation_completed' | 'todowrite_used' |
         'plan_submitted' | 'progress_reported' | 'task_completed';
   taskId: string;
-  taskType?: string;
   timestamp: Date;
 }
 
@@ -409,6 +439,34 @@ export interface SmartResponseConfig {
   complianceTracking: boolean;
   delegationTracking: boolean;
 }
+
+// ========================
+// Context Management Extensions (Issue #51)
+// ========================
+
+// Import context types (they are all optional extensions)
+export type {
+  ContextUsageData,
+  AgentContextData,
+  EnhancedPlanSubmission,
+  EnhancedProgressReport,
+  EnhancedProgressUpdate,
+  ContextStatus,
+  ContextAlert,
+  TaskSplitRecommendation,
+  HandoffContext,
+  ContextTransferValidation,
+  ContextEvolution,
+  ContextThresholds,
+  AgentIdentity,
+  AgentCapabilities,
+  AgentWorkingContext,
+  ContextEstimate,
+  CapabilityChanges
+} from './types/context-types.js';
+
+// Export AlertSeverity enum as a value
+export { AlertSeverity } from './types/context-types.js';
 
 // ========================
 // End of Types - Unused orchestration interfaces removed

@@ -277,12 +277,12 @@ describe('Check Tasks Tool', () => {
 
     it('should propagate custom TaskContextManager errors', async () => {
       const args = { agent: 'test-agent' };
-      const customError = new InvalidTaskError('Invalid task structure', 'task');
-      
+      const customError = new InvalidTaskError('Custom task context error', 'task');
+
       mockContextManager.checkAssignedTasks.mockRejectedValue(customError);
-      
+
       await expect(checkTasks(mockConfig, args))
-        .rejects.toThrow('Invalid task structure');
+        .rejects.toThrow('Custom task context error');
     });
   });
 

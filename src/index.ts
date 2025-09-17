@@ -61,6 +61,8 @@ import { ping } from './tools/ping.js';
 
 // Import integration tools
 import { syncTodoCheckboxes } from './tools/sync-todo-checkboxes.js';
+import { protocolConfig } from './tools/protocol-config.js';
+import type { ProtocolConfig } from './core/ProtocolConfigManager.js';
 
 /**
  * Create MCP server instance (exported for testing)
@@ -456,7 +458,22 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
               ]
             };
           }
-            
+
+          case 'protocol_config': {
+            const agent = (args && typeof args === 'object' && 'agent' in args && typeof args['agent'] === 'string')
+              ? args['agent'] : 'default-agent';
+            const result = await protocolConfig(args as { action: 'get' | 'set' | 'reset'; config?: ProtocolConfig });
+            const enhanced = await enhanceToolResponse('protocol_config', result, agent, config);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(enhanced, null, 2)
+                }
+              ]
+            };
+          }
+
           default:
             throw new AgentCommError(`Unknown tool: ${name}`, 'UNKNOWN_TOOL');
         }
@@ -559,11 +576,6 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
                   type: 'string',
                   description: 'Task content in markdown format (optional for self tasks)'
                 },
-                taskType: {
-                  type: 'string',
-                  enum: ['delegation', 'self', 'subtask'],
-                  description: 'Task type: delegation (default), self (for own organization), subtask (with parent)'
-                },
                 parentTask: {
                   type: 'string',
                   description: 'Parent task ID for subtasks (optional)'
@@ -664,6 +676,24 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
                 agent: {
                   type: 'string',
                   description: 'Agent name submitting the plan'
+                },
+                agentContext: {
+                  type: 'object',
+                  description: 'Optional: Agent context data including identity, capabilities, and working context',
+                  properties: {
+                    identity: { type: 'object' },
+                    currentCapabilities: { type: 'object' },
+                    workingContext: { type: 'object' }
+                  }
+                },
+                contextEstimate: {
+                  type: 'object',
+                  description: 'Optional: Context estimate for the plan',
+                  properties: {
+                    estimatedTokensRequired: { type: 'number' },
+                    confidenceLevel: { type: 'number' },
+                    criticalSections: { type: 'array', items: { type: 'string' } }
+                  }
                 }
               },
               required: ['content', 'agent']
@@ -713,6 +743,24 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
                 agent: {
                   type: 'string',
                   description: 'Agent name reporting progress'
+                },
+                contextStatus: {
+                  type: 'object',
+                  description: 'Optional: Current context usage status',
+                  properties: {
+                    currentUsage: { type: 'number' },
+                    trend: { type: 'string', enum: ['INCREASING', 'DECREASING', 'STABLE'] },
+                    estimatedRemaining: { type: 'number' }
+                  }
+                },
+                capabilityChanges: {
+                  type: 'object',
+                  description: 'Optional: Capability changes discovered during execution',
+                  properties: {
+                    discoveredLimitations: { type: 'array', items: { type: 'string' } },
+                    toolEffectiveness: { type: 'object' },
+                    adaptations: { type: 'array', items: { type: 'string' } }
+                  }
                 }
               },
               required: ['updates', 'agent']
@@ -862,6 +910,57 @@ function setupServerHandlers(server: Server, config: ServerConfig, resourceManag
                 }
               },
               required: ['agent', 'todoUpdates']
+            }
+          },
+          {
+            name: 'protocol_config',
+            description: 'Manage protocol injection configuration for task and plan templates',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                action: {
+                  type: 'string',
+                  enum: ['get', 'set', 'reset'],
+                  description: 'Action to perform: get current config, set new config, or reset to defaults'
+                },
+                config: {
+                  type: 'object',
+                  properties: {
+                    task: {
+                      type: 'object',
+                      properties: {
+                        enabled: {
+                          type: 'boolean',
+                          description: 'Whether to inject protocol instructions in task INIT.md files'
+                        },
+                        template: {
+                          type: 'string',
+                          description: 'Custom template for task protocol injection'
+                        }
+                      },
+                      required: ['enabled', 'template']
+                    },
+                    plan: {
+                      type: 'object',
+                      properties: {
+                        enabled: {
+                          type: 'boolean',
+                          description: 'Whether to inject protocol instructions in plan PLAN.md files'
+                        },
+                        template: {
+                          type: 'string',
+                          description: 'Custom template for plan protocol injection'
+                        }
+                      },
+                      required: ['enabled', 'template']
+                    }
+                  },
+                  required: ['task', 'plan'],
+                  description: 'Protocol configuration object (required for set action)'
+                }
+              },
+              required: ['action'],
+              additionalProperties: false
             }
           }
         ]
