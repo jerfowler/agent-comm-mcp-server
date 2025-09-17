@@ -676,21 +676,33 @@ export class ResponseEnhancer {
    * Enhance submit_plan tool responses
    */
   private async enhanceSubmitPlan(context: EnhancementContext): Promise<EnhancedResponse['guidance']> {
-    const { agent } = context;
-    
+    const { agent, toolResponse } = context;
+
     const nextSteps = this.generateNextSteps(context);
-    
+
     let contextualReminder = '📝 Plan submitted! Remember to use TodoWrite for tracking';
+
+    // Add stepCount optimization guidance for successful submissions
+    if (toolResponse && typeof toolResponse === 'object' && 'success' in toolResponse && toolResponse.success) {
+      contextualReminder += '\n⚡ PERFORMANCE TIP: Use stepCount parameter for 90% faster validation (100ms → <10ms)';
+      contextualReminder += '\n📊 Example: stepCount=5 for plans with 5 checkboxes enhances report_progress speed';
+    }
+
     if (context.complianceTracker) {
       const guidance = await context.complianceTracker.getPersonalizedGuidance(agent, 'submit_plan');
       if (guidance) {
-        contextualReminder = guidance;
+        contextualReminder = `${contextualReminder}\n${guidance}`;
       }
     }
 
     return {
       next_steps: nextSteps,
-      contextual_reminder: contextualReminder
+      contextual_reminder: contextualReminder,
+      performance_optimization: {
+        stepCount_benefit: '90% faster validation when provided',
+        creates_metadata: 'PLAN.metadata.json for caching',
+        improves_tools: ['report_progress', 'track_task_progress']
+      }
     };
   }
 

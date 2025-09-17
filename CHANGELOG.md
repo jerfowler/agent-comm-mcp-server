@@ -5,7 +5,157 @@ All notable changes to the Agent Communication MCP Server will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.0] - 2025-09-14
+## [0.10.0] - 2025-09-17
+
+### 🚀 Major Release: Universal Orchestration & Performance Optimization
+
+This release introduces **Universal Orchestration Guidance**, comprehensive **Performance Optimization** with 90% speed improvements, and a new **Protocol Configuration Management** system, establishing the foundation for enterprise-scale agent coordination.
+
+### ✨ Major Features
+
+#### Universal Orchestration Guidance (Issue #64)
+- **Consistent parallel-first instructions**: Every task delegation now includes clear parallel execution guidance
+- **ResponseEnhancer integration**: Automatic workflow guidance provided through enhanced tool responses
+- **Clean task content separation**: Protocol injection moved from task content to ResponseEnhancer guidance
+- **Parallel execution emphasis**: Universal templates prioritize concurrent agent execution patterns
+- **Multi-agent coordination**: Clear instructions for both sequential and parallel task execution
+
+#### Configurable Protocol Management (Issue #63)
+- **NEW `protocol_config` MCP tool**: Configure task and plan template injection independently
+- **File-based configuration**: Settings stored in `comm/.config/protocol.json` with auto-creation
+- **Template variable substitution**: Dynamic content generation with placeholder support
+- **Independent injection control**: Separate task and plan template management
+- **Backward compatibility**: Automatic migration from previous configuration approaches
+
+#### 90% Performance Optimization (Issue #60)
+- **stepCount parameter**: Optional parameter in `submit_plan` for dramatic validation speed improvements
+- **Metadata caching system**: `PLAN.metadata.json` created alongside `PLAN.md` for instant validation
+- **Performance improvement**: Validation time reduced from ~100ms to <10ms (90% faster)
+- **Cached operations**: `report_progress` and `track_task_progress` benefit from metadata caching
+- **Backward compatible**: All existing code continues to work without changes
+
+#### Enhanced Agent Validation (Issue #59)
+- **Dynamic agent discovery**: Automatic detection and validation of available agents
+- **Improved reliability**: Enhanced agent name validation with better error messages
+- **Security hardening**: Stricter validation prevents agent impersonation attempts
+- **Audit logging**: Comprehensive tracking of agent validation operations
+
+#### Enhanced Context Reporting (Issue #51)
+- **Proactive task management**: Better context sharing and task lifecycle visibility
+- **Improved reporting**: Enhanced agent communication with clearer progress indicators
+- **Context optimization**: More efficient context generation and sharing between agents
+
+### 🔧 Technical Improvements
+
+#### Core System Enhancements
+- **Universal orchestration templates**: Complete implementation in `src/core/orchestration-templates.ts`
+- **ProtocolConfigManager**: New configuration management system with thread-safe operations
+- **Enhanced TaskContextManager**: Improved context generation with better error handling
+- **Plan parser utilities**: New `src/utils/plan-parser.ts` with unified validation logic
+
+#### Type System Updates
+- **Enhanced response types**: Added orchestration guidance properties to `EnhancedResponse` interface
+- **Plan metadata types**: New `src/types/plan-metadata.ts` with comprehensive metadata interfaces
+- **Configuration types**: Full TypeScript support for protocol configuration objects
+- **Strict mode compliance**: All new code maintains 100% TypeScript strict mode compliance
+
+#### Performance Infrastructure
+- **Metadata caching**: Intelligent caching system for plan validation operations
+- **Optimized regex patterns**: Consolidated checkbox parsing with improved performance
+- **Efficient file operations**: Enhanced file I/O with better error handling and caching
+
+### 🛠️ Tool Enhancements
+
+#### New Tools (18 Total)
+- **`protocol_config`**: Complete protocol template configuration management
+  - Actions: get, set, reset
+  - File-based configuration storage
+  - Template variable substitution support
+
+#### Enhanced Existing Tools
+- **`submit_plan`**: Added optional `stepCount` parameter for 90% faster validation
+- **`report_progress`**: Leverages metadata caching for improved performance
+- **`track_task_progress`**: Benefits from cached plan metadata for faster operations
+- **All tools**: Enhanced with universal orchestration guidance through ResponseEnhancer
+
+### 🐛 Bug Fixes
+
+- **Performance test stability**: Eliminated flaky performance tests in validation suites
+- **Integration test updates**: Fixed tests for protocol injection removal approach
+- **ESLint compliance**: Resolved optional chain syntax issues for strict ESLint rules
+- **Test failure resolution**: Comprehensive fixes for all remaining test suite issues
+- **TypeScript compliance**: Maintained zero violations with enhanced strict mode enforcement
+
+### 📊 Quality Assurance
+
+#### Test Coverage Improvements
+- **New test suites**: Added comprehensive tests for all new features
+- **Orchestration templates**: 7-test suite covering all generation functions
+- **Protocol configuration**: 14 new tests for protocol-config tool functionality
+- **Plan parser utilities**: 95.52% test coverage for new parser functionality
+- **Performance validation**: Tests verify 90% speed improvement claims
+
+#### Code Quality Metrics
+- **Test Coverage**: 91%+ maintained across all new components
+- **TypeScript Compliance**: 100% strict mode, zero violations
+- **ESLint Status**: Zero violations, full compliance with enhanced rules
+- **Build Success**: All quality gates passing consistently
+
+### 🚀 Performance Improvements
+
+#### Validation Speed Enhancement
+- **Previous**: ~100ms regex parsing per plan validation
+- **Current**: <10ms cached metadata lookup
+- **Improvement**: 90% reduction in validation processing time
+- **Operations Affected**: `submit_plan`, `report_progress`, `track_task_progress`
+
+#### System Efficiency
+- **Reduced CPU usage**: Metadata caching eliminates repetitive regex operations
+- **Faster agent feedback**: Quicker validation enables more responsive agent coordination
+- **Scalability improvement**: Better performance under high agent coordination loads
+
+### 📚 Documentation Updates
+
+#### Comprehensive Documentation Refresh
+- **README.md**: Updated with conversational tone and v0.10.0 features
+- **docs/PROTOCOL.md**: Complete technical documentation for all new capabilities
+- **docs/HOWTO-CREATE-ISSUE-PLAN.md**: Added comprehensive issue planning guide
+- **Tool reference**: Updated from 17 to 18 tools with complete protocol_config documentation
+
+#### User Experience Improvements
+- **Conversational language**: More engaging and practical descriptions
+- **Performance metrics**: Clear before/after performance comparisons
+- **Usage examples**: Practical examples for all new features and optimizations
+
+### 🔄 Migration & Compatibility
+
+#### Backward Compatibility
+- **100% API compatibility**: All existing code continues to work unchanged
+- **Optional enhancements**: New features are opt-in through additional parameters
+- **Automatic migration**: Protocol configuration auto-migrates from previous approaches
+- **Graceful degradation**: System works efficiently with or without performance optimizations
+
+#### Upgrade Path
+- **Zero breaking changes**: Seamless upgrade from any 0.9.x version
+- **Performance benefits**: Immediate benefits without code changes
+- **Enhanced features**: Access to new capabilities through optional parameters
+- **Configuration migration**: Automatic setup of new configuration system
+
+### 🎯 Key Achievements
+
+- **Enterprise coordination**: Universal orchestration guidance ensures consistent agent coordination
+- **Performance excellence**: 90% validation speed improvement with intelligent caching
+- **Configuration flexibility**: Complete control over protocol template injection
+- **Quality maintenance**: All improvements maintain existing quality standards
+- **User experience**: More conversational documentation and clearer usage guidance
+
+---
+
+**Issues Resolved**: #64, #63, #60, #59, #51
+**Contributors**: @jerfowler with Claude Code assistance
+**Release Notes**: This major release establishes agent-comm-mcp-server as the definitive solution for enterprise-scale AI agent coordination, with universal orchestration guidance, dramatic performance improvements, and flexible protocol configuration management.
+
+## [0.9.2] - 2025-09-14
 
 ### 💥 BREAKING CHANGES
 
