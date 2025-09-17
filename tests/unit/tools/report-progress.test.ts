@@ -4,6 +4,7 @@
  */
 
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import * as fs from '../../../src/utils/fs-extra-safe.js';
 import { reportProgress } from '../../../src/tools/report-progress.js';
 import * as validation from '../../../src/utils/validation.js';
 import { TaskContextManager, ProgressReportResult } from '../../../src/core/TaskContextManager.js';
@@ -13,6 +14,7 @@ import { testUtils } from '../../utils/testUtils.js';
 // Mock modules
 jest.mock('../../../src/utils/validation.js');
 jest.mock('../../../src/core/TaskContextManager.js');
+jest.mock('../../../src/utils/fs-extra-safe.js');
 
 const mockValidation = validation as jest.Mocked<typeof validation>;
 const MockTaskContextManager = TaskContextManager as jest.MockedClass<typeof TaskContextManager>;
@@ -495,6 +497,215 @@ describe('Report Progress Tool', () => {
       const result = await resultPromise;
 
       expect(result).toBe(mockProgressResult);
+    });
+  });
+
+  describe('stepCount metadata usage (Issue #60)', () => {
+    const mockedFs = fs as jest.Mocked<typeof fs>;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      // Mock file system operations
+      mockedFs.pathExists.mockResolvedValue(true);
+      mockedFs.readFile.mockResolvedValue('');
+      mockedFs.readJSON.mockResolvedValue({});
+    });
+
+    it('should use stepCount from PLAN.metadata.json when available', async () => {
+      // Mock metadata file exists and contains stepCount
+      const mockMetadata = {
+        stepCount: 5,
+        agent: 'test-agent',
+        createdAt: '2025-09-17T04:00:00Z',
+        checkboxPattern: 'markdown',
+        version: '2.0.0'
+      };
+
+      mockedFs.pathExists.mockResolvedValue(true);
+      mockedFs.readJSON.mockResolvedValue(mockMetadata);
+
+      // Mock PLAN.md content - won't be parsed if metadata exists
+      const planContent = `# Plan
+- [ ] **Step 1**: Do something
+- [ ] **Step 2**: Do another thing
+- [ ] **Step 3**: Do third thing
+- [ ] **Step 4**: Do fourth thing
+- [ ] **Step 5**: Do fifth thing`;
+
+      mockedFs.readFile.mockResolvedValue(planContent);
+
+      mockContextManager.reportProgress.mockResolvedValue(mockProgressResult);
+
+      const args = {
+        agent: 'test-agent',
+        updates: [
+          {
+            step: 1,
+            status: 'COMPLETE',
+            description: 'First step done'
+          }
+        ]
+      };
+
+      const startTime = Date.now();
+      const result = await reportProgress(mockConfig, args);
+      const executionTime = Date.now() - startTime;
+
+      // Should be fast since we're using cached metadata
+      expect(executionTime).toBeLessThan(50); // Allow some time for async ops
+
+      expect(result).toBe(mockProgressResult);
+
+      // Should have read metadata file
+      expect(mockedFs.pathExists).toHaveBeenCalledWith(
+        expect.stringContaining('PLAN.metadata.json')
+      );
+    });
+
+    it('should fall back to parsing PLAN.md when metadata is missing', async () => {
+      // Mock metadata file doesn't exist
+      mockedFs.pathExists.mockImplementation(async (path: string) => {
+        if (path.includes('PLAN.metadata.json')) return false;
+        return true;
+      });
+
+      // Mock PLAN.md content - will be parsed
+      const planContent = `# Plan
+- [ ] **Step 1**: Do something
+  - Action: Execute first action
+  - Expected: First result
+
+- [ ] **Step 2**: Do another thing
+  - Action: Execute second action
+  - Expected: Second result`;
+
+      mockedFs.readFile.mockResolvedValue(planContent);
+
+      mockContextManager.reportProgress.mockResolvedValue(mockProgressResult);
+
+      const args = {
+        agent: 'test-agent',
+        updates: [
+          {
+            step: 1,
+            status: 'COMPLETE',
+            description: 'First step done'
+          }
+        ]
+      };
+
+      const result = await reportProgress(mockConfig, args);
+
+      expect(result).toBe(mockProgressResult);
+
+      // Should have checked for metadata
+      expect(mockedFs.pathExists).toHaveBeenCalledWith(
+        expect.stringContaining('PLAN.metadata.json')
+      );
+
+      // Should have read PLAN.md as fallback
+      expect(mockedFs.readFile).toHaveBeenCalledWith(
+        expect.stringContaining('PLAN.md'),
+        'utf8'
+      );
+    });
+
+    it('should validate step numbers against stepCount', async () => {
+      // Mock metadata with stepCount of 3
+      const mockMetadata = {
+        stepCount: 3,
+        agent: 'test-agent',
+        createdAt: '2025-09-17T04:00:00Z',
+        checkboxPattern: 'markdown',
+        version: '2.0.0'
+      };
+
+      mockedFs.pathExists.mockResolvedValue(true);
+      mockedFs.readJSON.mockResolvedValue(mockMetadata);
+
+      const args = {
+        agent: 'test-agent',
+        updates: [
+          {
+            step: 5, // Invalid - only 3 steps exist
+            status: 'COMPLETE',
+            description: 'Invalid step number'
+          }
+        ]
+      };
+
+      await expect(reportProgress(mockConfig, args))
+        .rejects.toThrow(/Step 5 is out of range/);
+    });
+
+    it('should track performance improvements with metadata', async () => {
+      // Mock metadata exists
+      const mockMetadata = {
+        stepCount: 10,
+        agent: 'test-agent',
+        createdAt: '2025-09-17T04:00:00Z',
+        checkboxPattern: 'markdown',
+        version: '2.0.0'
+      };
+
+      mockedFs.pathExists.mockResolvedValue(true);
+      mockedFs.readJSON.mockResolvedValue(mockMetadata);
+
+      mockContextManager.reportProgress.mockResolvedValue(mockProgressResult);
+
+      const args = {
+        agent: 'test-agent',
+        updates: [
+          {
+            step: 1,
+            status: 'IN_PROGRESS',
+            description: 'Working on it'
+          }
+        ]
+      };
+
+      const result = await reportProgress(mockConfig, args);
+
+      // Verify the function was called correctly
+      expect(mockContextManager.reportProgress).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle corrupted metadata gracefully', async () => {
+      // Mock corrupted metadata
+      mockedFs.pathExists.mockResolvedValue(true);
+      mockedFs.readJSON.mockRejectedValue(new Error('Invalid JSON'));
+
+      // Mock PLAN.md as fallback
+      const planContent = `# Plan
+- [ ] **Step 1**: Do something
+  - Action: Execute action`;
+
+      mockedFs.readFile.mockResolvedValue(planContent);
+
+      mockContextManager.reportProgress.mockResolvedValue(mockProgressResult);
+
+      const args = {
+        agent: 'test-agent',
+        updates: [
+          {
+            step: 1,
+            status: 'COMPLETE',
+            description: 'First step done'
+          }
+        ]
+      };
+
+      const result = await reportProgress(mockConfig, args);
+
+      expect(result).toBe(mockProgressResult);
+
+      // Should fall back to PLAN.md parsing
+      expect(mockedFs.readFile).toHaveBeenCalledWith(
+        expect.stringContaining('PLAN.md'),
+        'utf8'
+      );
     });
   });
 });

@@ -225,7 +225,8 @@ describe('Validation Error Logging (Bug #4 TDD)', () => {
       try {
         await submitPlan(config, {
           agent: 'test-agent',
-          content: 'This is a plan without any checkboxes'  // Invalid: no checkboxes
+          content: 'This is a plan without any checkboxes',  // Invalid: no checkboxes
+          stepCount: 0  // No checkboxes, expecting error
         });
       } catch (error) {
         // Expected to throw
@@ -248,7 +249,8 @@ describe('Validation Error Logging (Bug #4 TDD)', () => {
       try {
         await submitPlan(config, {
           agent: 'test-agent',
-          content: '1. [PENDING] Task one\n2. [COMPLETE] Task two'  // Invalid format
+          content: '1. [PENDING] Task one\n2. [COMPLETE] Task two',  // Invalid format
+          stepCount: 0  // No valid checkboxes, expecting error
         });
       } catch (error) {
         // Expected to throw

@@ -2,6 +2,7 @@
  * Report progress tool - Progress updates without file exposure
  * Updates progress markers without exposing file operations
  * Enhanced with context status tracking (Issue #51)
+ * Enhanced with stepCount metadata usage (Issue #60)
  */
 
 import { ServerConfig } from '../types.js';
@@ -9,10 +10,13 @@ import { TaskContextManager, ProgressUpdate, ProgressReportResult } from '../cor
 import { validateRequiredString, validateRequiredConfig } from '../utils/validation.js';
 import { ErrorLogEntry } from '../logging/ErrorLogger.js';
 import type { ContextStatus, CapabilityChanges } from '../types/context-types.js';
+import { parsePlanCheckboxes } from '../utils/plan-parser.js';
+import { PlanMetadata } from '../types/plan-metadata.js';
+import * as fs from '../utils/fs-extra-safe.js';
+import path from 'path';
 import debug from 'debug';
 
-
-const log = debug('agent-comm:tools:reportprogress');
+const log = debug('agent-comm:tools:report-progress');
 /**
  * Report progress updates without file exposure
  */
@@ -330,7 +334,86 @@ export async function reportProgress(
       ...(typeof blocker === 'string' && blocker.trim() && { blocker: blocker.trim() })
     });
   }
-  
+
+  // Validate step numbers against stepCount if metadata exists (Issue #60)
+  try {
+    const startTime = Date.now();
+    const taskPath = path.join(config.commDir, agent, taskId ?? 'current-task');
+    const metadataPath = path.join(taskPath, 'PLAN.metadata.json');
+
+    let stepCount: number | undefined;
+
+    // Try to read metadata first for performance
+    if (await fs.pathExists(metadataPath)) {
+      try {
+        const metadata = await fs.readJSON(metadataPath) as PlanMetadata;
+        stepCount = metadata.stepCount;
+        log('Using cached stepCount from metadata: %d', stepCount);
+      } catch (error) {
+        log('Failed to read metadata, falling back to plan parsing: %s', (error as Error).message);
+      }
+    }
+
+    // Fall back to parsing PLAN.md if no metadata
+    if (stepCount === undefined) {
+      const planPath = path.join(taskPath, 'PLAN.md');
+      if (await fs.pathExists(planPath)) {
+        const planContent = await fs.readFile(planPath, 'utf8');
+        const checkboxes = parsePlanCheckboxes(planContent);
+        stepCount = checkboxes.length;
+        log('Parsed stepCount from PLAN.md: %d', stepCount);
+      }
+    }
+
+    const validationTime = Date.now() - startTime;
+    log('Step validation completed in %dms', validationTime);
+
+    if (validationTime > 10) {
+      log('PERFORMANCE WARNING: Step validation took %dms (>10ms threshold)', validationTime);
+    }
+
+    // Validate all step numbers are within range
+    if (stepCount !== undefined) {
+      for (const update of updates) {
+        if (update.step > stepCount) {
+          const errorMessage = `Step ${update.step} is out of range (max: ${stepCount})`;
+
+          if (config.errorLogger) {
+            const errorEntry: ErrorLogEntry = {
+              timestamp: new Date(),
+              source: 'validation',
+              operation: 'report_progress',
+              agent,
+              ...(taskId && { taskId }),
+              error: {
+                message: errorMessage,
+                name: 'StepOutOfRangeError',
+                code: 'STEP_OUT_OF_RANGE'
+              },
+              context: {
+                tool: 'report_progress',
+                parameters: {
+                  invalidStep: update.step,
+                  maxStep: stepCount
+                }
+              },
+              severity: 'high'
+            };
+            await config.errorLogger.logError(errorEntry);
+          }
+
+          throw new Error(errorMessage);
+        }
+      }
+    }
+  } catch (error) {
+    // Log error but only fail if it's a validation error
+    if ((error as Error).message.includes('out of range')) {
+      throw error;
+    }
+    log('Non-critical error during step validation: %s', (error as Error).message);
+  }
+
   // Create connection for the agent with optional taskId
   const connection = {
     id: `report-progress-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
