@@ -401,17 +401,19 @@ describe('report-progress Additional Coverage', () => {
       expect(result).toHaveProperty('success');
       expect(result.success).toBe(true);
 
-      // Error logger should log the unusual condition
+      // Error logger should log the out-of-range condition (step 101 > stepCount 2)
+      // Note: With mutual exclusion, "out of range" takes priority over "extremely large"
       expect(mockErrorLogger.logError).toHaveBeenCalledWith(
         expect.objectContaining({
           source: 'validation',
           error: expect.objectContaining({
-            name: 'ValidationWarning'
+            name: 'StepOutOfRangeWarning',
+            code: 'STEP_OUT_OF_RANGE'
           }),
           context: expect.objectContaining({
             parameters: expect.objectContaining({
-              unusualStep: 101,
-              typicalMax: 100
+              invalidStep: 101,
+              maxStep: 2
             })
           })
         })

@@ -413,9 +413,9 @@ describe('track-task-progress ErrorLogger Integration', () => {
 - [x] Completed step
 - [X] Alternative complete marker
 - [ ] Pending step
-- [] Missing space in checkbox
-- [  ] Extra spaces
-- [~] Invalid marker
+- [invalid] Invalid marker text
+- [?] Question mark marker
+- [123] Numeric marker
 `;
       await fs.writeFile(path.join(taskDir, 'PLAN.md'), planContent);
 
