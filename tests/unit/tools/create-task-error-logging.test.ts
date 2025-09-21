@@ -118,7 +118,7 @@ describe('create-task ErrorLogger Integration', () => {
 
     it('should log error when taskName parameter is missing', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: ''  // Invalid - empty string
       };
 
@@ -161,7 +161,7 @@ describe('create-task ErrorLogger Integration', () => {
       mockedInitTask.mockRejectedValue(new Error('Failed to create task directory'));
 
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'Test content'
       };
@@ -189,7 +189,7 @@ describe('create-task ErrorLogger Integration', () => {
       mockedFileSystem.listDirectory.mockResolvedValue([]);
 
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task'
       };
 
@@ -212,7 +212,7 @@ describe('create-task ErrorLogger Integration', () => {
       mockedFileSystem.writeFile.mockRejectedValue(new Error('Disk full'));
 
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'Test content'
       };
@@ -234,7 +234,7 @@ describe('create-task ErrorLogger Integration', () => {
     it('should log error when protocol context injection fails', async () => {
       // Simulate a scenario where content generation might fail
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: null as unknown as string  // Invalid content that might cause issues
       };
@@ -283,7 +283,7 @@ describe('create-task ErrorLogger Integration', () => {
       mockedFileSystem.writeFile.mockRejectedValueOnce(new Error('Write failed'));
 
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'error-task'
       };
 
@@ -332,7 +332,7 @@ describe('create-task ErrorLogger Integration', () => {
       // This is tested by verifying the import exists in the source file
 
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task'
       };
 

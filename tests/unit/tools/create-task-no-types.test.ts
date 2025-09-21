@@ -84,7 +84,7 @@ describe('create-task without taskType', () => {
     it('should accept create-task options without taskType parameter', async () => {
       // This test validates that the CreateTaskOptions interface no longer includes taskType
       const options: CreateTaskOptions = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'Test content'
         // Notice: no taskType parameter here
@@ -104,7 +104,7 @@ describe('create-task without taskType', () => {
     it('should not accept taskType parameter even if provided', async () => {
       // TypeScript should prevent this at compile time
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'Test content',
         taskType: 'delegation' // This should cause a TypeScript error
@@ -124,7 +124,7 @@ describe('create-task without taskType', () => {
   describe('Clean task creation', () => {
     it('should create task without any taskType logic', async () => {
       const options: CreateTaskOptions = {
-        agent: 'backend-engineer',
+        agent: 'senior-backend-engineer',
         taskName: 'implement-feature',
         content: 'Implement new authentication feature'
       };
@@ -147,7 +147,7 @@ describe('create-task without taskType', () => {
 
     it('should handle parent task reference without taskType', async () => {
       const options: CreateTaskOptions = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'sub-task',
         content: 'This is a sub-task',
         parentTask: 'parent-task-123'
@@ -172,7 +172,7 @@ describe('create-task without taskType', () => {
 
     it('should create task without content and not use self-task logic', async () => {
       const options: CreateTaskOptions = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'empty-task'
         // No content provided
       };
@@ -198,7 +198,7 @@ describe('create-task without taskType', () => {
   describe('EventLogger integration', () => {
     it('should create task successfully without taskType (EventLogger called at MCP level)', async () => {
       const options: CreateTaskOptions = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'Test content'
       };
@@ -218,7 +218,7 @@ describe('create-task without taskType', () => {
   describe('ResponseEnhancer integration', () => {
     it('should create task response without taskType (ResponseEnhancer called at MCP level)', async () => {
       const options: CreateTaskOptions = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'Test content'
       };
