@@ -169,7 +169,7 @@ describe('create_task unified tool', () => {
       // Should write template with only metadata, no protocol injection
       const writtenContent = (mockedFs.writeFile as jest.Mock).mock.calls[0][1];
       expect(writtenContent).toContain('## Metadata');
-      expect(writtenContent).toContain('Agent: test-agent');
+      expect(writtenContent).toContain('Agent: senior-backend-engineer');
       expect(writtenContent).not.toContain('## MCP Task Management Protocol');
     });
 
