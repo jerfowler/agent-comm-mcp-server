@@ -59,7 +59,7 @@ describe('MCP Server Tools Integration', () => {
   describe('File System Operations - fs.readdir regression tests', () => {
     it('CRITICAL: should handle directory listing with fs.readdir', async () => {
       // Create test agent directory structure
-      const agentPath = path.join(commDir, 'test-agent');
+      const agentPath = path.join(commDir, 'senior-backend-engineer');
       const taskPath = path.join(agentPath, 'test-task');
       await fs.ensureDir(taskPath);
       await fs.writeFile(path.join(taskPath, 'INIT.md'), '# Test task');
@@ -70,7 +70,7 @@ describe('MCP Server Tools Integration', () => {
       expect(response.agents).toBeDefined();
       expect(Array.isArray(response.agents)).toBe(true);
       expect(response.agents).toHaveLength(1);
-      expect(response.agents[0].name).toBe('test-agent');
+      expect(response.agents[0].name).toBe('senior-backend-engineer');
       expect(response.agents[0].taskCount).toBe(1);
       expect(response.totalAgents).toBe(1);
       expect(response.totalTasks).toBe(1);
@@ -218,7 +218,7 @@ Test task for reading operations`;
 
     it('should handle non-existent tasks gracefully', async () => {
       await expect(readTask(config, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         task: 'non-existent-task',
         file: 'INIT'
       })).rejects.toThrow();
@@ -226,7 +226,7 @@ Test task for reading operations`;
 
     it('should validate task names', async () => {
       await expect(createTaskTool(config, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: '../invalid-task-name',
         content: 'Invalid task'
       })).rejects.toThrow();
@@ -258,7 +258,7 @@ Test task for reading operations`;
       const largeContent = 'x'.repeat(10000); // 10KB content
       
       const response = await createTaskTool(config, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'large-task',
         content: `# Large Task\n\n${largeContent}`
       });
@@ -266,13 +266,13 @@ Test task for reading operations`;
       expect(response.success).toBe(true);
 
       // Get the task directory name (task is already initialized)
-      const checkResult = await checkTasks(config, { agent: 'test-agent' });
+      const checkResult = await checkTasks(config, { agent: 'senior-backend-engineer' });
       expect(checkResult.tasks).toHaveLength(1);
       const actualTaskName = checkResult.tasks[0].taskId;
 
       // Verify content was written correctly
       const readResponse = await readTask(config, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         task: actualTaskName,
         file: 'INIT'
       });

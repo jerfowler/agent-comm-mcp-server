@@ -48,7 +48,7 @@ describe('MCP Server Context-Based Operations', () => {
 
   describe('1. Context-Based Format Support', () => {
     it('should always use context format in checkTasks', async () => {
-      const agent = 'test-agent';
+      const agent = 'senior-backend-engineer';
       
       // Create test tasks first
       const agentDir = path.join(commDir, agent);
@@ -75,7 +75,7 @@ describe('MCP Server Context-Based Operations', () => {
     });
 
     it('should handle task discovery correctly', async () => {
-      const agent = 'test-agent';
+      const agent = 'senior-backend-engineer';
       
       // Create test task structure
       const agentDir = path.join(commDir, agent);
@@ -327,7 +327,7 @@ Train and deploy machine learning model for user behavior prediction
       
       // This should handle errors gracefully
       const result = await checkTasks(invalidConfig, { 
-        agent: 'test-agent' 
+        agent: 'senior-backend-engineer' 
       });
       
       expect(result.tasks).toEqual([]);

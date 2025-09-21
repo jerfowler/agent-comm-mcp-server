@@ -56,7 +56,7 @@ describe('State Transition Regression Test', () => {
 
   describe('Valid State Transitions', () => {
     it('REGRESSION: should transition from new → in_progress → completed', async () => {
-      const agent = 'test-agent';
+      const agent = 'senior-backend-engineer';
       const taskName = 'test-task';
       const content = 'Test task content';
 
