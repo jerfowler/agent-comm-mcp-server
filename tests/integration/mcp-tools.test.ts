@@ -88,7 +88,7 @@ describe('MCP Server Tools Integration', () => {
 
     it('REGRESSION TEST: fs.readdir should work with multiple agents and tasks', async () => {
       // Create multiple agents with tasks
-      const agentNames = ['agent-1', 'agent-2', 'agent-3'];
+      const agentNames = ['senior-frontend-engineer', 'senior-backend-engineer', 'qa-test-automation-engineer'];
       
       for (const agentName of agentNames) {
         const agentPath = path.join(commDir, agentName);
@@ -235,7 +235,7 @@ Test task for reading operations`;
 
   describe('Performance and Reliability', () => {
     it('should handle concurrent operations', async () => {
-      const agents = ['agent-1', 'agent-2', 'agent-3'];
+      const agents = ['senior-frontend-engineer', 'senior-backend-engineer', 'qa-test-automation-engineer'];
       const tasks = agents.map(agent => 
         createTaskTool(config, {
           agent: agent,
