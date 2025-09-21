@@ -104,7 +104,7 @@ describe('MCP Server Context-Based Operations', () => {
 
   describe('2. Clean Task Content (Issue #64)', () => {
     it('should provide clean task content with metadata only (no protocol injection)', async () => {
-      const targetAgent = 'frontend-engineer';
+      const targetAgent = 'senior-frontend-engineer';
       const taskName = 'implement-dashboard';
       const originalContent = '# Dashboard Task\n\nImplement user dashboard';
       
@@ -136,13 +136,13 @@ describe('MCP Server Context-Based Operations', () => {
       expect(taskContent).toContain('Dashboard Task');
       expect(taskContent).toContain('Implement user dashboard');
       expect(taskContent).toContain('## Metadata');
-      expect(taskContent).toContain('Agent: frontend-engineer');
+      expect(taskContent).toContain('Agent: senior-frontend-engineer');
       // Protocol guidance now provided via ResponseEnhancer, not injected in task content
       expect(taskContent).not.toContain('MCP Task Management Protocol');
     });
 
     it('should provide clean delegated task content with metadata only', async () => {
-      const targetAgent = 'backend-engineer';
+      const targetAgent = 'senior-backend-engineer';
       const taskName = 'implement-api';
       const originalContent = '# API Task\n\nImplement REST API endpoints';
       
@@ -170,7 +170,7 @@ describe('MCP Server Context-Based Operations', () => {
       expect(taskContent).toContain('API Task');
       expect(taskContent).toContain('Implement REST API endpoints');
       expect(taskContent).toContain('## Metadata');
-      expect(taskContent).toContain('Agent: backend-engineer');
+      expect(taskContent).toContain('Agent: senior-backend-engineer');
       // Protocol guidance now provided via ResponseEnhancer, not injected in task content
       expect(taskContent).not.toContain('MCP Task Management Protocol');
     });
@@ -287,7 +287,7 @@ Train and deploy machine learning model for user behavior prediction
 
   describe('4. Component Integration', () => {
     it('should integrate with ConnectionManager and EventLogger', async () => {
-      const agent = 'devops-engineer';
+      const agent = 'devops-deployment-engineer';
       
       // Verify config has required components
       expect(config.connectionManager).toBeDefined();
