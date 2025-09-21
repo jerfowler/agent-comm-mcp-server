@@ -44,9 +44,9 @@ describe('Flexible Workflow Integration', () => {
     it('should handle complete workflow with multiple tasks across agents', async () => {
       // Simulate multiple agents working on different tasks
       const agents = [
-        { name: 'frontend-engineer', tasks: ['ui-redesign', 'performance-optimization'] },
-        { name: 'backend-engineer', tasks: ['api-refactor', 'database-migration', 'caching-layer'] },
-        { name: 'qa-engineer', tasks: ['test-automation', 'regression-suite'] }
+        { name: 'senior-frontend-engineer', tasks: ['ui-redesign', 'performance-optimization'] },
+        { name: 'senior-backend-engineer', tasks: ['api-refactor', 'database-migration', 'caching-layer'] },
+        { name: 'qa-test-automation-engineer', tasks: ['test-automation', 'regression-suite'] }
       ];
 
       // Phase 1: Create all tasks
@@ -66,11 +66,11 @@ describe('Flexible Workflow Integration', () => {
 
       // Phase 2: Submit plans in non-sequential order
       const planSubmissions = [
-        { agent: 'backend-engineer', task: 'database-migration', plan: '# Database Migration Plan\n\n## Implementation Steps\n\n- [ ] Analyze current schema and identify changes needed\n- [ ] Create migration scripts for data transformation\n- [ ] Develop rollback plan for emergency recovery' },
-        { agent: 'frontend-engineer', task: 'ui-redesign', plan: '# UI Redesign Implementation\n\n## Design Phase\n\n- [ ] Create wireframes for new interface components\n- [ ] Implement responsive component architecture' },
-        { agent: 'qa-engineer', task: 'test-automation', plan: '# Test Automation Framework\n\n## Setup and Configuration\n\n- [ ] Configure test framework with proper dependencies\n- [ ] Develop comprehensive test cases for coverage' },
-        { agent: 'backend-engineer', task: 'api-refactor', plan: '# API Refactoring Project\n\n## Technical Design\n\n- [ ] Design RESTful endpoint architecture patterns\n- [ ] Implement new API structure with validation' },
-        { agent: 'frontend-engineer', task: 'performance-optimization', plan: '# Performance Optimization\n\n## Analysis and Implementation\n\n- [ ] Profile application for performance bottlenecks\n- [ ] Implement optimization strategies and caching' }
+        { agent: 'senior-backend-engineer', task: 'database-migration', plan: '# Database Migration Plan\n\n## Implementation Steps\n\n- [ ] Analyze current schema and identify changes needed\n- [ ] Create migration scripts for data transformation\n- [ ] Develop rollback plan for emergency recovery' },
+        { agent: 'senior-frontend-engineer', task: 'ui-redesign', plan: '# UI Redesign Implementation\n\n## Design Phase\n\n- [ ] Create wireframes for new interface components\n- [ ] Implement responsive component architecture' },
+        { agent: 'qa-test-automation-engineer', task: 'test-automation', plan: '# Test Automation Framework\n\n## Setup and Configuration\n\n- [ ] Configure test framework with proper dependencies\n- [ ] Develop comprehensive test cases for coverage' },
+        { agent: 'senior-backend-engineer', task: 'api-refactor', plan: '# API Refactoring Project\n\n## Technical Design\n\n- [ ] Design RESTful endpoint architecture patterns\n- [ ] Implement new API structure with validation' },
+        { agent: 'senior-frontend-engineer', task: 'performance-optimization', plan: '# Performance Optimization\n\n## Analysis and Implementation\n\n- [ ] Profile application for performance bottlenecks\n- [ ] Implement optimization strategies and caching' }
       ];
 
       for (const submission of planSubmissions) {
@@ -88,13 +88,13 @@ describe('Flexible Workflow Integration', () => {
 
       // Phase 3: Report progress interchangeably
       const progressReports = [
-        { agent: 'backend-engineer', task: 'database-migration', step: 1, status: 'IN_PROGRESS' as const },
-        { agent: 'frontend-engineer', task: 'ui-redesign', step: 1, status: 'COMPLETE' as const },
-        { agent: 'backend-engineer', task: 'api-refactor', step: 1, status: 'IN_PROGRESS' as const },
-        { agent: 'backend-engineer', task: 'database-migration', step: 1, status: 'COMPLETE' as const },
-        { agent: 'qa-engineer', task: 'test-automation', step: 1, status: 'COMPLETE' as const },
-        { agent: 'frontend-engineer', task: 'ui-redesign', step: 2, status: 'IN_PROGRESS' as const },
-        { agent: 'backend-engineer', task: 'database-migration', step: 2, status: 'IN_PROGRESS' as const }
+        { agent: 'senior-backend-engineer', task: 'database-migration', step: 1, status: 'IN_PROGRESS' as const },
+        { agent: 'senior-frontend-engineer', task: 'ui-redesign', step: 1, status: 'COMPLETE' as const },
+        { agent: 'senior-backend-engineer', task: 'api-refactor', step: 1, status: 'IN_PROGRESS' as const },
+        { agent: 'senior-backend-engineer', task: 'database-migration', step: 1, status: 'COMPLETE' as const },
+        { agent: 'qa-test-automation-engineer', task: 'test-automation', step: 1, status: 'COMPLETE' as const },
+        { agent: 'senior-frontend-engineer', task: 'ui-redesign', step: 2, status: 'IN_PROGRESS' as const },
+        { agent: 'senior-backend-engineer', task: 'database-migration', step: 2, status: 'IN_PROGRESS' as const }
       ];
 
       for (const report of progressReports) {
@@ -122,10 +122,10 @@ describe('Flexible Workflow Integration', () => {
 
       // Phase 4: Complete tasks in arbitrary order
       const completions = [
-        { agent: 'qa-engineer', task: 'test-automation', status: 'DONE' as const },
-        { agent: 'backend-engineer', task: 'database-migration', status: 'DONE' as const },
-        { agent: 'frontend-engineer', task: 'ui-redesign', status: 'DONE' as const },
-        { agent: 'backend-engineer', task: 'api-refactor', status: 'ERROR' as const }
+        { agent: 'qa-test-automation-engineer', task: 'test-automation', status: 'DONE' as const },
+        { agent: 'senior-backend-engineer', task: 'database-migration', status: 'DONE' as const },
+        { agent: 'senior-frontend-engineer', task: 'ui-redesign', status: 'DONE' as const },
+        { agent: 'senior-backend-engineer', task: 'api-refactor', status: 'ERROR' as const }
       ];
 
       for (const completion of completions) {
@@ -263,14 +263,14 @@ describe('Flexible Workflow Integration', () => {
       // Scenario: Frontend and backend engineers collaborating on a feature
       const frontendConn = {
         id: 'frontend-conn',
-        agent: 'frontend-engineer',
+        agent: 'senior-frontend-engineer',
         startTime: new Date(),
         metadata: {}
       };
       
       const backendConn = {
         id: 'backend-conn',
-        agent: 'backend-engineer',
+        agent: 'senior-backend-engineer',
         startTime: new Date(),
         metadata: {}
       };
@@ -280,7 +280,7 @@ describe('Flexible Workflow Integration', () => {
       
       // Frontend tasks
       const frontendTasks = ['ui-components', 'state-management'];
-      const frontendDir = path.join(commDir, 'frontend-engineer');
+      const frontendDir = path.join(commDir, 'senior-frontend-engineer');
       
       for (const task of frontendTasks) {
         const taskDir = path.join(frontendDir, task);
@@ -293,7 +293,7 @@ describe('Flexible Workflow Integration', () => {
       
       // Backend tasks
       const backendTasks = ['api-endpoints', 'data-models'];
-      const backendDir = path.join(commDir, 'backend-engineer');
+      const backendDir = path.join(commDir, 'senior-backend-engineer');
       
       for (const task of backendTasks) {
         const taskDir = path.join(backendDir, task);

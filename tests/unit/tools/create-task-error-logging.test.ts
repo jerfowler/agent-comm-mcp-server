@@ -315,7 +315,7 @@ describe('create-task ErrorLogger Integration', () => {
 
       if (mockErrorLogger.logError.mock.calls.length > 0) {
         const loggedError = loggedErrors[0];
-        // Accept either high or critical based on actual validation logic
+        // Accept either high or critical severity for validation errors
         expect(['high', 'critical']).toContain(loggedError.severity);
       }
     });

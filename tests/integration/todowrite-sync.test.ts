@@ -59,7 +59,7 @@ describe('TodoWrite Synchronization Integration', () => {
 
   describe('End-to-End TodoWrite Sync Flow', () => {
     it('should complete full sync workflow: Create Task → Submit Plan → Sync Todos → Verify Updates', async () => {
-      const testAgent = 'integration-test-agent';
+      const testAgent = 'senior-backend-engineer';
       const taskName = 'todowrite-sync-test';
       
       // Register cleanup
@@ -162,7 +162,7 @@ describe('TodoWrite Synchronization Integration', () => {
     });
 
     it('should handle partial matches with detailed tracking', async () => {
-      const testAgent = 'partial-match-agent';
+      const testAgent = 'senior-system-architect';
       const taskName = 'partial-match-test';
       
       const agentPath = path.join(testCommDir, testAgent);
@@ -230,7 +230,7 @@ describe('TodoWrite Synchronization Integration', () => {
     });
 
     it('should handle concurrent updates from multiple agents', async () => {
-      const agents = ['agent-1', 'agent-2', 'agent-3'];
+      const agents = ['senior-frontend-engineer', 'senior-backend-engineer', 'qa-test-automation-engineer'];
       const tasks: CreateTaskResponse[] = [];
       
       // Setup multiple agents with tasks
@@ -313,7 +313,7 @@ describe('TodoWrite Synchronization Integration', () => {
     });
 
     it('should handle error scenarios gracefully', async () => {
-      const testAgent = 'error-test-agent';
+      const testAgent = 'debug-investigator';
       const agentPath = path.join(testCommDir, testAgent);
       cleanupPaths.push(agentPath);
 
@@ -362,7 +362,7 @@ describe('TodoWrite Synchronization Integration', () => {
 
   describe('Performance and Scalability', () => {
     it('should handle large-scale todo synchronization efficiently', async () => {
-      const testAgent = 'performance-test-agent';
+      const testAgent = 'senior-dba-advisor';
       const agentPath = path.join(testCommDir, testAgent);
       cleanupPaths.push(agentPath);
 
@@ -430,7 +430,7 @@ describe('TodoWrite Synchronization Integration', () => {
     });
 
     it('should maintain data consistency during rapid updates', async () => {
-      const testAgent = 'consistency-test-agent';
+      const testAgent = 'senior-ai-ml-engineer';
       const agentPath = path.join(testCommDir, testAgent);
       cleanupPaths.push(agentPath);
 
@@ -506,7 +506,7 @@ describe('TodoWrite Synchronization Integration', () => {
 
   describe('Real-World Usage Patterns', () => {
     it('should simulate realistic TodoWrite workflow patterns', async () => {
-      const testAgent = 'realistic-workflow-agent';
+      const testAgent = 'product-owner-agile';
       const agentPath = path.join(testCommDir, testAgent);
       cleanupPaths.push(agentPath);
 

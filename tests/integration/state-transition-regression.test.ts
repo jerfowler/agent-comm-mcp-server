@@ -56,7 +56,7 @@ describe('State Transition Regression Test', () => {
 
   describe('Valid State Transitions', () => {
     it('REGRESSION: should transition from new → in_progress → completed', async () => {
-      const agent = 'test-agent';
+      const agent = 'senior-backend-engineer';
       const taskName = 'test-task';
       const content = 'Test task content';
 
@@ -107,7 +107,7 @@ describe('State Transition Regression Test', () => {
     });
 
     it('REGRESSION: should handle archived state correctly', async () => {
-      const agent = 'archive-agent';
+      const agent = 'senior-backend-engineer';
       const taskName = 'archive-task';
       
       // Create and complete a task
@@ -145,7 +145,7 @@ describe('State Transition Regression Test', () => {
 
   describe('Invalid State Transition Prevention', () => {
     it('REGRESSION: should prevent completed → in_progress transitions', async () => {
-      const agent = 'invalid-transition-agent';
+      const agent = 'security-analyst';
       const taskName = 'invalid-task';
       
       // Create and complete a task
@@ -194,7 +194,7 @@ describe('State Transition Regression Test', () => {
     });
 
     it('REGRESSION: should handle error state transitions correctly', async () => {
-      const agent = 'error-agent';
+      const agent = 'qa-test-automation-engineer';
       const taskName = 'error-task';
       
       const result = await createTaskTool(config, { 
@@ -227,7 +227,7 @@ describe('State Transition Regression Test', () => {
 
   describe('Concurrent State Operations', () => {
     it('REGRESSION: should handle concurrent state changes consistently', async () => {
-      const agent = 'concurrent-agent';
+      const agent = 'senior-frontend-engineer';
       const numTasks = 5;
       const tasks: string[] = [];
       
@@ -297,7 +297,7 @@ describe('State Transition Regression Test', () => {
 
   describe('State Consistency Validation', () => {
     it('REGRESSION: should maintain state consistency across operations', async () => {
-      const agent = 'consistency-agent';
+      const agent = 'devops-deployment-engineer';
       
       // Create task
       const result = await createTaskTool(config, { 

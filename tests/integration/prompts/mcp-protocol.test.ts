@@ -162,7 +162,7 @@ describe('MCP Protocol Compliance - Prompts', () => {
         params: {
           name: 'task-workflow-guide',
           arguments: {
-            agent: 'test-agent',
+            agent: 'senior-backend-engineer',
             taskId: 'task-123'
           }
         }
@@ -179,7 +179,7 @@ describe('MCP Protocol Compliance - Prompts', () => {
       
       if (textMessage && textMessage.content.type === 'text') {
         // Should contain agent-specific content
-        expect(textMessage.content.text).toContain('test-agent');
+        expect(textMessage.content.text).toContain('senior-backend-engineer');
       }
     });
 
@@ -271,7 +271,7 @@ describe('MCP Protocol Compliance - Prompts', () => {
         params: {
           name: 'agent-validation-requirements',
           arguments: {
-            agent: 'test-agent' // Correct string type
+            agent: 'senior-backend-engineer' // Correct string type
           }
         }
       };

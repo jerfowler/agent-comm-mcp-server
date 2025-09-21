@@ -86,7 +86,7 @@ describe('File System Operations Regression Test', () => {
   describe('Tool-level fs.readdir usage', () => {
     it('REGRESSION: listAgents should traverse directories using fs.readdir', async () => {
       // Create agent directory structure that requires fs.readdir
-      const agents = ['agent-1', 'agent-2', 'agent-3'];
+      const agents = ['senior-frontend-engineer', 'senior-backend-engineer', 'qa-test-automation-engineer'];
       
       for (const agentName of agents) {
         const agentPath = path.join(commDir, agentName);
