@@ -16,6 +16,7 @@ import { PlanMetadata } from '../types/plan-metadata.js';
 import * as fs from '../utils/fs-extra-safe.js';
 import path from 'path';
 import debug from 'debug';
+import { ValidationMode, getValidationConfig, loadValidationMode } from '../config/validation.js';
 
 const log = debug('agent-comm:tools:submit-plan');
 interface PlanValidationResult {
@@ -25,45 +26,89 @@ interface PlanValidationResult {
 }
 
 /**
- * Validate plan format according to checkbox requirements
+ * Validate plan format according to checkbox requirements with flexible modes
  */
-function validatePlanFormat(content: string): PlanValidationResult {
+function validatePlanFormat(content: string, validationMode?: string): PlanValidationResult {
   const errors: string[] = [];
-  
-  // Check for checkbox format: - [ ] **Title**: Description
-  const checkboxRegex = /^- \[ \] \*\*[^:]+\*\*:/gm;
+
+  // Load validation mode and config
+  const mode = loadValidationMode(validationMode);
+  const config = getValidationConfig(mode);
+
+  log('Validating plan with mode: %s', mode);
+
+  // For minimal mode, accept anything
+  if (mode === ValidationMode.MINIMAL) {
+    log('Minimal mode - accepting any content');
+    // Count any checkbox-like patterns for compatibility
+    const anyCheckboxRegex = /^[\s]*-\s*\[[\s\w~xX]*\]/gm;
+    const checkboxes = content.match(anyCheckboxRegex) ?? [];
+    return {
+      valid: true,
+      checkboxCount: checkboxes.length,
+      errors: []
+    };
+  }
+
+  // Find checkboxes with flexible patterns
+  let checkboxRegex: RegExp;
+  if (config.requireBoldTitles) {
+    // Strict format: requires bold titles with colon
+    checkboxRegex = /^- \[ \] \*\*[^:]+\*\*:/gm;
+  } else {
+    // Relaxed format: any checkbox pattern including nested and variants
+    checkboxRegex = /^[\s]*-\s*\[[\s\w~]*\]/gm;
+  }
+
   const checkboxes = content.match(checkboxRegex) ?? [];
-  
-  // Require at least one checkbox
-  if (checkboxes.length === 0) {
+
+  // Check if checkboxes are required
+  if (config.requireCheckboxes && checkboxes.length === 0) {
     errors.push('Plan must include at least ONE trackable item with checkbox format. Example: - [ ] **Task Name**: Description');
   }
-  
-  // Check for forbidden status markers
-  const statusMarkerRegex = /\[(PENDING|COMPLETE|IN_PROGRESS|TODO|DONE|BLOCKED)\]/gi;
-  const statusMarkers = content.match(statusMarkerRegex);
-  
-  if (statusMarkers && statusMarkers.length > 0) {
-    errors.push(`Use checkbox format only. Remove these status markers: ${statusMarkers.join(', ')}. Replace with - [ ] or - [x]`);
+
+  // Check for forbidden status markers (only in strict mode)
+  if (mode === ValidationMode.STRICT) {
+    const statusMarkerRegex = /\[(PENDING|COMPLETE|IN_PROGRESS|TODO|DONE|BLOCKED)\]/gi;
+    const statusMarkers = content.match(statusMarkerRegex);
+
+    if (statusMarkers && statusMarkers.length > 0) {
+      errors.push(`Use checkbox format only. Remove these status markers: ${statusMarkers.join(', ')}. Replace with - [ ] or - [x]`);
+    }
   }
-  
-  // Validate each checkbox has detail points
-  if (checkboxes.length > 0) {
+
+  // Validate bullet points per checkbox (only in strict mode)
+  if (mode === ValidationMode.STRICT && checkboxes.length > 0) {
     const lines = content.split('\n');
-    checkboxes.forEach((checkbox) => {
+
+    // Only check strict-format checkboxes for bullet requirements
+    const strictCheckboxes = content.match(/^- \[ \] \*\*[^:]+\*\*:/gm) ?? [];
+
+    strictCheckboxes.forEach((checkbox) => {
       const checkboxLineIndex = lines.findIndex(l => l.includes(checkbox));
       if (checkboxLineIndex >= 0) {
-        const nextLines = lines.slice(checkboxLineIndex + 1, checkboxLineIndex + 6);
-        const hasDetails = nextLines.some(l => l.trim().startsWith('-') && !l.trim().startsWith('- [ ]'));
-        
-        if (!hasDetails) {
+        // Count bullet points after this checkbox (up to next checkbox or 10 lines)
+        let bulletCount = 0;
+        for (let i = checkboxLineIndex + 1; i < Math.min(checkboxLineIndex + 11, lines.length); i++) {
+          const line = lines[i].trim();
+          // Stop at next checkbox
+          if (line.match(/^-\s*\[[\s\w~]*\]/)) break;
+          // Count bullet points
+          if (line.startsWith('-') && !line.startsWith('- [')) {
+            bulletCount++;
+          }
+        }
+
+        if (bulletCount < config.minBulletsPerCheckbox) {
           const checkboxTitle = checkbox.match(/\*\*([^:]+)\*\*/)?.[1] ?? 'Unknown';
-          errors.push(`Checkbox "${checkboxTitle}" missing required detail points. Each checkbox must have 2-5 detail bullets.`);
+          errors.push(`Checkbox "${checkboxTitle}" missing required detail points. Each checkbox must have ${config.minBulletsPerCheckbox}-${config.maxBulletsPerCheckbox} detail bullets.`);
         }
       }
     });
   }
-  
+
+  log('Validation complete: valid=%s, checkboxes=%d, errors=%d', errors.length === 0, checkboxes.length, errors.length);
+
   return {
     valid: errors.length === 0,
     checkboxCount: checkboxes.length,
@@ -86,13 +131,14 @@ export async function submitPlan(
   const agent = validateRequiredString(args['agent'], 'agent');
   const taskId = args['taskId'] as string | undefined; // Optional taskId parameter
   const stepCount = args['stepCount'] as number | undefined; // Optional stepCount parameter (Issue #60)
+  const validationMode = args['validation_mode'] as string | undefined; // Optional validation mode (Issue #74)
 
   // Optional context parameters (Issue #51)
   const agentContext = args['agentContext'] as AgentContextData | undefined;
   const contextEstimate = args['contextEstimate'] as ContextEstimate | undefined;
-  
-  // Validate plan format before submission
-  const validation = validatePlanFormat(content);
+
+  // Validate plan format before submission with flexible mode
+  const validation = validatePlanFormat(content, validationMode);
 
   if (!validation.valid) {
     const errorMessage = [

@@ -22,7 +22,7 @@ jest.mock('../../../src/core/agent-work-verifier.js');
 jest.mock('../../../src/core/TaskContextManager.js');
 
 import * as fs from '../../../src/utils/file-system.js';
-import { verifyAgentWork } from '../../../src/core/agent-work-verifier.js';
+import { verifyAgentWork, DEFAULT_CONFIDENCE_THRESHOLD } from '../../../src/core/agent-work-verifier.js';
 import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
@@ -103,10 +103,10 @@ describe('mark-complete ErrorLogger Integration', () => {
         return Promise.resolve('');
       });
 
-      // Mock verifyAgentWork to return low confidence (below 70% threshold)
+      // Mock verifyAgentWork to return low confidence (below threshold)
       mockedVerifyAgentWork.mockResolvedValue({
         success: false,
-        confidence: 30, // Below 70% threshold
+        confidence: Math.floor(DEFAULT_CONFIDENCE_THRESHOLD / 2), // Well below threshold
         warnings: ['Insufficient evidence of work'],
         evidence: {
           filesModified: 0,
