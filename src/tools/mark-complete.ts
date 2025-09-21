@@ -672,10 +672,9 @@ export async function markComplete(
     return {
       success: false,
       isError: true,
-      message: errorMessage,
-      error: errorMessage,
-      agent,
-      timestamp: new Date().toISOString()
+      status: 'ERROR' as const,
+      summary: errorMessage,
+      completedAt: new Date()
     };
   }
   
