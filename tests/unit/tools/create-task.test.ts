@@ -71,7 +71,7 @@ describe('create_task unified tool', () => {
   describe('Basic functionality', () => {
     it('should create a new task successfully', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'clean-task-name',
         content: 'Test task content',
       };
@@ -86,7 +86,7 @@ describe('create_task unified tool', () => {
       // Should call initializeTask
       expect(mockedTaskManager.initializeTask).toHaveBeenCalledWith(
         mockConfig,
-        'test-agent',
+        'senior-backend-engineer',
         'clean-task-name'
       );
 
@@ -109,7 +109,7 @@ describe('create_task unified tool', () => {
       mockedFs.isDirectory.mockResolvedValue(true);
 
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'clean-task-name'
       };
 
@@ -126,7 +126,7 @@ describe('create_task unified tool', () => {
 
     it('should extract clean name from timestamped input', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: '2025-09-04T06-26-51-clean-task-name', // Already timestamped
         content: 'Test content'
       };
@@ -136,14 +136,14 @@ describe('create_task unified tool', () => {
       // Should extract clean name
       expect(mockedTaskManager.initializeTask).toHaveBeenCalledWith(
         mockConfig,
-        'test-agent',
+        'senior-backend-engineer',
         'clean-task-name' // Clean name extracted
       );
     });
 
     it('should include only user content without protocol injection', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task',
         content: 'Original content'
       };
@@ -159,7 +159,7 @@ describe('create_task unified tool', () => {
 
     it('should create template for self tasks without content', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'self-task'
         // No content provided
       };
@@ -175,7 +175,7 @@ describe('create_task unified tool', () => {
 
     it('should include parent task reference for subtasks', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'child-task',
         parentTask: 'parent-task-id',
         content: 'Subtask content'
@@ -193,7 +193,7 @@ describe('create_task unified tool', () => {
   describe('MCP tool wrapper', () => {
     it('should handle createTaskTool wrapper correctly', async () => {
       const args = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'wrapper-test',
         content: 'Test content'
       };
@@ -206,7 +206,7 @@ describe('create_task unified tool', () => {
       // Should call underlying function
       expect(mockedTaskManager.initializeTask).toHaveBeenCalledWith(
         mockConfig,
-        'test-agent',
+        'senior-backend-engineer',
         'wrapper-test'
       );
     });
@@ -225,7 +225,7 @@ describe('create_task unified tool', () => {
 
     it('should throw AgentCommError for invalid task name', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: '' // Invalid
       };
 
@@ -237,7 +237,7 @@ describe('create_task unified tool', () => {
       mockedTaskManager.initializeTask.mockRejectedValue(new Error('File system error'));
 
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-task'
       };
 
@@ -248,7 +248,7 @@ describe('create_task unified tool', () => {
     // Test uncovered lines 195, 230, 246 from create-task.ts
     it('should handle malformed task names with multiple timestamps (line 195)', async () => {
       const options = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'task-20240101-123456-20240102-654321-name'
       };
 
@@ -260,7 +260,7 @@ describe('create_task unified tool', () => {
     it('should handle task name with regex match but no group 1 (line 195 break case)', async () => {
       // This tests the break condition in the while loop when match[1] doesn't exist
       const options = {
-        agent: 'test-agent', 
+        agent: 'senior-backend-engineer', 
         taskName: 'test-task-incomplete-pattern'
       };
 
@@ -274,7 +274,7 @@ describe('create_task unified tool', () => {
       mockedTaskManager.initializeTask.mockRejectedValue(new Error('Mock error for coverage'));
 
       const args = {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         taskName: 'test-wrapper-error',
         content: 'Test content',
       };
@@ -311,7 +311,7 @@ describe('create_task unified tool', () => {
     testCases.forEach(({ input, expected, description }) => {
       it(`should extract clean name from: ${description}`, async () => {
         const options = {
-          agent: 'test-agent',
+          agent: 'senior-backend-engineer',
           taskName: input
         };
         
@@ -320,7 +320,7 @@ describe('create_task unified tool', () => {
         // Verify clean name passed to underlying function
         expect(mockedTaskManager.initializeTask).toHaveBeenCalledWith(
           mockConfig,
-          'test-agent',
+          'senior-backend-engineer',
           expected
         );
       });

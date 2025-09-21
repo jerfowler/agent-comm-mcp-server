@@ -9,6 +9,7 @@ import * as fileSystem from '../../../src/utils/file-system.js';
 import { markComplete } from '../../../src/tools/mark-complete.js';
 import type { ServerConfig } from '../../../src/types.js';
 import * as agentVerifier from '../../../src/core/agent-work-verifier.js';
+import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
 
 // Mock fs-extra module
 jest.mock('../../../src/utils/fs-extra-safe.js', () => ({
@@ -32,6 +33,10 @@ jest.mock('../../../src/utils/file-system.js', () => ({
 // Mock agent work verifier
 jest.mock('../../../src/core/agent-work-verifier.js');
 const mockAgentVerifier = agentVerifier as jest.Mocked<typeof agentVerifier>;
+
+// Mock TaskContextManager
+jest.mock('../../../src/core/TaskContextManager.js');
+const MockedTaskContextManager = TaskContextManager as jest.MockedClass<typeof TaskContextManager>;
 
 describe('mark-complete three-state checkbox support', () => {
   let mockConfig: ServerConfig;
@@ -138,6 +143,39 @@ describe('mark-complete three-state checkbox support', () => {
       isDirectory: () => true,
       mtime: new Date()
     } as any);
+
+    // Setup TaskContextManager mock
+    const mockTaskContextManager = {
+      markComplete: jest.fn().mockImplementation(async (...args: any[]) => {
+        const [_status, summary, _connection, options] = args;
+        // Check if we have unchecked items in PLAN.md
+        const planContent = await fileSystem.readFile('/test/comm/senior-backend-engineer/test-task/PLAN.md');
+        const uncheckedRegex = /^- \[ \]/gm;
+        const checkedRegex = /^- \[x\]/gmi;
+        const inProgressRegex = /^- \[~\]/gm;
+
+        const uncheckedItems = (planContent.match(uncheckedRegex) || []).length;
+        const _checkedItems = (planContent.match(checkedRegex) || []).length;
+        const inProgressItems = (planContent.match(inProgressRegex) || []).length;
+
+        const reconciliationMode = options?.reconciliationMode || 'strict';
+
+        // In strict mode, throw if there are any unchecked or in-progress items
+        if (reconciliationMode === 'strict' && (uncheckedItems > 0 || inProgressItems > 0)) {
+          throw new Error('Reconciliation failed: All tasks must be completed in strict mode');
+        }
+
+        return {
+          success: true,
+          status: 'DONE',
+          summary,
+          completedAt: new Date(),
+          isError: false,
+          recommendations: []
+        };
+      })
+    };
+    MockedTaskContextManager.mockImplementation(() => mockTaskContextManager as any);
   });
 
   describe('checkbox state parsing', () => {
@@ -177,7 +215,7 @@ describe('mark-complete three-state checkbox support', () => {
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Testing pending state parsing',
         reconciliation_mode: 'strict'
@@ -208,7 +246,7 @@ describe('mark-complete three-state checkbox support', () => {
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Testing in-progress state parsing',
         reconciliation_mode: 'strict'
@@ -239,7 +277,7 @@ describe('mark-complete three-state checkbox support', () => {
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Testing completed state parsing',
         reconciliation_mode: 'strict'
@@ -271,7 +309,7 @@ describe('mark-complete three-state checkbox support', () => {
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Testing mixed checkbox states',
         reconciliation_mode: 'strict'
@@ -302,7 +340,7 @@ describe('mark-complete three-state checkbox support', () => {
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Reconciling with explanations',
         reconciliation_mode: 'reconcile',
@@ -349,7 +387,7 @@ describe('mark-complete three-state checkbox support', () => {
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Testing malformed checkboxes',
         reconciliation_mode: 'auto_complete'
@@ -380,7 +418,7 @@ describe('mark-complete three-state checkbox support', () => {
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Regex validation test',
         reconciliation_mode: 'force'
@@ -424,7 +462,7 @@ Total: 5 tasks, 2 complete, 3 incomplete`);
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Progress calculation test',
         reconciliation_mode: 'strict'
@@ -457,7 +495,7 @@ Just regular text content.`);
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Empty plan test',
         reconciliation_mode: 'strict'
@@ -490,7 +528,7 @@ Just regular text content.`);
       });
 
       const result = await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Unicode variant test',
         reconciliation_mode: 'strict'
@@ -526,7 +564,7 @@ Just regular text content.`);
       const startTime = Date.now();
 
       await markComplete(mockConfig, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         status: 'DONE',
         summary: 'Performance test',
         reconciliation_mode: 'auto_complete'

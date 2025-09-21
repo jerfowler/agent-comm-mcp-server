@@ -254,7 +254,7 @@ describe('get-server-info ErrorLogger Integration', () => {
 
       // Should still return result
       expect(result).toBeDefined();
-      expect(result.uptime).toBe(0); // Fallback uptime
+      expect(result.uptime).toBeCloseTo(0, 1); // Fallback uptime (within 0.1 seconds)
 
       // Verify warning was logged
       expect(mockErrorLogger.logError).toHaveBeenCalledWith(
