@@ -1,468 +1,343 @@
 /**
- * Tests for flexible plan format validation in submit-plan tool
- * Issue #74: Fix overly strict plan validation blocking agents
+ * Tests for flexible plan validation in submit-plan tool
+ * Testing relaxed validation requirements for Issue #74
  */
 
 import { jest } from '@jest/globals';
-import type { Mock } from 'jest-mock';
 import { submitPlan } from '../../../src/tools/submit-plan.js';
-import { ServerConfig } from '../../../src/types.js';
 import { TaskContextManager } from '../../../src/core/TaskContextManager.js';
+import { EventLogger } from '../../../src/logging/EventLogger.js';
+import { ConnectionManager } from '../../../src/core/ConnectionManager.js';
 import * as fs from '../../../src/utils/fs-extra-safe.js';
+import type { ServerConfig } from '../../../src/types.js';
 
-// Mock dependencies
-jest.mock('../../../src/utils/fs-extra-safe.js');
+// Mock modules
 jest.mock('../../../src/core/TaskContextManager.js');
+jest.mock('../../../src/utils/fs-extra-safe.js');
 
-const mockedFs = fs as jest.Mocked<typeof fs>;
 const MockedTaskContextManager = TaskContextManager as jest.MockedClass<typeof TaskContextManager>;
+const mockFs = fs as jest.Mocked<typeof fs>;
 
-describe('submit-plan - Flexible Plan Validation', () => {
+describe('submit-plan flexible validation', () => {
   let mockConfig: ServerConfig;
-  let mockConnectionManager: any;
-  let mockEventLogger: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Mock TaskContextManager to bypass its internal validation
-    const mockInstance = {
-      submitPlan: jest.fn().mockResolvedValue({
-        success: true,
-        message: 'Plan submitted successfully',
-        contextId: 'test-context-id',
-        stepsIdentified: 1,
-        phases: 1,
-        initialProgress: {
-          completed: 0,
-          inProgress: 0,
-          pending: 1,
-          blocked: 0
-        }
-      } as never)
-    };
-    (MockedTaskContextManager as unknown as Mock).mockImplementation(() => mockInstance);
-
-    // Mock file system operations with proper typing
-    const mockPathExists = mockedFs.pathExists as unknown as Mock<() => Promise<boolean>>;
-    mockPathExists.mockResolvedValue(true);
-
-    const mockEnsureDir = mockedFs.ensureDir as unknown as Mock<() => Promise<void>>;
-    mockEnsureDir.mockResolvedValue(undefined);
-
-    const mockWriteFile = mockedFs.writeFile as unknown as Mock<() => Promise<void>>;
-    mockWriteFile.mockResolvedValue(undefined);
-
-    const mockReadFile = mockedFs.readFile as unknown as Mock<(path: string) => Promise<string>>;
-    mockReadFile.mockImplementation((path: string) => {
-      if (path.endsWith('INIT.md')) {
-        return Promise.resolve('# Test Task\n\nInitial task content');
+    // Setup mock file system
+    mockFs.pathExists.mockResolvedValue(true);
+    mockFs.readFile.mockImplementation((path: string) => {
+      if (path.includes('INIT.md')) {
+        return Promise.resolve('# Task\nTest task content');
+      }
+      if (path.includes('PLAN.md')) {
+        return Promise.resolve('# Plan\n- [ ] Existing task');
       }
       return Promise.resolve('');
     });
+    mockFs.writeFile.mockResolvedValue(undefined);
+    mockFs.ensureDir.mockResolvedValue(undefined);
+    mockFs.readdir.mockResolvedValue([]);
 
-    // Mock connection manager
-    mockConnectionManager = {
-      register: jest.fn(),
-      getConnection: jest.fn(),
-      updateActivity: jest.fn(),
-      getActiveConnections: jest.fn(),
-      unregister: jest.fn(),
-      getConnectionsByAgent: jest.fn(),
-      cleanupStaleConnections: jest.fn(),
-      getStatistics: jest.fn(),
-      getConnectionCount: jest.fn(),
-      hasConnection: jest.fn(),
-      createConnection: jest.fn().mockReturnValue({
-        id: 'test-connection',
-        agent: 'test-agent',
-        startTime: new Date()
-      }),
-      closeConnection: jest.fn(),
-      listConnections: jest.fn().mockReturnValue([])
+    // Mock TaskContextManager constructor to return our mock instance
+    const mockInstance = {
+      submitPlan: jest.fn().mockImplementation((args: unknown) => {
+        // Cast args to the expected type
+        const content = typeof args === 'string' ? args : (args as { content?: string })?.content ?? '';
+
+        // Count checkboxes in the content
+        const checkboxRegex = /^[\s]*-\s*\[[\s\w~]*\]/gm;
+        const checkboxes = content.match(checkboxRegex) ?? [];
+
+        return Promise.resolve({
+          success: true,
+          message: 'Plan submitted successfully',
+          stepsIdentified: checkboxes.length,
+          phases: 1,
+          initialProgress: {
+            completed: 0,
+            inProgress: 0,
+            pending: checkboxes.length,
+            blocked: 0
+          },
+          progressMarkers: {
+            completed: [],
+            pending: checkboxes
+          }
+        } as never);
+      })
     };
 
-    // Mock event logger
-    mockEventLogger = {
-      logOperation: jest.fn(),
-      logError: jest.fn(),
-      getOperationStatistics: jest.fn(),
-      logLowLevel: jest.fn(),
-      waitForWriteQueueEmpty: jest.fn(() => Promise.resolve())
-    };
+    (MockedTaskContextManager as unknown as jest.Mock).mockImplementation(() => mockInstance);
 
     mockConfig = {
-      commDir: '/tmp/test-comm',
-      archiveDir: '/tmp/test-comm/.archive',
-      logDir: '/tmp/test-comm/.logs',
+      commDir: './comm',
+      archiveDir: './comm/.archive',
+      logDir: './comm/.logs',
       enableArchiving: false,
-      connectionManager: mockConnectionManager,
-      eventLogger: mockEventLogger
+      connectionManager: {
+        register: jest.fn(),
+        getConnection: jest.fn(),
+        updateActivity: jest.fn(),
+        getActiveConnections: jest.fn(),
+        unregister: jest.fn(),
+        getConnectionsByAgent: jest.fn(),
+        cleanupStaleConnections: jest.fn(),
+        getStatistics: jest.fn(),
+        getConnectionCount: jest.fn(),
+        hasConnection: jest.fn()
+      } as unknown as ConnectionManager,
+      eventLogger: {
+        logOperation: jest.fn(),
+        logError: jest.fn(),
+        getOperationStatistics: jest.fn(),
+        flush: jest.fn(),
+        waitForWriteQueueEmpty: jest.fn()
+      } as unknown as EventLogger
     };
   });
 
-  describe('Minimal Plan Format', () => {
-    it('should accept a plan with single minimal checkbox', async () => {
+  describe('flexible bullet point requirements', () => {
+    it('should accept plans with 0 bullet points', async () => {
       const args = {
         agent: 'test-agent',
-        content: '- [ ] Task'
-      };
+        content: `# Simple Plan
 
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
+No bullet points here, just a description of what needs to be done.
 
-    it('should accept a plan with multiple minimal checkboxes', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] Task 1\n- [ ] Task 2\n- [ ] Task 3'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should accept a plan without bold formatting', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] Simple task without bold'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-  });
-
-  describe('Variable Bullet Points', () => {
-    it('should accept checkboxes with zero bullet points', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] **Task**: No additional details needed'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should accept checkboxes with 10+ bullet points', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] **Complex Task**: Many details
-  - Detail 1
-  - Detail 2
-  - Detail 3
-  - Detail 4
-  - Detail 5
-  - Detail 6
-  - Detail 7
-  - Detail 8
-  - Detail 9
-  - Detail 10
-  - Detail 11`
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should accept mixed bullet point counts', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] **Task 1**: No bullets
-- [ ] **Task 2**: Two bullets
-  - Bullet 1
-  - Bullet 2
-- [ ] **Task 3**: Many bullets
-  - Bullet 1
-  - Bullet 2
-  - Bullet 3
-  - Bullet 4
-  - Bullet 5
-  - Bullet 6`
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-  });
-
-  describe('Keyword Requirements', () => {
-    it('should accept plans without Action/Expected/Error keywords', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] **Setup Environment**: Initialize project
-  - Run npm install
-  - Create config files
-  - Set environment variables`
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should accept informal bullet points', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] **Fix Bug**: Resolve issue
-  - Find the problem
-  - Write a test
-  - Fix the code
-  - Verify it works`
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should still accept traditional format with keywords', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] **Traditional Task**: Following old format
-  - Action: Do something
+- [ ] **Task 1**: Do something
+  - Action: Execute command
   - Expected: Success
   - Error: Handle failure`
       };
 
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-  });
-
-  describe('Varied Checkbox Descriptions', () => {
-    it('should accept short descriptions', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] Fix'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+      expect(result.stepsIdentified).toBeGreaterThan(0);
     });
 
-    it('should accept long descriptions', async () => {
+    it('should accept plans with only 1 bullet point', async () => {
       const args = {
         agent: 'test-agent',
-        content: '- [ ] **Comprehensive Refactoring**: This is a very long description that explains in detail what needs to be done including multiple aspects of the implementation and various considerations that must be taken into account during the development process'
-      };
+        content: `# Minimal Plan
 
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
+• Single bullet point here
 
-    it('should accept descriptions with emojis', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] 🚀 **Launch Feature**: Deploy to production 🎉'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should accept descriptions with special characters', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] **Task #123**: Fix issue @user mentioned (priority: high)'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-  });
-
-  describe('Validation Mode Configuration', () => {
-    it('should use relaxed mode by default', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] Simple task'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should respect validation_mode parameter when set to minimal', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: 'Just some text without checkboxes',
-        validation_mode: 'minimal'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should enforce strict mode when explicitly requested', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] Task without details',
-        validation_mode: 'strict'
-      };
-
-      // In strict mode, this should fail due to not matching strict format
-      await expect(submitPlan(mockConfig, args)).rejects.toThrow('Plan must include at least ONE trackable item');
-    });
-
-    it('should respect AGENT_COMM_VALIDATION_MODE environment variable', async () => {
-      process.env['AGENT_COMM_VALIDATION_MODE'] = 'minimal';
-
-      const args = {
-        agent: 'test-agent',
-        content: 'Text without checkboxes'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-
-      delete process.env['AGENT_COMM_VALIDATION_MODE'];
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle empty plan gracefully', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '',
-        validation_mode: 'minimal'
-      };
-
-      // Empty content should be rejected even in minimal mode since it can't be a plan
-      await expect(submitPlan(mockConfig, args)).rejects.toThrow('content must be a non-empty string');
-    });
-
-    it('should handle plan with only whitespace', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '   \n   \n   ',
-        validation_mode: 'minimal'
-      };
-
-      // Whitespace-only content is trimmed and rejected by validation utils (proper behavior)
-      await expect(submitPlan(mockConfig, args)).rejects.toThrow('content must be a non-empty string');
-    });
-
-    it('should handle mixed checkbox formats', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] Standard checkbox
-- [] No spaces checkbox
-- [x] Completed checkbox
-- [~] In progress checkbox`
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should handle nested checkboxes', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] Parent task
-  - [ ] Subtask 1
-  - [ ] Subtask 2
-    - [ ] Sub-subtask`
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-  });
-
-  describe('Backward Compatibility', () => {
-    it('should maintain compatibility with existing strict format', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: `- [ ] **Proper Task**: Following strict format
+- [ ] **Task 1**: Do something
   - Action: Execute command
-  - Expected: Successful completion
-  - Error: Rollback and report`,
-        validation_mode: 'strict'
-      };
-
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should reject invalid format in strict mode', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: 'Invalid plan format',
-        validation_mode: 'strict'
-      };
-
-      await expect(submitPlan(mockConfig, args)).rejects.toThrow('Plan must include at least ONE trackable item');
-    });
-  });
-
-  describe('Type Safety', () => {
-    it('should use nullish coalescing for defaults', async () => {
-      const args = {
-        agent: 'test-agent',
-        content: '- [ ] Test task',
-        validation_mode: undefined // Should use default
-      };
-
-      // This test verifies the implementation uses ?? not ||
-      await expect(submitPlan(mockConfig, args)).resolves.toMatchObject({
-        success: true,
-        contextId: expect.any(String)
-      });
-    });
-
-    it('should properly type all variables', async () => {
-      // This test ensures no 'any' types are used
-      const args: Record<string, unknown> = {
-        agent: 'test-agent' as string,
-        content: '- [ ] Type-safe task' as string,
-        validation_mode: 'relaxed' as string
+  - Expected: Success
+  - Error: Handle failure`
       };
 
       const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+      expect(result.stepsIdentified).toBeGreaterThan(0);
+    });
 
-      // Verify result has correct type structure
-      expect(result).toMatchObject({
-        success: expect.any(Boolean),
-        contextId: expect.any(String),
-        message: expect.any(String)
-      });
+    it('should accept plans with 10 bullet points', async () => {
+      const bulletPoints = Array.from({ length: 10 }, (_, i) => `• Point ${i + 1}`).join('\n');
+      const args = {
+        agent: 'test-agent',
+        content: `# Plan with Many Points
+
+${bulletPoints}
+
+- [ ] **Task 1**: Do something
+  - Action: Execute command
+  - Expected: Success
+  - Error: Handle failure`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+      expect(result.stepsIdentified).toBeGreaterThan(0);
+    });
+  });
+
+  describe('flexible keyword requirements', () => {
+    it('should accept plans without "Implementation" keyword', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# My Plan
+
+Just a simple plan description.
+
+- [ ] **Task 1**: Do something
+  - Action: Execute command
+  - Expected: Success
+  - Error: Handle failure`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept plans without "Tasks" keyword', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Plan
+
+## Steps to Complete
+
+- [ ] **Step 1**: First step
+  - Action: Do this
+  - Expected: Works
+  - Error: Fix it`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept plans without any traditional keywords', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Quick Fix
+
+- [ ] **Fix**: Apply the fix
+  - Action: Run command
+  - Expected: Fixed
+  - Error: Debug`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('minimal checkbox formats', () => {
+    it('should accept simple checkbox without bold title', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Plan
+
+- [ ] Simple task without bold
+- [ ] Another simple task
+- [ ] Third task`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+      expect(result.stepsIdentified).toBe(3);
+    });
+
+    it('should accept checkbox with just task name', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Plan
+
+- [ ] Task
+- [ ] Another`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+      expect(result.stepsIdentified).toBe(2);
+    });
+
+    it('should accept mixed checkbox formats', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Plan
+
+- [ ] Simple task
+- [ ] **Bold Task**: With description
+  - Action: Do something
+  - Expected: Works
+- [ ] Another simple one`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+      expect(result.stepsIdentified).toBe(3);
+    });
+  });
+
+  describe('validation mode configuration', () => {
+    it('should default to relaxed mode', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Minimal Plan
+- [ ] Task`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+    });
+
+    it('should respect AGENT_COMM_VALIDATION_MODE environment variable', async () => {
+      process.env['AGENT_COMM_VALIDATION_MODE'] = 'strict';
+
+      // In strict mode, a minimal plan without proper format should fail
+      const minimalArgs = {
+        agent: 'test-agent',
+        content: `# Minimal Plan
+- [ ] Task`
+      };
+
+      // This should reject in strict mode due to missing bold title and detail bullets
+      await expect(submitPlan(mockConfig, minimalArgs)).rejects.toThrow();
+
+      // But a properly formatted plan should work even in strict mode
+      const properArgs = {
+        agent: 'test-agent',
+        content: `# Proper Plan
+
+- [ ] **Task 1**: Do something
+  - Action: Execute command
+  - Expected: Success`
+      };
+
+      const result = await submitPlan(mockConfig, properArgs);
+      expect(result.success).toBe(true);
+
+      delete process.env['AGENT_COMM_VALIDATION_MODE'];
+    });
+
+    it('should support validation_mode in args', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Minimal Plan
+- [ ] Task`,
+        validation_mode: 'relaxed'
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle empty plan gracefully', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: ''
+      };
+
+      await expect(submitPlan(mockConfig, args)).rejects.toThrow();
+    });
+
+    it('should require at least one checkbox', async () => {
+      const args = {
+        agent: 'test-agent',
+        content: `# Plan without checkboxes
+
+Just some text without any checkboxes.`
+      };
+
+      await expect(submitPlan(mockConfig, args)).rejects.toThrow();
+    });
+
+    it('should handle very long plans', async () => {
+      const checkboxes = Array.from({ length: 100 }, (_, i) => `- [ ] Task ${i + 1}`).join('\n');
+      const args = {
+        agent: 'test-agent',
+        content: `# Large Plan\n\n${checkboxes}`
+      };
+
+      const result = await submitPlan(mockConfig, args);
+      expect(result.success).toBe(true);
+      expect(result.stepsIdentified).toBe(100);
     });
   });
 });

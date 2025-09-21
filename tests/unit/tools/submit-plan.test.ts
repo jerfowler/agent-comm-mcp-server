@@ -130,7 +130,8 @@ Just some regular text without any trackable items.`,
       .rejects.toThrow(/Plan must include at least ONE trackable item/);
   });
 
-  it('should throw error for plan with forbidden status markers', async () => {
+  it('should accept plan with status markers in relaxed mode', async () => {
+    // Issue #74: Relaxed validation should accept plans with status markers
     const args = {
       content: `# Test Plan
 
@@ -143,11 +144,14 @@ Just some regular text without any trackable items.`,
       agent: 'test-agent'
     };
 
-    await expect(submitPlan(mockConfig, args))
-      .rejects.toThrow(/Use checkbox format only.*Remove these status markers/);
+    // In relaxed mode, this should now succeed
+    const result = await submitPlan(mockConfig, args);
+    expect(result.success).toBe(true);
+    expect(result.stepsIdentified).toBeGreaterThan(0);
   });
 
-  it('should throw error for checkbox without detail points', async () => {
+  it('should accept checkbox without detail points in relaxed mode', async () => {
+    // Issue #74: Relaxed validation should accept checkboxes without detail points
     const args = {
       content: `# Test Plan
 
@@ -159,8 +163,10 @@ Another paragraph that doesn't count as details.`,
       agent: 'test-agent'
     };
 
-    await expect(submitPlan(mockConfig, args))
-      .rejects.toThrow(/Checkbox "Missing Details" missing required detail points/);
+    // In relaxed mode, this should now succeed
+    const result = await submitPlan(mockConfig, args);
+    expect(result.success).toBe(true);
+    expect(result.stepsIdentified).toBeGreaterThan(0);
   });
 
   it('should handle missing configuration components', async () => {

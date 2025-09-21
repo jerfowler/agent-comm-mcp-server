@@ -244,25 +244,26 @@ describe('Validation Error Logging (Bug #4 TDD)', () => {
       }));
     });
 
-    it('should log error when plan uses forbidden status markers', async () => {
-      // Act: Try to submit plan with status markers
+    it('should log error when plan has no checkboxes', async () => {
+      // Issue #74: Changed test - now we check for no checkboxes instead of status markers
+      // Act: Try to submit plan with no checkboxes
       try {
         await submitPlan(config, {
           agent: 'test-agent',
-          content: '1. [PENDING] Task one\n2. [COMPLETE] Task two',  // Invalid format
+          content: '1. [PENDING] Task one\n2. [COMPLETE] Task two',  // No checkboxes
           stepCount: 0  // No valid checkboxes, expecting error
         });
       } catch (error) {
         // Expected to throw
       }
 
-      // Assert: ErrorLogger should have been called
+      // Assert: ErrorLogger should have been called for missing checkboxes
       expect(logErrorSpy).toHaveBeenCalledWith(expect.objectContaining({
         source: 'validation',
         operation: 'submit_plan',
         agent: 'test-agent',
         error: expect.objectContaining({
-          message: expect.stringContaining('status markers')
+          message: expect.stringContaining('checkbox')
         }),
         context: expect.objectContaining({
           tool: 'submit_plan',
