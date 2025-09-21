@@ -258,8 +258,8 @@ describe('create-task Agent Validation Integration', () => {
         'senior-backend-engineer',
         'qa-test-automation-engineer',
         'product-docs-manager',
-        'agent-v2',
-        'debug_investigator'
+        'senior-frontend-engineer',
+        'debug-investigator'  // Note: use hyphen, not underscore
       ];
 
       for (const agentName of validAgents) {
@@ -347,10 +347,19 @@ describe('create-task Agent Validation Integration', () => {
     it('should handle rapid successive validations efficiently', async () => {
       const startTime = Date.now();
 
+      // Use valid agents from the whitelist for the test
+      const validAgents = [
+        'senior-backend-engineer',
+        'senior-frontend-engineer',
+        'qa-test-automation-engineer',
+        'product-docs-manager',
+        'security-analyst'
+      ];
+
       const promises = [];
       for (let i = 0; i < 10; i++) {
         promises.push(createTask(mockConfig, {
-          agent: `agent-${i}`,
+          agent: validAgents[i % validAgents.length],  // Cycle through valid agents
           taskName: `test-task-${i}`,
           content: 'test content'
         }));

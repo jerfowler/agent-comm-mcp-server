@@ -13,8 +13,51 @@ import * as fs from '../utils/file-system.js';
 import * as path from 'path';
 import debug from 'debug';
 
-
+// Create debug instance with proper namespace
 const log = debug('agent-comm:tools:create-task');
+
+/**
+ * Strict whitelist of valid agents for create_task
+ * This provides an additional layer of security beyond the general validation
+ */
+const VALID_AGENTS_WHITELIST = [
+  'senior-frontend-engineer',
+  'senior-backend-engineer',
+  'senior-system-architect',
+  'devops-deployment-engineer',
+  'senior-ai-ml-engineer',
+  'senior-dba-advisor',
+  'qa-test-automation-engineer',
+  'security-analyst',
+  'debug-investigator',
+  'ux-ui-designer',
+  'product-docs-manager',
+  'product-manager',
+  'product-owner-agile',
+  'scrum-master-coach'
+] as const;
+
+/**
+ * Validate agent against strict whitelist for create_task
+ * @param agent - The agent name to validate
+ * @throws Error if agent is not in whitelist
+ * @returns The validated agent name
+ */
+function validateAgentWhitelist(agent: string): string {
+  log('Validating agent against whitelist: %s', agent);
+
+  // Type-safe check against whitelist
+  const isValidAgent = VALID_AGENTS_WHITELIST.some(validAgent => validAgent === agent);
+
+  if (!isValidAgent) {
+    log('Agent validation failed - not in whitelist: %s', agent);
+    const errorMessage = `Invalid agent '${agent}'. Agent must be one of the known agents: ${VALID_AGENTS_WHITELIST.join(', ')}`;
+    throw new Error(errorMessage);
+  }
+
+  log('Agent validation passed: %s', agent);
+  return agent;
+}
 
 // Protocol context removed - guidance now provided via ResponseEnhancer orchestration templates
 
@@ -154,10 +197,21 @@ export async function createTask(
   let rawTaskName: string;
 
   try {
+    // First apply security validation (path traversal, injection, etc.)
     agent = await validateAgentWithAvailability(options.agent);
+
+    // Then apply strict whitelist validation for create_task
+    agent = validateAgentWhitelist(agent);
+
+    log('Agent validation complete: %s', agent);
   } catch (error) {
     // Log validation error before re-throwing
     if (config.errorLogger) {
+      // Check if this is a whitelist validation failure
+      const isWhitelistError = error instanceof Error &&
+        error.message.includes('Invalid agent') &&
+        error.message.includes('must be one of');
+
       const errorEntry: ErrorLogEntry = {
         timestamp: new Date(),
         source: 'validation',
@@ -165,13 +219,17 @@ export async function createTask(
         agent: String(options.agent ?? ''),
         error: {
           message: error instanceof Error ? error.message : String(error),
-          name: error instanceof Error ? error.name : 'ValidationError'
+          name: isWhitelistError ? 'AgentWhitelistError' : (error instanceof Error ? error.name : 'ValidationError')
         },
         context: {
           tool: 'create_task',
-          parameters: { agent: options.agent, taskName: options.taskName }
+          parameters: {
+            agent: options.agent,
+            taskName: options.taskName,
+            ...(isWhitelistError && { violationType: 'agent_whitelist' })
+          }
         },
-        severity: 'high'
+        severity: isWhitelistError ? 'critical' : 'high'
       };
       await config.errorLogger.logError(errorEntry);
     }

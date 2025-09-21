@@ -321,7 +321,7 @@ describe('MCP Server Integration Tests', () => {
 
     it('should throw error for non-existent task file', async () => {
       await expect(readTask(config, {
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         task: 'non-existent-task',
         file: 'INIT'
       })).rejects.toThrow('File not found');

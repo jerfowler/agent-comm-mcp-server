@@ -11,8 +11,8 @@ import * as fs from '../utils/file-system.js';
 import * as path from 'path';
 import debug from 'debug';
 
-
-const log = debug('agent-comm:tools:markcomplete');
+// Create debug instance with proper namespace
+const log = debug('agent-comm:tools:mark-complete');
 interface ReconciliationOptions {
   mode?: 'strict' | 'auto_complete' | 'reconcile' | 'force';
   explanations?: Record<string, string> | undefined; // item -> reason for not being checked
@@ -38,13 +38,22 @@ interface ReconciledCompletion {
 
 /**
  * Extract unchecked checkbox items from plan content
+ * Includes both pending [ ] and in-progress [~] states
  */
 function extractUncheckedItems(content: string): string[] {
-  const uncheckedRegex = /^- \[ \] \*\*([^:]+)\*\*:/gm;
+  log('extractUncheckedItems called, content length: %d', content.length);
+
+  // Match both pending [ ] and in-progress [~] checkboxes as unchecked
+  const uncheckedRegex = /^- \[(?:[ ~])\] \*\*([^:]+)\*\*:/gm;
   const matches = content.match(uncheckedRegex) ?? [];
+
+  log('Found %d unchecked items (pending or in-progress)', matches.length);
+
   return matches.map((match: string) => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
-    return titleMatch ? titleMatch[1] : match;
+    const title = titleMatch ? titleMatch[1] : match;
+    log('Unchecked item: %s', title);
+    return title;
   });
 }
 
@@ -52,6 +61,7 @@ function extractUncheckedItems(content: string): string[] {
  * Validate checkbox format in plan content and detect invalid formats
  */
 function validateCheckboxFormats(content: string, config: ServerConfig, agent: string, taskId?: string): void {
+  log('validateCheckboxFormats called for agent: %s, taskId: %s', agent, taskId ?? 'none');
   const lines = content.split('\n');
 
   for (let i = 0; i < lines.length; i++) {
@@ -68,9 +78,11 @@ function validateCheckboxFormats(content: string, config: ServerConfig, agent: s
     const isListItem = line.startsWith('-') && hasCheckboxBrackets;
     if (hasCheckboxBrackets && (isListItem || !line.startsWith('-'))) {
       // This looks like a checkbox attempt, validate format
-      const validCheckbox = line.match(/^- \[[x ]\] \*\*[^:]+\*\*:/);
+      // Now accepting three states: [ ] (pending), [~] (in-progress), [x] or [X] (completed)
+      const validCheckbox = line.match(/^- \[(?:[xX ~])\] \*\*[^:]+\*\*:/);
 
       if (!validCheckbox) {
+        log('Invalid checkbox format detected on line %d: %s', i + 1, line);
         // Log parsing error for invalid checkbox format
         if (config.errorLogger) {
           config.errorLogger.logError({
@@ -106,14 +118,22 @@ function validateCheckboxFormats(content: string, config: ServerConfig, agent: s
 }
 
 /**
- * Extract checked checkbox items from plan content  
+ * Extract checked checkbox items from plan content
  */
 function extractCheckedItems(content: string): string[] {
-  const checkedRegex = /^- \[x\] \*\*([^:]+)\*\*:/gmi;
+  log('extractCheckedItems called, content length: %d', content.length);
+
+  // Match both lowercase [x] and uppercase [X] as checked/completed
+  const checkedRegex = /^- \[[xX]\] \*\*([^:]+)\*\*:/gm;
   const matches = content.match(checkedRegex) ?? [];
+
+  log('Found %d checked items (completed)', matches.length);
+
   return matches.map((match: string) => {
     const titleMatch = match.match(/\*\*([^:]+)\*\*/);
-    return titleMatch ? titleMatch[1] : match;
+    const title = titleMatch ? titleMatch[1] : match;
+    log('Checked item: %s', title);
+    return title;
   });
 }
 
@@ -125,10 +145,10 @@ async function validateCompletion(
   agent: string,
   taskId?: string
 ): Promise<CompletionValidation> {
+  log('validateCompletion called for agent: %s, taskId: %s', agent, taskId ?? 'none');
   let planContent = '';  // Declare in function scope for error logging
 
   try {
-    log('validateCompletion called for agent: %s, taskId: %s', agent, taskId);
     // Find the task directory - either specified or active
     const agentDir = path.join(config.commDir, agent);
     log('Checking agent directory: %s', agentDir);
@@ -313,10 +333,15 @@ async function reconcileCompletion(
         if (planPath && await fs.pathExists(planPath)) {
           let planContent = await fs.readFile(planPath);
 
-          // Replace unchecked items with checked
+          // Replace unchecked items (both [ ] and [~]) with checked [x]
           validation.uncheckedItems.forEach(item => {
-            const uncheckedPattern = new RegExp(`^- \\[ \\] \\*\\*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*:`, 'gm');
-            planContent = planContent.replace(uncheckedPattern, `- [x] **${item}**:`);
+            // Replace both pending [ ] and in-progress [~] with completed [x]
+            const escapedItem = item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pendingPattern = new RegExp(`^- \\[ \\] \\*\\*${escapedItem}\\*\\*:`, 'gm');
+            const inProgressPattern = new RegExp(`^- \\[~\\] \\*\\*${escapedItem}\\*\\*:`, 'gm');
+
+            planContent = planContent.replace(pendingPattern, `- [x] **${item}**:`);
+            planContent = planContent.replace(inProgressPattern, `- [x] **${item}**:`);
           });
 
           await fs.writeFile(planPath, planContent);

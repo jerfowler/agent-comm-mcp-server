@@ -91,7 +91,7 @@ describe('Validation Error Logging (Bug #4 TDD)', () => {
       // Act: Try to create task without taskName
       try {
         await createTask(config, {
-          agent: 'test-agent',
+          agent: 'senior-backend-engineer',  // Valid agent from whitelist
           taskName: ''  // Invalid: empty string
         });
       } catch (error) {
@@ -102,7 +102,7 @@ describe('Validation Error Logging (Bug #4 TDD)', () => {
       expect(logErrorSpy).toHaveBeenCalledWith(expect.objectContaining({
         source: 'validation',
         operation: 'create_task',
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         error: expect.objectContaining({
           message: expect.stringContaining('taskName')
         }),

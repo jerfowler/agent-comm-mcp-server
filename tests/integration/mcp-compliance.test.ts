@@ -82,13 +82,13 @@ describe('MCP Protocol Compliance Tests', () => {
 
   beforeEach(async () => {
     // Setup test agent directory for tests that need it
-    const testAgentDir = path.join(config.commDir, 'test-agent');
+    const testAgentDir = path.join(config.commDir, 'senior-backend-engineer');
     await fs.ensureDir(testAgentDir);
   });
 
   afterEach(async () => {
     // Cleanup test data
-    const testAgentDir = path.join(config.commDir, 'test-agent');
+    const testAgentDir = path.join(config.commDir, 'senior-backend-engineer');
     if (await fs.pathExists(testAgentDir)) {
       await fs.remove(testAgentDir);
     }
@@ -267,7 +267,7 @@ describe('MCP Protocol Compliance Tests', () => {
           method: 'tools/call',
           params: {
             name: 'check_tasks',
-            arguments: { agent: 'test-agent' }
+            arguments: { agent: 'senior-backend-engineer' }
           }
         }
       ];
@@ -292,7 +292,7 @@ describe('MCP Protocol Compliance Tests', () => {
     test('should validate async operation handling', async () => {
       const startTime = Date.now();
       
-      const response = await checkTasks(config, { agent: 'test-agent' });
+      const response = await checkTasks(config, { agent: 'senior-backend-engineer' });
       const endTime = Date.now();
       
       // Verify it returns promptly
@@ -380,7 +380,7 @@ describe('MCP Protocol Compliance Tests', () => {
         {
           name: 'file_not_found',
           testFn: () => readTask(config, {
-            agent: 'test-agent',
+            agent: 'senior-backend-engineer',
             task: 'non-existent-task',
             file: 'INIT'
           }),
@@ -408,7 +408,7 @@ describe('MCP Protocol Compliance Tests', () => {
     test('should validate error message formats', async () => {
       try {
         await readTask(config, {
-          agent: 'test-agent',
+          agent: 'senior-backend-engineer',
           task: 'non-existent-task',
           file: 'INIT'
         });
@@ -481,7 +481,7 @@ describe('MCP Protocol Compliance Tests', () => {
       // Execute multiple tools concurrently
       const promises = [
         listAgents(config),
-        checkTasks(config, { agent: 'test-agent' })
+        checkTasks(config, { agent: 'senior-backend-engineer' })
       ];
 
       const results = await Promise.allSettled(promises);
@@ -508,7 +508,7 @@ describe('MCP Protocol Compliance Tests', () => {
 
     test('should validate cleanup and resource management', async () => {
       // Test that temporary resources are cleaned up properly
-      const taskDir = path.join(config.commDir, 'temp-test-agent');
+      const taskDir = path.join(config.commDir, 'qa-test-automation-engineer');
       await fs.ensureDir(taskDir);
       
       // Tool should not interfere with cleanup
@@ -521,7 +521,7 @@ describe('MCP Protocol Compliance Tests', () => {
   });
 
   describe('9. Functional Tool Validation', () => {
-    const agentName = 'test-functional-agent';
+    const agentName = 'senior-backend-engineer';
 
     beforeEach(async () => {
       // Setup test agent with sample data using delegateTask
@@ -578,7 +578,7 @@ describe('MCP Protocol Compliance Tests', () => {
     });
 
     test('should validate delegation workflow', async () => {
-      const targetAgent = 'delegated-agent';
+      const targetAgent = 'senior-frontend-engineer';
       
       // Delegate task
       const delegateResult = await createTaskTool(config, {

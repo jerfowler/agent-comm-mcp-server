@@ -45,7 +45,7 @@ function createMockServerConfig(): ServerConfig {
       register: jest.fn(),
       getConnection: jest.fn().mockReturnValue({
         id: 'test-connection-id',
-        agent: 'test-agent',
+        agent: 'senior-backend-engineer',
         timestamp: Date.now(),
         lastActivity: Date.now(),
         metadata: {}
@@ -69,7 +69,7 @@ function createMockServerConfig(): ServerConfig {
 
 describe('Tool Coordination Integration (TDD)', () => {
   const mockConfig = createMockServerConfig();
-  const testAgent = 'test-agent';
+  const testAgent = 'senior-backend-engineer';
   const testTaskDir = '2025-09-05T07-49-48-test-task';
   const testAgentPath = path.join(mockConfig.commDir, testAgent);
   const testTaskPath = path.join(testAgentPath, testTaskDir);
