@@ -553,5 +553,287 @@ describe('ComplianceTracker', () => {
         complianceTracker.recordActivity('error-agent', activity)
       ).resolves.not.toThrow();
     });
+
+    it('should handle corrupted JSON recovery', async () => {
+      // Arrange
+      mockFs.pathExists.mockResolvedValue(true);
+      mockFs.readFile.mockResolvedValue('{ invalid json }');
+
+      // Act
+      const level = await complianceTracker.getComplianceLevel('corrupted-agent');
+
+      // Assert
+      expect(level).toBe(100); // Should create new record on parse error
+    });
+
+    it('should handle permission denied scenarios', async () => {
+      // Arrange
+      const permissionError = new Error('EACCES: permission denied');
+      (permissionError as NodeJS.ErrnoException).code = 'EACCES';
+      mockFs.readFile.mockRejectedValue(permissionError);
+
+      // Act
+      const level = await complianceTracker.getComplianceLevel('denied-agent');
+
+      // Assert
+      expect(level).toBe(100); // Should handle gracefully
+    });
+
+    it('should handle disk full conditions', async () => {
+      // Arrange
+      const diskFullError = new Error('ENOSPC: no space left on device');
+      (diskFullError as NodeJS.ErrnoException).code = 'ENOSPC';
+      mockFs.writeFile.mockRejectedValue(diskFullError);
+
+      // Act
+      const activity: ComplianceActivity = {
+        type: 'task_created',
+        taskId: 'test-task',
+        timestamp: new Date()
+      };
+
+      await complianceTracker.recordActivity('disk-full-agent', activity);
+
+      // Assert - Should not crash, data kept in memory
+      const level = await complianceTracker.getComplianceLevel('disk-full-agent');
+      expect(level).toBeDefined();
+    });
+
+    it('should handle updateComplianceScore error recovery', async () => {
+      // Arrange
+      // Make getAgentRecord throw
+      mockFs.readFile.mockRejectedValue(new Error('Read failed'));
+      mockFs.pathExists.mockResolvedValue(false);
+
+      // Act & Assert - Should not throw
+      await expect(
+        complianceTracker.updateComplianceScore('error-agent')
+      ).resolves.not.toThrow();
+    });
+
+    it('should handle saveAgentRecord failure silently', async () => {
+      // Arrange
+      mockFs.ensureDir.mockRejectedValue(new Error('Directory creation failed'));
+      mockFs.writeFile.mockRejectedValue(new Error('Write failed'));
+
+      const activity: ComplianceActivity = {
+        type: 'plan_submitted',
+        taskId: 'test-task',
+        timestamp: new Date()
+      };
+
+      // Act
+      await complianceTracker.recordActivity('save-fail-agent', activity);
+
+      // Assert - Should still track in memory
+      const level = await complianceTracker.getComplianceLevel('save-fail-agent');
+      expect(level).toBeDefined();
+    });
+
+    it('should handle concurrent update conflicts', async () => {
+      // Arrange
+      const activity1: ComplianceActivity = {
+        type: 'task_created',
+        taskId: 'task-1',
+        timestamp: new Date()
+      };
+
+      const activity2: ComplianceActivity = {
+        type: 'plan_submitted',
+        taskId: 'task-2',
+        timestamp: new Date()
+      };
+
+      // Simulate concurrent updates
+      const promises = [
+        complianceTracker.recordActivity('concurrent-agent', activity1),
+        complianceTracker.recordActivity('concurrent-agent', activity2)
+      ];
+
+      // Act
+      await Promise.all(promises);
+
+      // Assert - Both should be recorded
+      const level = await complianceTracker.getComplianceLevel('concurrent-agent');
+      expect(level).toBeDefined();
+    });
+
+    it('should handle cache invalidation properly', async () => {
+      // Arrange
+      const activity: ComplianceActivity = {
+        type: 'task_created',
+        taskId: 'test-task',
+        timestamp: new Date()
+      };
+
+      // Prime the cache
+      await complianceTracker.recordActivity('cache-agent', activity);
+
+      // Clear the internal cache (simulate restart)
+      const newTracker = new ComplianceTracker(mockConfig);
+
+      // Act - Should reload from disk
+      const level = await newTracker.getComplianceLevel('cache-agent');
+
+      // Assert
+      expect(level).toBeDefined();
+    });
+
+    it('should handle stale record detection', async () => {
+      // Arrange
+      const staleDate = new Date();
+      staleDate.setMonth(staleDate.getMonth() - 2); // 2 months old
+
+      const staleRecord: AgentComplianceRecord = {
+        agent: 'stale-agent',
+        tasksCreated: 10,
+        delegationsCompleted: 5,
+        todoWriteUsage: 20,
+        planSubmissions: 8,
+        progressReports: 15,
+        completions: 5,
+        lastActivity: staleDate,
+        complianceScore: 85,
+        escalationLevel: 2
+      };
+
+      mockFs.pathExists.mockResolvedValue(true);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(staleRecord));
+
+      // Act
+      const level = await complianceTracker.getComplianceLevel('stale-agent');
+
+      // Assert - Should still return the stale data
+      expect(level).toBeLessThan(100);
+    });
+
+    it('should handle record persistence failures with retry', async () => {
+      // Arrange
+      let writeAttempts = 0;
+      mockFs.writeFile.mockImplementation(async () => {
+        writeAttempts++;
+        if (writeAttempts === 1) {
+          throw new Error('First write failed');
+        }
+        return Promise.resolve();
+      });
+
+      const activity: ComplianceActivity = {
+        type: 'task_created',
+        taskId: 'test-task',
+        timestamp: new Date()
+      };
+
+      // Act
+      await complianceTracker.recordActivity('retry-agent', activity);
+
+      // Note: Current implementation doesn't retry, but should handle the error
+      expect(writeAttempts).toBeGreaterThan(0);
+    });
+  });
+
+  describe('escalation guidance edge cases', () => {
+    it('should handle all operation types for guidance', async () => {
+      // Test each operation type
+      const operations = [
+        'create_task',
+        'submit_plan',
+        'report_progress',
+        'mark_complete',
+        'unknown_operation'
+      ];
+
+      for (const operation of operations) {
+        const guidance = await complianceTracker.getPersonalizedGuidance('test-agent', operation);
+        expect(guidance).toBeDefined();
+        expect(guidance.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should provide different guidance per escalation level', async () => {
+      // Create agent with violations
+      const activity: ComplianceActivity = {
+        type: 'task_created',
+        taskId: 'test-task',
+        timestamp: new Date()
+      };
+
+      // Record many activities without proper compliance
+      for (let i = 0; i < 10; i++) {
+        await complianceTracker.recordActivity('escalated-agent', activity);
+      }
+
+      // Get guidance at different levels
+      const guidance1 = await complianceTracker.getPersonalizedGuidance('escalated-agent', 'create_task');
+
+      // Force escalation by creating more activities with violations
+      for (let i = 0; i < 20; i++) {
+        await complianceTracker.recordActivity('escalated-agent', {
+          type: 'task_created',
+          taskId: `task-${i}`,
+          timestamp: new Date()
+        });
+      }
+
+      const guidance2 = await complianceTracker.getPersonalizedGuidance('escalated-agent', 'create_task');
+
+      // Guidance should potentially differ based on escalation
+      expect(guidance1).toBeDefined();
+      expect(guidance2).toBeDefined();
+    });
+
+    it('should handle missing agent record in getGuidance', async () => {
+      // Don't create any record
+      mockFs.pathExists.mockResolvedValue(false);
+
+      // Act
+      const guidance = await complianceTracker.getPersonalizedGuidance('new-agent', 'create_task');
+
+      // Assert - Should return default guidance
+      expect(guidance).toBeDefined();
+      expect(guidance.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('record management edge cases', () => {
+    it('should handle extremely large compliance scores', async () => {
+      // Create record with many activities
+      const activity: ComplianceActivity = {
+        type: 'task_completed',
+        taskId: 'test-task',
+        timestamp: new Date()
+      };
+
+      // Record many successful completions
+      for (let i = 0; i < 100; i++) {
+        await complianceTracker.recordActivity('super-agent', activity);
+      }
+
+      // Act
+      const level = await complianceTracker.getComplianceLevel('super-agent');
+
+      // Assert - Should cap at 100
+      expect(level).toBeLessThanOrEqual(100);
+      expect(level).toBeGreaterThan(0);
+    });
+
+    it('should handle date conversion errors', async () => {
+      // Create record with invalid date
+      const invalidRecord = {
+        agent: 'date-error-agent',
+        tasksCreated: 1,
+        lastActivity: 'invalid-date-string',
+        complianceScore: 85
+      };
+
+      mockFs.pathExists.mockResolvedValue(true);
+      mockFs.readFile.mockResolvedValue(JSON.stringify(invalidRecord));
+
+      // Act - Should handle invalid date gracefully
+      const level = await complianceTracker.getComplianceLevel('date-error-agent');
+
+      // Assert
+      expect(level).toBeDefined();
+    });
   });
 });

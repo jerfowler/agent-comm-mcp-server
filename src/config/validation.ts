@@ -82,8 +82,8 @@ export function loadValidationMode(explicitMode?: string): ValidationMode {
   // Priority: explicit parameter > environment variable > default
   const modeString = explicitMode ?? process.env['AGENT_COMM_VALIDATION_MODE'] ?? 'relaxed';
 
-  // Normalize to lowercase for comparison
-  const normalized = modeString.toLowerCase();
+  // Normalize to lowercase and trim whitespace for comparison
+  const normalized = modeString.trim().toLowerCase();
 
   switch (normalized) {
     case 'strict':
