@@ -9,6 +9,7 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { markComplete } from '../../../src/tools/mark-complete.js';
 import * as verification from '../../../src/core/agent-work-verifier.js';
+import { DEFAULT_CONFIDENCE_THRESHOLD } from '../../../src/core/agent-work-verifier.js';
 import * as validation from '../../../src/utils/validation.js';
 import * as fs from '../../../src/utils/file-system.js';
 import { TaskContextManager, CompletionResult } from '../../../src/core/TaskContextManager.js';
@@ -129,7 +130,7 @@ describe('Agent Work Verification Gate', () => {
       };
 
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow(/VERIFICATION FAILED.*25% confidence/);
+        .rejects.toThrow(new RegExp(`VERIFICATION FAILED.*${25}% confidence`));
       
       expect(mockVerification.verifyAgentWork)
         .toHaveBeenCalledWith(mockConfig, 'senior-frontend-engineer');
@@ -164,11 +165,11 @@ describe('Agent Work Verification Gate', () => {
         .toHaveBeenCalledWith(mockConfig, 'verified-agent');
     });
 
-    it('should use 70% as default confidence threshold', async () => {
+    it(`should use ${DEFAULT_CONFIDENCE_THRESHOLD}% as default confidence threshold`, async () => {
       // Test exactly at threshold
       mockVerification.verifyAgentWork.mockResolvedValue({
         success: true,
-        confidence: 70, // EXACTLY AT THRESHOLD
+        confidence: DEFAULT_CONFIDENCE_THRESHOLD, // EXACTLY AT THRESHOLD
         warnings: ['Minor verification gaps'],
         evidence: {
           filesModified: 2,
@@ -185,16 +186,16 @@ describe('Agent Work Verification Gate', () => {
         agent: 'threshold-agent'
       };
 
-      // Should not throw - exactly at 70% threshold
+      // Should not throw - exactly at threshold
       const result = await markComplete(mockConfig, args);
       expect(result.success).toBe(true);
     });
 
-    it('should REJECT completion just below 70% threshold', async () => {
+    it(`should REJECT completion just below ${DEFAULT_CONFIDENCE_THRESHOLD}% threshold`, async () => {
       // Test just below threshold
       mockVerification.verifyAgentWork.mockResolvedValue({
         success: false,
-        confidence: 69, // JUST BELOW THRESHOLD
+        confidence: DEFAULT_CONFIDENCE_THRESHOLD - 1, // JUST BELOW THRESHOLD
         warnings: ['Insufficient verification evidence'],
         evidence: {
           filesModified: 1,
@@ -212,7 +213,7 @@ describe('Agent Work Verification Gate', () => {
       };
 
       await expect(markComplete(mockConfig, args))
-        .rejects.toThrow(/VERIFICATION FAILED.*69% confidence/);
+        .rejects.toThrow(new RegExp(`VERIFICATION FAILED.*${DEFAULT_CONFIDENCE_THRESHOLD - 1}% confidence`));
     });
 
     it('should ALWAYS allow ERROR status regardless of verification confidence', async () => {
@@ -322,7 +323,7 @@ describe('Agent Work Verification Gate', () => {
         const errorMessage = (error as Error).message;
         
         // Should include confidence score
-        expect(errorMessage).toMatch(/35% confidence/);
+        expect(errorMessage).toMatch(new RegExp(`${35}% confidence`));
         
         // Should include specific warnings
         expect(errorMessage).toMatch(/No PLAN\.md found/);

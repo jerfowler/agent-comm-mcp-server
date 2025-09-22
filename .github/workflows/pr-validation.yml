@@ -35,14 +35,14 @@ jobs:
           # Check conventional commit format (skip emoji stripping for now)
           CLEANED_TITLE="$PR_TITLE"
           
-          if echo "$CLEANED_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve)(\([^)]+\))?(!)?: .+'; then
+          if echo "$CLEANED_TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve|merge)(\([^)]+\))?(!)?: .+'; then
             echo "✅ PR title follows conventional commit format"
             echo "valid_title=true" >> $GITHUB_OUTPUT
-            
+
             # Extract type for labeling from cleaned title
             TYPE=$(echo "$CLEANED_TITLE" | sed -E 's/^([a-z]+)(\([^)]+\))?(!)?: .*/\1/')
             echo "pr_type=$TYPE" >> $GITHUB_OUTPUT
-            
+
             # Check for breaking change indicator
             if echo "$PR_TITLE" | grep -q '!:'; then
               echo "breaking_change=true" >> $GITHUB_OUTPUT
@@ -52,7 +52,7 @@ jobs:
           else
             echo "❌ PR title does not follow conventional commit format"
             echo "Expected format: type(scope): description"
-            echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, resolve"
+            echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, resolve, merge"
             echo "valid_title=false" >> $GITHUB_OUTPUT
           fi
           
@@ -76,7 +76,7 @@ jobs:
             if echo "$commit_msg" | grep -qE '^Merge (branch|pull request)'; then
               echo "  ⏭️ Skipping merge commit"
               VALID_COUNT=$((VALID_COUNT + 1))
-            elif echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve)(\([^)]+\))?(!)?: .+'; then
+            elif echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|resolve|merge)(\([^)]+\))?(!)?: .+'; then
               VALID_COUNT=$((VALID_COUNT + 1))
               echo "  ✅ Valid"
             else
@@ -147,7 +147,7 @@ jobs:
           
           **Expected format:** `type(scope): description`
           
-          **Valid types:** feat, fix, docs, style, refactor, perf, test, chore, ci, build, resolve
+          **Valid types:** feat, fix, docs, style, refactor, perf, test, chore, ci, build, resolve, merge
           
           **Examples:**
           - `feat: add new MCP tool for task delegation`

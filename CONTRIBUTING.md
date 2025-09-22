@@ -52,7 +52,7 @@ type(scope): description
 
 #### Commit Types
 - **feat**: New features (triggers minor version bump)
-- **fix**: Bug fixes (triggers patch version bump) 
+- **fix**: Bug fixes (triggers patch version bump)
 - **docs**: Documentation changes only
 - **style**: Code style changes (formatting, no logic changes)
 - **refactor**: Code restructuring without functionality changes
@@ -61,6 +61,7 @@ type(scope): description
 - **chore**: Maintenance tasks, tooling, dependencies
 - **ci**: CI/CD configuration changes
 - **build**: Build system changes
+- **merge**: Merge commits from branch synchronization
 
 #### Breaking Changes
 For breaking changes, add `!` after type or include `BREAKING CHANGE:` in footer:
@@ -141,6 +142,7 @@ We follow [Conventional Commits](https://conventionalcommits.org/) with semantic
 - `chore`: Maintenance tasks (deps, build, etc.)
 - `perf`: Performance improvements
 - `ci`: CI/CD pipeline changes
+- `merge`: Branch merge commits
 
 ### Examples
 ```bash

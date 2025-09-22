@@ -531,7 +531,8 @@ export async function markComplete(
   
   // **MANDATORY VERIFICATION GATE** - Prevents false success reporting
   // This addresses Issue #11: Agent False Success Reporting
-  if (status === 'DONE') {
+  // Issue #74: Force mode bypasses ALL validation checks
+  if (status === 'DONE' && reconciliation?.mode !== 'force') {
     try {
       const verificationResult = await verifyAgentWork(config, agent);
       
@@ -629,23 +630,53 @@ export async function markComplete(
       // Re-throw to prevent task completion
       throw verificationError;
     }
+  } else if (status === 'DONE' && reconciliation?.mode === 'force') {
+    // Issue #74: Log audit trail when force mode is used
+    await config.eventLogger.logOperation({
+      timestamp: new Date(),
+      operation: 'force_mode_used',
+      agent,
+      success: true,
+      duration: 0,
+      metadata: {
+        warning: 'FORCE_MODE_USED - Bypassed all validation checks',
+        taskId: taskId ?? 'unknown',
+        reconciliationMode: 'force'
+      }
+    });
   }
-  
+
   // Validate completion against plan checkboxes
   log('Starting validation for agent: %s, taskId: %s', agent, taskId);
   const validation = await validateCompletion(config, agent, taskId);
   log('Validation completed: %O', validation);
 
+
   // Apply reconciliation logic
-  const reconciledCompletion = await reconcileCompletion(
-    validation,
-    status as 'DONE' | 'ERROR',
-    summary.trim(),
-    reconciliation,
-    config,
-    agent,
-    taskId
-  );
+  let reconciledCompletion: ReconciledCompletion;
+  try {
+    reconciledCompletion = await reconcileCompletion(
+      validation,
+      status as 'DONE' | 'ERROR',
+      summary.trim(),
+      reconciliation,
+      config,
+      agent,
+      taskId
+    );
+  } catch (reconciliationError) {
+    // Convert reconciliation errors to failed results
+    const errorMessage = reconciliationError instanceof Error ?
+      reconciliationError.message : String(reconciliationError);
+
+    return {
+      success: false,
+      isError: true,
+      status: 'ERROR' as const,
+      summary: errorMessage,
+      completedAt: new Date()
+    };
+  }
   
   const contextManager = new TaskContextManager({
     commDir: config.commDir,
